@@ -1,0 +1,23 @@
+# Dependencias
+node_modules/
+
+# Builds
+dist/
+.next/
+out/
+build/
+
+# Variables de entorno (nunca subir secretos)
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env.local
+
+# Logs y sistema
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+coverage/
+*.tsbuildinfo

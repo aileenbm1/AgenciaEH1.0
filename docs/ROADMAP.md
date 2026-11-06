@@ -40,3 +40,10 @@ Leads, seguimiento, citas, favoritos y búsquedas guardadas.
 - Esquema SQL versionado: usuarios, perfiles, propiedades, imágenes, leads y favoritos.
 - Servicios de autenticación y catálogo migrados a consultas SQL parametrizadas.
 - Pendiente: compilar con dependencias instaladas, ejecutar scripts en SQL Server real y pruebas de integración.
+
+## V0.8 — Migración a MySQL (hosting Hostinger)
+- Acceso a datos con `mysql2` en lugar de `mssql`; esquema en `backend/database/schema.sql`.
+- Fechas en UTC; identificadores `CHAR(36)` (UUID).
+- Corregidos errores que impedían arrancar la API (guards sin `JwtService`, `JwtAuth` inexistente, import de `cookie-parser`).
+- La paginación del catálogo ahora cuenta propiedades, no filas de imágenes.
+- Probado contra MySQL 8: registro, login, refresh, perfil, verificación, recuperación, CRUD, filtros, paginación y permisos.
