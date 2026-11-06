@@ -1,4 +1,5 @@
-const API_URL=process.env.NEXT_PUBLIC_API_URL||'http://localhost:4000/api/v1';
+// En el navegador se usa el proxy del propio sitio (/api/v1 → API_URL).
+const API_URL=process.env.NEXT_PUBLIC_API_URL||'/api/v1';
 export type UserRole='BUYER'|'AGENT'|'AGENCY'|'ADMIN';
 export type SessionUser={id:string;fullName:string;email:string;role:UserRole;phone?:string|null;emailVerified?:boolean};
 type AuthResponse={accessToken:string;user:SessionUser};

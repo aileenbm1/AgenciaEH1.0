@@ -2,7 +2,8 @@
 import { useEffect,useState } from 'react';
 import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth';
-const API=process.env.NEXT_PUBLIC_API_URL||'http://localhost:4000/api/v1';
+// En el navegador se usa el proxy del propio sitio (/api/v1 → API_URL).
+const API=process.env.NEXT_PUBLIC_API_URL||'/api/v1';
 type Property={id:string;title:string;municipality:string;neighborhood?:string|null;price:string|number;operation:'SALE'|'RENT';status:string;images:{url:string}[]};
 const money=(n:number|string)=>new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}).format(Number(n));
 export default function MyProperties(){const [items,setItems]=useState<Property[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[busy,setBusy]=useState('');const [form,setForm]=useState({title:'',description:'',operation:'SALE',price:'',municipality:'León',neighborhood:'',propertyType:'Casa',bedrooms:'3',bathrooms:'2',landArea:'',builtArea:'',images:''});

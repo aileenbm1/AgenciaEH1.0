@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { PropertyGrid } from '@/components/property-grid';
 import { getPublicProperties,toCard } from '@/lib/properties';
 export const dynamic='force-dynamic';
-export default async function Listings({searchParams}:{searchParams:Record<string,string|string[]|undefined>}){
- const pick=(key:string)=>{const v=searchParams[key];return Array.isArray(v)?v[0]:v;};
+export default async function Listings({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
+ const sp=await searchParams;const pick=(key:string)=>{const v=sp[key];return Array.isArray(v)?v[0]:v;};
  const params={operation:pick('operation'),municipality:pick('municipality'),propertyType:pick('propertyType'),minPrice:pick('minPrice'),maxPrice:pick('maxPrice'),bedrooms:pick('bedrooms'),search:pick('search'),sort:pick('sort'),page:pick('page')};
  const result=await getPublicProperties(params,12);const cards=result.items.map(toCard);
  return <main className="page-wrap"><div className="page-heading"><span className="eyebrow">CATÁLOGO INMOBILIARIO</span><h1>Propiedades en Guanajuato</h1><p>Explora opciones de renta y venta en el Bajío.</p></div>
