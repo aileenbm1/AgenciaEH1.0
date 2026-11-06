@@ -1,0 +1,4 @@
+"use client";
+const items=["Equipo de agentes", "Propiedades de la agencia", "Leads del equipo", "Perfil público"]; function PanelContent(){return <main className="page-wrap"><div className="page-heading"><span className="eyebrow">CENTRO DE CONTROL</span><h1>Panel de agencia</h1><p>Coordina a tu equipo y consulta el desempeño de tus publicaciones.</p></div><div className="dashboard-grid">{items.map((x,i)=><article className="dashboard-card" key={x}><span className="dashboard-number">0{i+1}</span><h3>{x}</h3><p>Accede y administra esta sección de tu cuenta.</p><a href="/acceso">Configurar acceso ↗</a></article>)}</div><div className="notice">Panel de interfaz. Los permisos, datos y acciones se conectarán con la autenticación y API.</div></main>}
+import ProtectedPanel from '@/components/protected-panel';
+export default function Page(){return <ProtectedPanel allowed=['AGENCY']><PanelContent /></ProtectedPanel>;}
