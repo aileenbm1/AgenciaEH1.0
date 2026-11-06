@@ -37,7 +37,12 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
       cache: 'no-store',
     });
   } catch {
-    return Response.json({ statusCode: 502, message: 'La API no está disponible en este momento.' }, { status: 502 });
+    // En el paquete de un solo sitio, start.js publica aquí el estado de la API.
+    const status = (globalThis as any).__EH_API_STATUS as { state: string; error: string | null; since: string; attempts: number } | undefined;
+    return Response.json(
+      { statusCode: 502, message: 'La API no está disponible en este momento.', ...(status ? { api: status } : {}) },
+      { status: 502 },
+    );
   }
 
   const out = new Headers();

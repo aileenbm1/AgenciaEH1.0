@@ -10,7 +10,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   private pool?: Pool;
   async onModuleInit() {
     try { const c = await this.getPool().getConnection(); c.release(); }
-    catch { throw new ServiceUnavailableException('No fue posible conectar con MySQL. Revisa DB_HOST, credenciales y disponibilidad del servidor.'); }
+    catch (err: any) {
+      // Se incluye solo el código de error de MySQL (sin usuario ni contraseña).
+      const code = err?.code ? ` (${err.code})` : '';
+      const missing = ['DB_NAME', 'DB_USER', 'DB_PASSWORD'].filter((k) => !process.env[k]);
+      const hint = missing.length ? ` Faltan las variables: ${missing.join(', ')}.` : ' Revisa DB_HOST, DB_NAME, DB_USER y DB_PASSWORD.';
+      throw new ServiceUnavailableException(`No fue posible conectar con MySQL${code}.${hint}`);
+    }
   }
   async onModuleDestroy() { await this.pool?.end(); }
   private getPool(): Pool {
