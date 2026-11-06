@@ -42,7 +42,7 @@ Por defecto el frontend busca la API en `http://127.0.0.1:4000/api/v1`. Para otr
 ```bash
 bash scripts/build-hostinger.sh
 ```
-Genera `deploy/agencia-eh-frontend.zip` y `deploy/agencia-eh-api.zip`, ya compilados. Sigue la guía paso a paso en [`docs/DESPLIEGUE-HOSTINGER.md`](docs/DESPLIEGUE-HOSTINGER.md).
+Genera, ya compilados, `deploy/agencia-eh-sitio-unico.zip` (sitio y API en un solo sitio Node.js) y, por separado, `deploy/agencia-eh-frontend.zip` y `deploy/agencia-eh-api.zip`. Sigue la guía paso a paso en [`docs/DESPLIEGUE-HOSTINGER.md`](docs/DESPLIEGUE-HOSTINGER.md).
 
 ## Endpoints principales
 - `GET /api/v1/health`.

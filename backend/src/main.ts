@@ -16,6 +16,10 @@ async function bootstrap() {
   app.enableCors({ origin: (process.env.WEB_ORIGIN || 'http://localhost:3000').split(',').map((o) => o.trim()).filter(Boolean), credentials: true });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.enableShutdownHooks();
-  await app.listen(Number(process.env.PORT) || 4000);
+  // API_PORT/API_HOST permiten correr la API como servicio interno junto al sitio
+  // (paquete de un solo sitio para Hostinger); si no existen se usa PORT.
+  const port = Number(process.env.API_PORT || process.env.PORT) || 4000;
+  if (process.env.API_HOST) await app.listen(port, process.env.API_HOST);
+  else await app.listen(port);
 }
 bootstrap();

@@ -6,6 +6,7 @@
 # Resultado en deploy/:
 #   agencia-eh-frontend.zip  → sitio Next.js (modo standalone). Arranca con: node server.js
 #   agencia-eh-api.zip       → API NestJS compilada.            Arranca con: node dist/main.js
+#   agencia-eh-sitio-unico.zip → sitio + API en UN solo sitio Node.js. Arranca con: node start.js
 #
 # Ambos ZIP incluyen sus node_modules de producción, así que funcionan sin
 # compilar en el servidor. Las URLs y credenciales se configuran con variables
@@ -62,6 +63,22 @@ rm -f package-lock.json
 echo "▶ Empaquetando…"
 (cd "$STAGE/frontend" && zip -qr -y "$OUT/agencia-eh-frontend.zip" .)
 (cd "$STAGE/api" && zip -qr -y "$OUT/agencia-eh-api.zip" .)
+
+# Paquete de un solo sitio: web/ + api/ + start.js
+mkdir -p "$STAGE/unico"
+mv "$STAGE/frontend" "$STAGE/unico/web"
+mv "$STAGE/api" "$STAGE/unico/api"
+cp "$ROOT/deploy-templates/sitio-unico/start.js" "$STAGE/unico/start.js"
+cp "$ROOT/backend/.env.example" "$STAGE/unico/.env.example"
+node -e '
+const v=require(process.argv[1]).version;
+const pkg={name:"agencia-eh",version:v,private:true,main:"start.js",
+  scripts:{start:"node start.js",build:"echo \"Ya compilado: no hace falta build\"",
+    "db:check":"cd api && node scripts/check-db.js","admin:create":"cd api && node scripts/create-admin.js"},
+  engines:{node:">=20.9"}};
+require("fs").writeFileSync(process.argv[2],JSON.stringify(pkg,null,2)+"\n");
+' "$ROOT/backend/package.json" "$STAGE/unico/package.json"
+(cd "$STAGE/unico" && zip -qr -y "$OUT/agencia-eh-sitio-unico.zip" .)
 rm -rf "$STAGE"
 
 echo

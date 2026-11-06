@@ -7,12 +7,53 @@ Agencia EH tiene dos aplicaciones Node.js y una base MySQL:
 | Sitio (Next.js) | `deploy/agencia-eh-frontend.zip` | `node server.js` | `tudominio.com` |
 | API (NestJS) | `deploy/agencia-eh-api.zip` | `node dist/main.js` | `api.tudominio.com` |
 | Base de datos | `backend/database/schema.sql` | — | MySQL de Hostinger |
+| **Sitio + API juntos** | `deploy/agencia-eh-sitio-unico.zip` | `node start.js` | `tudominio.com` |
 
 > **Requisito:** un plan de Hostinger que ejecute Node.js (planes con *Node.js Web Apps*, como Business o Cloud, o un VPS). El hosting compartido básico solo sirve PHP y no puede ejecutar estas aplicaciones.
 
 El navegador solo habla con el sitio: el sitio reenvía `/api/v1/*` a la API (proxy interno). Por eso **no hace falta CORS** ni compilar con el dominio: la dirección de la API se indica con la variable `API_URL` y se puede cambiar sin recompilar.
 
 ---
+
+## Opción A (recomendada): todo en UN solo sitio
+
+`deploy/agencia-eh-sitio-unico.zip` trae el sitio y la API juntos. `start.js` arranca la API como servicio interno (`127.0.0.1:4000`, no accesible desde fuera) y el sitio en el puerto que asigna Hostinger. No necesitas subdominio para la API.
+
+### Si el dominio ya tiene un sitio PHP
+Hostinger no convierte un sitio PHP en Node.js; hay que crear uno nuevo con el mismo dominio:
+1. Respalda el sitio PHP si tiene algo que conservar (hPanel → **Archivos → Copias de seguridad**).
+2. hPanel → **Sitios web** → en el sitio PHP, **⋮ → Eliminar sitio web**. Esto libera el dominio. Las bases de datos MySQL se administran aparte; confirma que no borras la que vas a usar.
+3. hPanel → **Sitios web → Agregar sitio web → Aplicaciones Node.js** y elige ese mismo dominio.
+
+> Necesitas un plan con Node.js (Business o Cloud). Si no aparece la opción *Aplicaciones Node.js*, el plan no lo incluye y hay que mejorarlo.
+
+### Subir el paquete
+1. Elige **Subir archivos** y sube `agencia-eh-sitio-unico.zip`.
+2. Configuración:
+   - Versión de Node.js: **20 o superior** (recomendado 22).
+   - Framework: *Otro* / *Express* (no *Next.js*, porque ya viene compilado).
+   - Archivo de entrada: `start.js`.
+   - Comando de build: vacío (o `npm run build`, que no hace nada).
+3. Variables de entorno:
+
+   | Variable | Valor |
+   |---|---|
+   | `NODE_ENV` | `production` |
+   | `DB_HOST` | Host de MySQL que muestra hPanel (normalmente `localhost`) |
+   | `DB_NAME` / `DB_USER` / `DB_PASSWORD` | Datos de tu base |
+   | `JWT_ACCESS_SECRET` | Texto aleatorio de 32+ caracteres |
+   | `JWT_REFRESH_SECRET` | **Otro** texto aleatorio de 32+ caracteres |
+
+   No pongas `API_URL` ni `PORT`: `start.js` y Hostinger los configuran solos.
+4. Importa `backend/database/schema.sql` en phpMyAdmin (sección 2 más abajo), despliega y activa el **SSL** del dominio.
+5. Comprueba `https://tudominio.com/api/v1/health` → `{"status":"ok",...}`.
+6. Crea el administrador desde la terminal de la aplicación: `npm run admin:create -- admin@tudominio.com "Nombre" "contraseña-segura"`.
+
+Si la base de datos está mal configurada, el sitio sigue abriendo (el catálogo indica que la API no está disponible) y el error aparece en el registro de la aplicación.
+
+## Opción B: sitio y API por separado
+
+Útil si prefieres la API en su propio subdominio. Usa `agencia-eh-frontend.zip` y `agencia-eh-api.zip` con los pasos 3 y 4.
 
 ## 1. Generar los paquetes compilados
 
@@ -22,7 +63,7 @@ En tu computadora (Node.js 20 o superior):
 bash scripts/build-hostinger.sh
 ```
 
-Se crean `deploy/agencia-eh-frontend.zip` y `deploy/agencia-eh-api.zip`. Ya incluyen sus `node_modules`, así que no hace falta compilar en el servidor.
+Se crean `deploy/agencia-eh-sitio-unico.zip` (opción A), `deploy/agencia-eh-frontend.zip` y `deploy/agencia-eh-api.zip` (opción B). Ya incluyen sus `node_modules`, así que no hace falta compilar en el servidor.
 
 ## 2. Base de datos MySQL
 
