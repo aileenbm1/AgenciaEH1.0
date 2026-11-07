@@ -15,11 +15,11 @@ const { randomUUID } = require('crypto');
   let conn;
   try {
     conn = await mysql.createConnection({
-      host: process.env.DB_HOST || 'localhost',
-      port: Number(process.env.DB_PORT || 3306),
-      database: process.env.DB_NAME,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
+      host: process.env.DB_HOST?.trim() || 'localhost',
+      port: Number(process.env.DB_PORT?.trim() || 3306),
+      database: process.env.DB_NAME?.trim(),
+      user: process.env.DB_USER?.trim(),
+      password: process.env.DB_PASSWORD?.trim(),
       timezone: 'Z',
     });
     const hash = await bcrypt.hash(password, 12);

@@ -1,6 +1,9 @@
 import { Injectable, OnModuleDestroy, OnModuleInit, ServiceUnavailableException } from '@nestjs/common';
 import { createPool, Pool, PoolConnection, RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 
+/** Variable de entorno sin espacios sobrantes (frecuentes al copiar y pegar). */
+const env = (k: string) => process.env[k]?.trim() || undefined;
+
 export type Row = RowDataPacket & Record<string, any>;
 /** Conexión o transacción sobre la que se ejecutan consultas. */
 export interface Queryable { query(sql: string, params?: any[]): Promise<any> }
@@ -11,22 +14,18 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     try { const c = await this.getPool().getConnection(); c.release(); }
     catch (err: any) {
-      // Se incluye solo el código de error de MySQL (sin usuario ni contraseña).
-      const code = err?.code ? ` (${err.code})` : '';
-      const missing = ['DB_NAME', 'DB_USER', 'DB_PASSWORD'].filter((k) => !process.env[k]);
-      const hint = missing.length ? ` Faltan las variables: ${missing.join(', ')}.` : ' Revisa DB_HOST, DB_NAME, DB_USER y DB_PASSWORD.';
-      throw new ServiceUnavailableException(`No fue posible conectar con MySQL${code}.${hint}`);
+      throw new ServiceUnavailableException(describeDbError(err));
     }
   }
   async onModuleDestroy() { await this.pool?.end(); }
   private getPool(): Pool {
     if (!this.pool) {
       this.pool = createPool({
-        host: process.env.DB_HOST || 'localhost',
-        port: Number(process.env.DB_PORT || 3306),
-        database: process.env.DB_NAME,
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
+        host: env('DB_HOST') || 'localhost',
+        port: Number(env('DB_PORT') || 3306),
+        database: env('DB_NAME'),
+        user: env('DB_USER'),
+        password: env('DB_PASSWORD'),
         connectionLimit: Number(process.env.DB_POOL_MAX || 10),
         charset: 'utf8mb4',
         timezone: 'Z',          // fechas en UTC
@@ -55,4 +54,21 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     catch (error) { await conn.rollback(); throw error; }
     finally { conn.release(); }
   }
+}
+
+/** Mensaje de diagnóstico de conexión sin exponer la contraseña. */
+function describeDbError(err: any): string {
+  const code = err?.code ? ` (${err.code})` : '';
+  const parts: string[] = [`No fue posible conectar con MySQL${code}.`];
+  const keys = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD'];
+  const missing = keys.filter((k) => !process.env[k]);
+  if (missing.length) parts.push(`Faltan las variables: ${missing.join(', ')}.`);
+  const spaced = keys.filter((k) => process.env[k] && process.env[k] !== process.env[k]!.trim());
+  if (spaced.length) parts.push(`Aviso: ${spaced.join(', ')} tenían espacios al inicio o al final (ya se ignoran).`);
+  // Mensaje de MySQL (incluye usuario@host y si se envió contraseña), con el usuario parcialmente oculto.
+  const sqlMessage: string | undefined = err?.sqlMessage;
+  if (sqlMessage) parts.push(`MySQL: ${sqlMessage.replace(/'([^'@]+)'@/, (_m: string, u: string) => `'${u.length > 6 ? u.slice(0, 4) + '…' + u.slice(-3) : u}'@`)}`);
+  parts.push(`Configuración usada: DB_HOST=${process.env.DB_HOST || 'localhost'}, DB_PORT=${process.env.DB_PORT || 3306}, DB_NAME=${process.env.DB_NAME || '(vacío)'}, DB_PASSWORD=${process.env.DB_PASSWORD ? `${process.env.DB_PASSWORD.length} caracteres` : '(vacía)'}.`);
+  if (!missing.length && !spaced.length) parts.push('Revisa que DB_USER y DB_NAME incluyan el prefijo (u123456789_), que la contraseña sea la del usuario y que el usuario esté asignado a la base.');
+  return parts.join(' ');
 }
