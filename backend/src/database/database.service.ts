@@ -14,6 +14,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     try { const c = await this.getPool().getConnection(); c.release(); }
     catch (err: any) {
+      // Cierra el pool fallido: start.js reintenta y no deben acumularse conexiones.
+      const pool = this.pool; this.pool = undefined; await pool?.end().catch(() => undefined);
       throw new ServiceUnavailableException(describeDbError(err));
     }
   }

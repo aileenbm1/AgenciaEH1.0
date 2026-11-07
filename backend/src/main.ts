@@ -26,17 +26,28 @@ export async function startApi(): Promise<NestExpressApplication> {
   app.enableCors({ origin: (process.env.WEB_ORIGIN || 'http://localhost:3000').split(',').map((o) => o.trim()).filter(Boolean), credentials: true });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.enableShutdownHooks();
-  const port = Number(process.env.API_PORT || process.env.PORT) || 4000;
   const host = process.env.API_HOST;
-  if (host) {
-    await app.init();
-    const server = app.getHttpServer();
-    await new Promise<void>((resolve, reject) => {
-      server.once('error', reject);
-      Server.prototype.listen.call(server, port, host, () => { server.removeListener('error', reject); resolve(); });
-    });
-  } else {
-    await app.listen(port);
+  try {
+    if (host) {
+      // Modo integrado: API_PORT=0 (por defecto en start.js) pide un puerto libre
+      // al sistema. En hosting compartido 127.0.0.1 es común a todas las cuentas
+      // del servidor, así que un puerto fijo puede estar ocupado por otra cuenta.
+      const wanted = Number(process.env.API_PORT ?? 0) || 0;
+      await app.init();
+      const server = app.getHttpServer();
+      await new Promise<void>((resolve, reject) => {
+        server.once('error', reject);
+        Server.prototype.listen.call(server, wanted, host, () => { server.removeListener('error', reject); resolve(); });
+      });
+      // lsnode reemplaza http.Server#address; se usa la implementación original.
+      const address = Server.prototype.address.call(server) as { port: number };
+      process.env.API_URL = `http://${host}:${address.port}/api/v1`;
+    } else {
+      await app.listen(Number(process.env.API_PORT || process.env.PORT) || 4000);
+    }
+  } catch (err) {
+    await app.close().catch(() => undefined);
+    throw err;
   }
   return app;
 }

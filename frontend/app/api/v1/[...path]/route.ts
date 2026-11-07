@@ -10,11 +10,26 @@ export const dynamic = 'force-dynamic';
 const FORWARD_REQUEST_HEADERS = ['authorization', 'content-type', 'cookie', 'accept', 'accept-language', 'user-agent'];
 const FORWARD_RESPONSE_HEADERS = ['content-type', 'cache-control', 'location'];
 
+type ApiStatus = { state: string; error: string | null; since: string; attempts: number };
+const embeddedStatus = () => (globalThis as any).__EH_API_STATUS as ApiStatus | undefined;
+
 function apiBase() {
   return (process.env.API_URL || 'http://127.0.0.1:4000/api/v1').replace(/\/+$/, '');
 }
 
+function unavailable(status?: ApiStatus) {
+  return Response.json(
+    { statusCode: 502, message: 'La API no está disponible en este momento.', ...(status ? { api: status } : {}) },
+    { status: 502 },
+  );
+}
+
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
+  // Paquete de un solo sitio: mientras la API interna no esté lista no se reenvía
+  // nada (ni contraseñas) a ninguna dirección.
+  const status = embeddedStatus();
+  if (status && status.state !== 'lista') return unavailable(status);
+
   const { path } = await ctx.params;
   const target = `${apiBase()}/${path.map(encodeURIComponent).join('/')}${req.nextUrl.search}`;
 
@@ -37,12 +52,7 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
       cache: 'no-store',
     });
   } catch {
-    // En el paquete de un solo sitio, start.js publica aquí el estado de la API.
-    const status = (globalThis as any).__EH_API_STATUS as { state: string; error: string | null; since: string; attempts: number } | undefined;
-    return Response.json(
-      { statusCode: 502, message: 'La API no está disponible en este momento.', ...(status ? { api: status } : {}) },
-      { status: 502 },
-    );
+    return unavailable(embeddedStatus());
   }
 
   const out = new Headers();

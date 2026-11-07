@@ -17,7 +17,7 @@ El navegador solo habla con el sitio: el sitio reenvía `/api/v1/*` a la API (pr
 
 ## Opción A (recomendada): todo en UN solo sitio
 
-`deploy/agencia-eh-sitio-unico.zip` trae el sitio y la API juntos. `start.js` arranca la API como servicio interno (`127.0.0.1:4000`, no accesible desde fuera) y el sitio en el puerto que asigna Hostinger. No necesitas subdominio para la API.
+`deploy/agencia-eh-sitio-unico.zip` trae el sitio y la API juntos. `start.js` arranca la API como servicio interno (en `127.0.0.1`, con un puerto libre asignado por el sistema) y el sitio en el puerto que asigna Hostinger. No necesitas subdominio para la API.
 
 ### Si el dominio ya tiene un sitio PHP
 Hostinger no convierte un sitio PHP en Node.js; hay que crear uno nuevo con el mismo dominio:
@@ -156,7 +156,7 @@ En Nginx basta con publicar el sitio (`proxy_pass http://127.0.0.1:3000;`); la A
 ## Problemas comunes
 
 - **«La API no está disponible»** (paquete de un solo sitio): abre `https://tudominio.com/api/v1/health`. El campo `api.error` dice el motivo exacto (por ejemplo `Faltan las variables: DB_NAME…` o `ER_ACCESS_DENIED_ERROR` si la contraseña de MySQL es incorrecta). La API se reintenta sola cada 30 s, pero si cambias variables de entorno vuelve a desplegar.
-- **Por qué la API usa `net.Server#listen`**: Hostinger ejecuta las apps con LiteSpeed (`lsnode`), que solo atiende la primera llamada a `http.Server#listen` del proceso y manda la salida estándar a `/dev/null`. El sitio usa esa primera llamada; la API escucha en `127.0.0.1:4000` por otra vía.
+- **Por qué la API usa `net.Server#listen`**: Hostinger ejecuta las apps con LiteSpeed (`lsnode`), que solo atiende la primera llamada a `http.Server#listen` del proceso y manda la salida estándar a `/dev/null`. El sitio usa esa primera llamada; la API escucha por otra vía en `127.0.0.1` con un puerto libre que asigna el sistema (en hosting compartido `127.0.0.1` es común a todas las cuentas y un puerto fijo como 4000 puede estar ocupado por otra). Mientras la API no está lista, el sitio no reenvía ninguna petición.
 
 - **El catálogo sale vacío o «API no disponible»**: revisa `API_URL` en el sitio y que `/api/v1/health` de la API responda.
 - **La API no arranca, «No fue posible conectar con MySQL»**: revisa `DB_HOST` y las credenciales; si la base está en otro servidor, habilita *MySQL remoto* en hPanel para la IP de la aplicación.

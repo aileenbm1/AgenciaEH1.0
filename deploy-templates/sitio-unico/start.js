@@ -3,16 +3,18 @@
 // - El sitio Next.js escucha donde indique el servidor (en Hostinger, LiteSpeed
 //   intercepta ese listen y lo conecta a su socket).
 // - La API NestJS corre en el mismo proceso como servicio interno en
-//   127.0.0.1:API_PORT. Escucha con net.Server#listen porque LiteSpeed ignora
+//   127.0.0.1 (puerto libre asignado por el sistema). Escucha con net.Server#listen porque LiteSpeed ignora
 //   cualquier http.Server#listen después del primero.
 // - Si la API no puede arrancar (p. ej. MySQL sin configurar) el sitio sigue en
 //   línea, se reintenta cada 30 s y el motivo se ve en /api/v1/health.
 const path = require('path');
 
-const apiPort = process.env.API_PORT || '4000';
-process.env.API_PORT = apiPort;
+// API_PORT=0: el sistema asigna un puerto libre (en hosting compartido 127.0.0.1
+// es común a todas las cuentas, un puerto fijo puede estar ocupado por otra).
+// startApi() define API_URL con el puerto real cuando la API está lista.
+process.env.API_PORT = process.env.API_PORT || '0';
 process.env.API_HOST = process.env.API_HOST || '127.0.0.1';
-process.env.API_URL = process.env.API_URL || `http://127.0.0.1:${apiPort}/api/v1`;
+delete process.env.API_URL;
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 process.env.EH_EMBEDDED = '1';
 // Algunos servidores definen HOSTNAME con el nombre de la máquina; Next lo usaría
@@ -54,7 +56,7 @@ async function launch() {
     status.state = 'lista';
     status.error = null;
     status.since = new Date().toISOString();
-    log(`API lista en 127.0.0.1:${apiPort}`);
+    log(`API lista en ${process.env.API_URL}`);
   } catch (err) {
     status.state = 'error';
     status.error = (err && err.response && err.response.message) || (err && err.message) || String(err);
