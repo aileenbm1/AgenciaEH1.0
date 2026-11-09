@@ -45,8 +45,8 @@ Hostinger no convierte un sitio PHP en Node.js; hay que crear uno nuevo con el m
    | `JWT_REFRESH_SECRET` | **Otro** texto aleatorio de 32+ caracteres |
 
    No pongas `API_URL` ni `PORT`: `start.js` y Hostinger los configuran solos.
-4. Importa `backend/database/schema.sql` en phpMyAdmin (sección 2 más abajo), despliega y activa el **SSL** del dominio.
-5. Comprueba `https://tudominio.com/api/v1/health` → `{"status":"ok",...}`.
+4. Despliega y activa el **SSL** del dominio. Las tablas se crean solas al arrancar si no existen (también puedes importar `backend/database/schema.sql` en phpMyAdmin).
+5. Comprueba `https://tudominio.com/api/v1/health` → `{"status":"ok",...,"tablas":{"ok":true,...}}`.
 6. Crea el administrador desde la terminal de la aplicación: `npm run admin:create -- admin@tudominio.com "Nombre" "contraseña-segura"`.
 
 Si la base de datos está mal configurada, el sitio sigue abriendo (el catálogo indica que la API no está disponible) y el error aparece en el registro de la aplicación.

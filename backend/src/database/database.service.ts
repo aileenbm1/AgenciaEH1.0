@@ -1,4 +1,6 @@
 import { Injectable, OnModuleDestroy, OnModuleInit, ServiceUnavailableException } from '@nestjs/common';
+import { existsSync, readFileSync } from 'fs';
+import { join } from 'path';
 import { createPool, Pool, PoolConnection, RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 
 /** Variable de entorno sin espacios sobrantes (frecuentes al copiar y pegar). */
@@ -11,12 +13,53 @@ export interface Queryable { query(sql: string, params?: any[]): Promise<any> }
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   private pool?: Pool;
+  /** Estado del esquema, visible en /api/v1/health. */
+  schema: { ok: boolean; created: string[]; missing: string[]; error?: string } = { ok: false, created: [], missing: [] };
   async onModuleInit() {
     try { const c = await this.getPool().getConnection(); c.release(); }
     catch (err: any) {
       // Cierra el pool fallido: start.js reintenta y no deben acumularse conexiones.
       const pool = this.pool; this.pool = undefined; await pool?.end().catch(() => undefined);
       throw new ServiceUnavailableException(describeDbError(err));
+    }
+    await this.ensureSchema();
+  }
+
+  private async tableNames(): Promise<string[]> {
+    const rows = await this.query<any>('SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()');
+    return rows.map((r) => String(r.name));
+  }
+
+  /**
+   * Crea las tablas que falten ejecutando database/schema.sql (todo es
+   * CREATE TABLE IF NOT EXISTS: no modifica tablas existentes ni datos).
+   * Así no hace falta importar el esquema a mano en phpMyAdmin.
+   */
+  private async ensureSchema() {
+    const required = ['Users', 'AgencyProfiles', 'AgentProfiles', 'Properties', 'PropertyImages', 'Leads', 'Favorites'];
+    try {
+      const before = await this.tableNames();
+      const missingBefore = required.filter((t) => !before.includes(t));
+      if (missingBefore.length) {
+        const file = [join(__dirname, '..', '..', 'database', 'schema.sql'), join(process.cwd(), 'database', 'schema.sql')].find((f) => existsSync(f));
+        if (!file) throw new Error('No se encontró database/schema.sql');
+        const sql = readFileSync(file, 'utf8').split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
+        for (const statement of sql.split(/;\s*(?:\n|$)/).map((x) => x.trim()).filter(Boolean)) await this.getPool().query(statement);
+      }
+      const after = await this.tableNames();
+      const missing = required.filter((t) => !after.includes(t));
+      // Tablas con otro uso de mayúsculas (p. ej. "users"): MySQL en Linux distingue mayúsculas.
+      const wrongCase = missing.filter((t) => after.some((a) => a.toLowerCase() === t.toLowerCase()));
+      this.schema = {
+        ok: missing.length === 0,
+        created: missingBefore.filter((t) => after.includes(t)),
+        missing,
+        ...(wrongCase.length ? { error: `Existen con otras mayúsculas: ${wrongCase.join(', ')}` } : {}),
+      };
+      if (this.schema.created.length) console.error(`[Agencia EH] Tablas creadas: ${this.schema.created.join(', ')}`);
+    } catch (err: any) {
+      this.schema = { ok: false, created: [], missing: required, error: `${err?.code ? err.code + ': ' : ''}${err?.sqlMessage || err?.message}` };
+      console.error('[Agencia EH] No se pudo verificar/crear el esquema:', this.schema.error);
     }
   }
   async onModuleDestroy() { await this.pool?.end(); }
