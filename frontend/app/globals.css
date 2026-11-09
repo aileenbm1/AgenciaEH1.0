@@ -327,7 +327,15 @@ h1,h2{font-family:var(--font-title);color:var(--navy);font-weight:600;letter-spa
 .pager{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:16px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media(max-width:1100px){.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.metric-detail{grid-template-columns:1fr}.user-row{grid-template-columns:1fr}.user-actions{justify-content:flex-start}}
-@media(max-width:600px){.membership-card .form-grid{grid-template-columns:1fr}.form-grid>label{min-width:0}.form-grid input,.form-grid select{min-width:0;width:100%}.metric-grid,.metric-grid.compact{grid-template-columns:1fr 1fr}.metric-card b{font-size:22px}.admin-filters{grid-template-columns:1fr}.user-actions>*{flex:1 1 100%}}
+@media(max-width:600px){.membership-card .form-grid,.team-form .form-grid{grid-template-columns:1fr}.form-grid>label{min-width:0}.form-grid input,.form-grid select{min-width:0;width:100%}.metric-grid,.metric-grid.compact{grid-template-columns:1fr 1fr}.metric-card b{font-size:22px}.admin-filters{grid-template-columns:1fr}.user-actions>*{flex:1 1 100%}}
+
+/* Encabezado sin sesión en celulares angostos */
+@media(max-width:420px){.header-actions .login-link+.button{padding:0 10px;font-size:12px}.site-header{padding-left:12px;padding-right:12px}}
+
+/* Crear cuentas */
+.team-form{margin-bottom:14px}.team-form h3{margin:0 0 4px;font-size:16px}
+.invite-box{display:grid;gap:10px}.invite-box input{width:100%;min-width:0;font-size:13px}
+.invite-box .property-actions{display:flex;flex-wrap:wrap;gap:8px}
 
 /* Subida de fotos */
 .photo-uploader{display:grid;gap:12px}

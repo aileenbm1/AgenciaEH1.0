@@ -12,12 +12,14 @@ export type RoleInfo = {
   can: string[];          // Qué puede hacer hoy
   soon?: string[];        // Qué llegará después (se muestra como "Próximamente")
   home: string;           // Ruta de su panel
-  publicSignup: boolean;  // ¿Se puede registrar desde el sitio?
+  publicSignup: boolean;  // ¿Se puede registrar desde el sitio? (solo si la API tiene PUBLIC_SIGNUP)
+  accountBy: string;      // Quién crea la cuenta cuando el registro público está cerrado
 };
 
 export const ROLES: Record<UserRole, RoleInfo> = {
   BUYER: {
     id: 'BUYER',
+    accountBy: 'Tu asesor, tu agencia o el equipo de Agencia EH.',
     label: 'Comprador / Inquilino',
     who: 'Busco una propiedad para comprar o rentar',
     summary: 'Explora el catálogo, compara opciones y contacta al asesor de cada propiedad.',
@@ -28,30 +30,33 @@ export const ROLES: Record<UserRole, RoleInfo> = {
   },
   AGENT: {
     id: 'AGENT',
+    accountBy: 'Tu agencia o el equipo de Agencia EH.',
     label: 'Agente / Asesor',
     who: 'Soy asesor inmobiliario o dueño y quiero anunciar',
     summary: 'Registra tus inmuebles, envíalos a revisión y, una vez aprobados, aparecen en el catálogo.',
-    can: ['Crear propiedades como borrador', 'Enviar propiedades a revisión', 'Ver el estado de cada publicación', 'Eliminar tus propiedades'],
-    soon: ['Recibir y dar seguimiento a prospectos (CRM)', 'Plan / membresía de publicaciones'],
+    can: ['Crear propiedades como borrador', 'Enviar propiedades a revisión', 'Ver el estado de cada publicación', 'Eliminar tus propiedades', 'Crear cuentas para tus compradores'],
+    soon: ['Recibir y dar seguimiento a prospectos (CRM)'],
     home: '/panel/agente',
     publicSignup: true,
   },
   AGENCY: {
     id: 'AGENCY',
+    accountBy: 'El equipo de Agencia EH.',
     label: 'Agencia',
     who: 'Represento a una inmobiliaria con varios asesores',
-    summary: 'Publica como agencia y, próximamente, administra a tu equipo de agentes y sus prospectos.',
-    can: ['Crear y enviar propiedades a revisión a nombre de la agencia', 'Ver el estado de las publicaciones', 'Perfil de agencia'],
-    soon: ['Invitar y administrar agentes', 'Ver prospectos del equipo', 'Perfil público de la agencia'],
+    summary: 'Publica como agencia y crea las cuentas de tus vendedores y compradores.',
+    can: ['Crear y enviar propiedades a revisión a nombre de la agencia', 'Ver el estado de las publicaciones', 'Crear cuentas para tus vendedores y compradores', 'Perfil de agencia'],
+    soon: ['Ver prospectos del equipo', 'Perfil público de la agencia'],
     home: '/panel/agencia',
     publicSignup: true,
   },
   ADMIN: {
     id: 'ADMIN',
+    accountBy: 'El equipo de Agencia EH.',
     label: 'Administrador',
     who: 'Equipo interno de Agencia EH',
     summary: 'Revisa cada propiedad antes de que sea pública y administra usuarios, membresías y pagos.',
-    can: ['Ver la cola de propiedades en revisión', 'Aprobar (publicar) o rechazar propiedades', 'Gestionar usuarios y roles', 'Registrar membresías y pagos (efectivo / transferencia)', 'Ver métricas generales'],
+    can: ['Ver la cola de propiedades en revisión', 'Aprobar (publicar) o rechazar propiedades', 'Crear cuentas de cualquier tipo', 'Gestionar usuarios y roles', 'Registrar membresías y pagos (efectivo / transferencia)', 'Ver métricas generales'],
     home: '/panel/admin',
     publicSignup: false,
   },

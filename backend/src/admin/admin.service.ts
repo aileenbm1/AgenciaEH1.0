@@ -51,16 +51,16 @@ export class AdminService {
     if (q.membership === 'active') where.push('l.PeriodEnd >= UTC_DATE()');
     else if (q.membership === 'expired') where.push('l.PeriodEnd < UTC_DATE()');
     else if (q.membership === 'none') where.push('l.UserId IS NULL');
-    const from = `FROM Users u LEFT JOIN (${LAST_PAYMENT}) l ON l.UserId = u.Id WHERE ${where.join(' AND ')}`;
+    const from = `FROM Users u LEFT JOIN (${LAST_PAYMENT}) l ON l.UserId = u.Id LEFT JOIN Users cb ON cb.Id = u.CreatedById WHERE ${where.join(' AND ')}`;
     const [count] = await this.db.query<any>(`SELECT COUNT(*) AS total ${from}`, params);
     const rows = await this.db.query<any>(`SELECT u.Id, u.FullName, u.Email, u.Phone, u.Role, u.IsActive, u.EmailVerifiedAt, u.CreatedAt,
-      l.Plan, l.PeriodEnd, (SELECT COUNT(*) FROM Properties pr WHERE pr.OwnerId = u.Id) AS Properties
+      l.Plan, l.PeriodEnd, (SELECT COUNT(*) FROM Properties pr WHERE pr.OwnerId = u.Id) AS Properties, cb.FullName AS CreatedByName
       ${from} ORDER BY u.CreatedAt DESC LIMIT ? OFFSET ?`, [...params, take, (page - 1) * take]);
     const total = Number(count.total);
     return {
       items: rows.map((r: any) => ({
         id: r.Id, fullName: r.FullName, email: r.Email, phone: r.Phone, role: r.Role, isActive: !!r.IsActive, emailVerified: !!r.EmailVerifiedAt,
-        createdAt: r.CreatedAt, properties: Number(r.Properties),
+        createdAt: r.CreatedAt, properties: Number(r.Properties), createdBy: r.CreatedByName ?? null,
         membership: r.PeriodEnd ? { plan: r.Plan, periodEnd: dateOnly(r.PeriodEnd), active: dateOnly(r.PeriodEnd)! >= new Date().toISOString().slice(0, 10) } : null,
       })),
       total, page, take, pages: Math.ceil(total / take),

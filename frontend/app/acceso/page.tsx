@@ -11,6 +11,9 @@ type SignupRole = 'BUYER' | 'AGENT' | 'AGENCY';
 export default function Access() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('login');
+  // El registro público solo se muestra si la API lo permite (PUBLIC_SIGNUP).
+  const [signupOpen, setSignupOpen] = useState(false);
+  const [closedNotice, setClosedNotice] = useState(false);
   const [role, setRole] = useState<SignupRole | null>(null);
   const [fullName, setFullName] = useState(''); const [agencyName, setAgencyName] = useState('');
   const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
@@ -20,11 +23,14 @@ export default function Access() {
   // Lee ?registro=1&rol=AGENT&next=/ruta sin depender de Suspense.
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
-    if (q.get('registro')) setMode('register');
     const r = q.get('rol') as SignupRole | null;
     if (r && ['BUYER', 'AGENT', 'AGENCY'].includes(r)) setRole(r);
     const n = q.get('next'); if (n && n.startsWith('/')) setNext(n);
     // Si ya hay sesión, no tiene sentido mostrar este formulario.
+    fetch('/api/v1/auth/config').then(r => r.json()).then(c => {
+      const open = !!c.publicSignup; setSignupOpen(open);
+      if (q.get('registro')) { if (open) setMode('register'); else setClosedNotice(true); }
+    }).catch(() => {});
     getCurrentUser().then(u => { if (u) router.replace(roleHome[u.role]); }).catch(() => {});
   }, [router]);
 
@@ -55,9 +61,10 @@ export default function Access() {
       ? 'Ingresa y te llevaremos directo a tu panel según tu tipo de cuenta.'
       : 'Primero dinos cómo usarás la plataforma: de eso depende lo que podrás hacer.'}</p>
 
+    {closedNotice && <div className="notice" role="status">El registro público está cerrado. Tu cuenta la crea Agencia EH, tu agencia o tu asesor: pídeles tu enlace de activación.</div>}
     <div className="auth-tabs" role="tablist">
       <button type="button" role="tab" aria-selected={mode === 'login'} className={mode === 'login' ? 'selected' : ''} onClick={() => switchMode('login')}>Ingresar</button>
-      <button type="button" role="tab" aria-selected={mode === 'register'} className={mode === 'register' ? 'selected' : ''} onClick={() => switchMode('register')}>Crear cuenta</button>
+      {signupOpen && <button type="button" role="tab" aria-selected={mode === 'register'} className={mode === 'register' ? 'selected' : ''} onClick={() => switchMode('register')}>Crear cuenta</button>}
     </div>
 
     <form onSubmit={submit}>
@@ -89,7 +96,8 @@ export default function Access() {
       </button>
     </form>
     <small className="muted">{mode === 'login'
-      ? <>¿No tienes cuenta? <button type="button" className="inline-link" onClick={() => switchMode('register')}>Crea una aquí</button>.</>
+      ? signupOpen ? <>¿No tienes cuenta? <button type="button" className="inline-link" onClick={() => switchMode('register')}>Crea una aquí</button>.</>
+        : <>¿No tienes cuenta? Las cuentas las crea Agencia EH, tu agencia o tu asesor. Pídeles tu enlace de activación.</>
       : 'Te enviaremos un correo para verificar tu cuenta.'}</small>
   </section></main>;
 }

@@ -1,6 +1,6 @@
 import type { UserRole } from '@/lib/auth';
 export type Membership = { plan: string; periodEnd: string; active: boolean } | null;
-export type AdminUser = { id: string; fullName: string; email: string; phone?: string | null; role: UserRole; isActive: boolean; emailVerified: boolean; createdAt: string; properties: number; membership: Membership };
+export type AdminUser = { id: string; fullName: string; email: string; phone?: string | null; role: UserRole; isActive: boolean; emailVerified: boolean; createdAt: string; properties: number; createdBy?: string | null; membership: Membership };
 export type Payment = { id: string; userId: string; fullName: string; email: string; plan: string; amount: number; method: 'CASH' | 'TRANSFER'; reference?: string | null; paidAt: string; periodStart: string; periodEnd: string; notes?: string | null; recordedBy: string };
 export const METHOD_LABEL = { CASH: 'Efectivo', TRANSFER: 'Transferencia' } as const;
 /** Fecha local AAAA-MM-DD. */

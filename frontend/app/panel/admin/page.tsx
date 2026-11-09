@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import AdminMetrics from '@/components/admin/admin-metrics';
 import AdminUsers from '@/components/admin/admin-users';
 import AdminPayments from '@/components/admin/admin-payments';
+import TeamManager from '@/components/team-manager';
 import ProtectedPanel from '@/components/protected-panel';
 import { PanelShell, PublishFlow } from '@/components/panel-shell';
 import { authJson, SessionUser } from '@/lib/auth';
@@ -77,12 +78,14 @@ function AdminPanel({ user }: { user: SessionUser }) {
     intro="Revisas cada propiedad antes de que sea pública y administras usuarios, membresías y pagos."
     actions={[
       { title: 'Revisar propiedades', text: 'Aprueba o rechaza lo que está en revisión.', href: '#revision', primary: true },
+      { title: 'Crear cuentas', text: 'Agencias, vendedores, compradores y administradores.', href: '#cuentas' },
       { title: 'Usuarios y membresías', text: 'Roles, cuentas activas y registro de pagos.', href: '#usuarios' },
       { title: 'Pagos del mes', text: 'Ingresos por efectivo y transferencia.', href: '#pagos' },
       { title: 'Ver catálogo público', text: 'Comprueba cómo se ven las propiedades publicadas.', href: '/propiedades' },
     ]}>
     <AdminMetrics refreshKey={refreshKey} />
     <ModerationQueue />
+    <TeamManager roles={['AGENCY', 'AGENT', 'BUYER', 'ADMIN']} title="Crear cuentas" intro="El registro público está cerrado: tú creas agencias, vendedores, compradores y otros administradores. Las agencias y los vendedores también pueden crear cuentas desde su panel." />
     <AdminUsers me={user} onChanged={changed} />
     <AdminPayments refreshKey={refreshKey} />
     <PublishFlow />

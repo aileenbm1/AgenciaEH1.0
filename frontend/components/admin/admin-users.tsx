@@ -59,12 +59,12 @@ export default function AdminUsers({ me, onChanged }: { me: SessionUser; onChang
             <div>
               <h3>{u.fullName}{self && <small> (tú)</small>}</h3>
               <p className="meta">{u.email}{u.phone ? ` · ${u.phone}` : ''}</p>
-              <p className="meta">Alta {fmtDate(u.createdAt)} · {u.properties} propiedad(es){u.emailVerified ? ' · correo verificado' : ''}</p>
+              <p className="meta">Alta {fmtDate(u.createdAt)}{u.createdBy ? ` por ${u.createdBy}` : ''} · {u.properties} propiedad(es){u.emailVerified ? '' : ' · sin activar'}</p>
             </div>
           </div>
           <div className="user-tags">
             {!u.isActive && <i className="status-pill bad">Desactivado</i>}
-            {m ? <i className={`status-pill ${m.active ? 'ok' : 'warn'}`}>{m.active ? 'Membresía activa' : 'Membresía vencida'} · {m.plan} · {fmtDate(m.periodEnd)}</i> : <i className="status-pill neutral">Sin membresía</i>}
+            {m ? <i className={`status-pill ${m.active ? 'ok' : 'warn'}`}>{m.active ? 'Membresía activa' : u.role === 'ADMIN' ? 'Membresía vencida' : 'Vencida · sin acceso'} · {m.plan} · {fmtDate(m.periodEnd)}</i> : <i className="status-pill neutral">Sin membresía</i>}
           </div>
           <div className="user-actions">
             <label className="sr-only" htmlFor={`rol-${u.id}`}>Rol</label>

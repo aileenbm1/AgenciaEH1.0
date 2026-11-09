@@ -1,4 +1,4 @@
-# Agencia EH — V0.12.0
+# Agencia EH — V0.13.0
 
 Plataforma inmobiliaria desarrollada con Next.js, NestJS y **MySQL** (compatible con Hostinger). El backend usa `mysql2` con consultas SQL parametrizadas; no se utiliza ORM.
 
@@ -56,6 +56,10 @@ Genera, ya compilados, `deploy/agencia-eh-sitio-unico.zip` (sitio y API en un so
 - `GET /api/v1/admin/metrics`, `GET /api/v1/admin/users`, `PATCH /api/v1/admin/users/:id` (rol, activar/desactivar).
 - `GET|POST /api/v1/admin/payments`, `DELETE /api/v1/admin/payments/:id`: pagos de membresía (efectivo/transferencia). La membresía está activa mientras el último periodo pagado no haya vencido.
 - `GET /api/v1/properties/review`: cola de propiedades en revisión.
+
+## Cuentas y acceso
+- Registro público cerrado (se abre con `PUBLIC_SIGNUP=true`). Las cuentas las crean: el admin (todas), las agencias (agentes y compradores) y los agentes (compradores), con `POST /api/v1/users`. Se genera un enlace de activación de 7 días (por correo y para copiar/WhatsApp).
+- Membresía vencida (último periodo pagado < hoy) = sin acceso. Sin pagos registrados no se bloquea. Los administradores nunca se bloquean.
 
 ## Pendientes conocidos
 - Las fotos se suben desde el panel (se reducen en el navegador) y se guardan en `UPLOADS_DIR` (por defecto `~/agencia-eh-uploads`). Respáldala junto con la base de datos.

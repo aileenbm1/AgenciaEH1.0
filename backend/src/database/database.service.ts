@@ -25,6 +25,15 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     await this.ensureSchema();
   }
 
+  /** Cambios en tablas existentes (idempotentes). */
+  private async migrate() {
+    const cols = await this.query<any>("SELECT COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Users'");
+    if (cols.length && !cols.some((r) => r.c === 'CreatedById')) {
+      await this.getPool().query('ALTER TABLE Users ADD COLUMN CreatedById CHAR(36) NULL, ADD INDEX IX_Users_CreatedBy (CreatedById)');
+      console.error('[Agencia EH] Migración: columna Users.CreatedById agregada');
+    }
+  }
+
   private async tableNames(): Promise<string[]> {
     const rows = await this.query<any>('SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()');
     return rows.map((r) => String(r.name));
@@ -46,6 +55,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         const sql = readFileSync(file, 'utf8').split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
         for (const statement of sql.split(/;\s*(?:\n|$)/).map((x) => x.trim()).filter(Boolean)) await this.getPool().query(statement);
       }
+      await this.migrate();
       const after = await this.tableNames();
       const missing = required.filter((t) => !after.includes(t));
       // Tablas con otro uso de mayúsculas (p. ej. "users"): MySQL en Linux distingue mayúsculas.

@@ -31,7 +31,7 @@ export function SiteHeader() {
         <button className="login-link link-button" onClick={logout}>Salir</button>
       </> : <>
         <Link className="login-link" href="/acceso">Ingresar</Link>
-        <Link className="button button-gold" href="/acceso?registro=1&rol=AGENT">Anunciar propiedad</Link>
+        <Link className="button button-gold" href="/como-funciona">Anunciar propiedad</Link>
       </>}
     </div>
   </header>;

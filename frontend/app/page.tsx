@@ -44,17 +44,17 @@ export default async function Home() {
           <p>Explora el catálogo, compara y contacta al asesor directamente. No necesitas cuenta.</p>
           <span className="path-cta">Explorar catálogo →</span>
         </Link>
-        <Link href="/acceso?registro=1&rol=AGENT" className="path-card">
+        <Link href="/como-funciona" className="path-card">
           <span className="role-badge">Agente / Asesor</span>
           <h3>Anunciar mis propiedades</h3>
           <p>Registra tus inmuebles; Agencia EH los revisa y, al aprobarlos, aparecen en el catálogo.</p>
-          <span className="path-cta">Crear cuenta de agente →</span>
+          <span className="path-cta">¿Cómo obtengo mi cuenta? →</span>
         </Link>
-        <Link href="/acceso?registro=1&rol=AGENCY" className="path-card">
+        <Link href="/como-funciona" className="path-card">
           <span className="role-badge">Agencia</span>
           <h3>Publicar como inmobiliaria</h3>
-          <p>Publica a nombre de tu agencia y, próximamente, administra a tu equipo de asesores.</p>
-          <span className="path-cta">Crear cuenta de agencia →</span>
+          <p>Publica a nombre de tu agencia y crea las cuentas de tus vendedores y compradores.</p>
+          <span className="path-cta">¿Cómo obtengo mi cuenta? →</span>
         </Link>
       </div>
     </section>
@@ -75,9 +75,9 @@ export default async function Home() {
       <div>
         <span className="eyebrow light">¿TIENES UNA PROPIEDAD?</span>
         <h2>Tu inmueble merece<br /><em>la mejor vitrina.</em></h2>
-        <p>Crea tu cuenta de agente, registra la propiedad y envíala a revisión. Te avisamos cuando esté publicada.</p>
+        <p>Pide tu cuenta a Agencia EH o a tu agencia, registra la propiedad y envíala a revisión. Al aprobarla aparece en el catálogo.</p>
       </div>
-      <Link className="button button-gold" href="/acceso?registro=1&rol=AGENT">Anunciar mi propiedad ↗</Link>
+      <Link className="button button-gold" href="/como-funciona">Anunciar mi propiedad ↗</Link>
     </section>
   </main>;
 }

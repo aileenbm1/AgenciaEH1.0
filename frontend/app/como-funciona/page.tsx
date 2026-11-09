@@ -31,9 +31,7 @@ export default function HowItWorks() {
         <h4>Puede</h4>
         <ul>{r.can.map(c => <li key={c}>{c}</li>)}</ul>
         {r.soon?.length ? <><h4>Próximamente</h4><ul className="soon">{r.soon.map(c => <li key={c}>{c}</li>)}</ul></> : null}
-        {r.publicSignup
-          ? <Link className="button button-outline full" href={`/acceso?registro=1&rol=${r.id}`}>Crear cuenta de {r.label.toLowerCase()}</Link>
-          : <p className="muted">Cuenta interna: la crea el equipo de Agencia EH.</p>}
+        <p className="muted"><b>¿Quién crea esta cuenta?</b> {r.accountBy} Recibirás un enlace para activarla y elegir tu contraseña.</p>
       </article>)}
     </div>
 

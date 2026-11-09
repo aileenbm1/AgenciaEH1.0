@@ -66,6 +66,16 @@ export class MailService {
       'Si no lo solicitaste, ignora este correo: tu contraseña no cambiará.');
   }
 
+  /** Enlace público de activación (se muestra también a quien creó la cuenta). */
+  activationLink(token: string) { return `${this.siteUrl()}/restablecer-contrasena?token=${token}&bienvenida=1`; }
+
+  sendInvite(to: string, token: string, name: string, invitedBy: string) {
+    this.send(to, 'Activa tu cuenta · Agencia EH', `Hola, ${name}`,
+      `${invitedBy} creó tu cuenta en Agencia EH. Elige tu contraseña con el botón para activarla. El enlace vence en 7 días.`,
+      'Activar mi cuenta', `/restablecer-contrasena?token=${token}&bienvenida=1`,
+      'Si no esperabas este correo, puedes ignorarlo.');
+  }
+
   sendEmailVerification(to: string, token: string) {
     this.send(to, 'Confirma tu correo · Agencia EH', 'Confirma tu correo',
       'Gracias por registrarte en Agencia EH. Confirma que este correo es tuyo para terminar de activar tu cuenta. El enlace vence en 24 horas.',

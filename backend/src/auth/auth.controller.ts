@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { AuthService } from './auth.service';
+import { AuthService, publicSignupOpen } from './auth.service';
 import { RegisterDto } from './dto/register.dto'; import { LoginDto } from './dto/login.dto';
 import { EmailDto, ResetPasswordDto, TokenDto } from './dto/token.dto'; import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -8,6 +8,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
  constructor(private readonly auth:AuthService){}
  private cookieOptions(){return {httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax' as const,path:'/api/v1/auth',maxAge:7*24*3600*1000};}
  private sendSession(res:Response,r:any){res.cookie('eh_refresh',r.refreshToken,this.cookieOptions());const {refreshToken,...body}=r;return body;}
+ @Get('config') config(){return {publicSignup:publicSignupOpen()};}
  @Post('register') async register(@Body()d:RegisterDto,@Res({passthrough:true})r:Response){return this.sendSession(r,await this.auth.register(d));}
  @Post('login') async login(@Body()d:LoginDto,@Res({passthrough:true})r:Response){return this.sendSession(r,await this.auth.login(d));}
  @Post('refresh') async refresh(@Req()q:Request,@Res({passthrough:true})r:Response){return this.sendSession(r,await this.auth.refresh(q.cookies?.eh_refresh));}
