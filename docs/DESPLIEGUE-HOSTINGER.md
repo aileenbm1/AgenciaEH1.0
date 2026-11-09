@@ -47,6 +47,12 @@ Hostinger no convierte un sitio PHP en Node.js; hay que crear uno nuevo con el m
    | `ADMIN_EMAILS` | (Opcional) Correos de administradores separados por comas. Esas personas se registran normalmente y pasan a ADMIN al registrarse o iniciar sesión. Quitar un correo de la lista **no** le retira el rol (eso se hace en phpMyAdmin). |
    | `UPLOADS_DIR` | (Opcional) Carpeta de las fotos. Por defecto `~/agencia-eh-uploads`, fuera de la app, para que subir un ZIP nuevo no las borre. |
 
+   | `SMTP_HOST` | `smtp.hostinger.com` (para enviar correos de recuperación y verificación) |
+   | `SMTP_PORT` | `465` |
+   | `SMTP_USER` | Cuenta de correo creada en hPanel → Correos (p. ej. `no-reply@tudominio.com`) |
+   | `SMTP_PASSWORD` | Contraseña de esa cuenta de correo |
+   | `MAIL_FROM` | (Opcional) Remitente, p. ej. `Agencia EH <no-reply@tudominio.com>` |
+
    No pongas `API_URL` ni `PORT`: `start.js` y Hostinger los configuran solos.
 4. Despliega y activa el **SSL** del dominio. Las tablas se crean solas al arrancar si no existen (también puedes importar `backend/database/schema.sql` en phpMyAdmin).
 5. Comprueba `https://tudominio.com/api/v1/health` → `{"status":"ok",...,"tablas":{"ok":true,...}}`.
@@ -157,6 +163,8 @@ En Nginx basta con publicar el sitio (`proxy_pass http://127.0.0.1:3000;`); la A
 3. Si cambió el esquema, respalda la base antes de importar el SQL nuevo.
 
 ## Problemas comunes
+
+- **No llegan los correos de recuperación/verificación**: revisa en `/api/v1/health` el campo `correo`: `configured:false` = faltan variables `SMTP_*`; `lastError` = motivo del último fallo (p. ej. contraseña del correo incorrecta). Revisa también la carpeta de spam.
 
 - **«La API no está disponible»** (paquete de un solo sitio): abre `https://tudominio.com/api/v1/health`. El campo `api.error` dice el motivo exacto (por ejemplo `Faltan las variables: DB_NAME…` o `ER_ACCESS_DENIED_ERROR` si la contraseña de MySQL es incorrecta). La API se reintenta sola con espera creciente (30 s, 1, 2, 4… hasta 15 min), pero si cambias variables de entorno vuelve a desplegar.
 - **Por qué la API usa `net.Server#listen`**: Hostinger ejecuta las apps con LiteSpeed (`lsnode`), que solo atiende la primera llamada a `http.Server#listen` del proceso y manda la salida estándar a `/dev/null`. El sitio usa esa primera llamada; la API escucha por otra vía en `127.0.0.1` con un puerto libre que asigna el sistema (en hosting compartido `127.0.0.1` es común a todas las cuentas y un puerto fijo como 4000 puede estar ocupado por otra). Mientras la API no está lista, el sitio no reenvía ninguna petición.
