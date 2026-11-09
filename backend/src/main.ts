@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import 'reflect-metadata';
 import { Server } from 'net';
+import { chmodSync, unlinkSync } from 'fs';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -29,19 +30,36 @@ export async function startApi(): Promise<NestExpressApplication> {
   const host = process.env.API_HOST;
   try {
     if (host) {
-      // Modo integrado: API_PORT=0 (por defecto en start.js) pide un puerto libre
-      // al sistema. En hosting compartido 127.0.0.1 es común a todas las cuentas
-      // del servidor, así que un puerto fijo puede estar ocupado por otra cuenta.
-      const wanted = Number(process.env.API_PORT ?? 0) || 0;
       await app.init();
       const server = app.getHttpServer();
-      await new Promise<void>((resolve, reject) => {
+      // lsnode reemplaza http.Server#listen/#address; se usan las de net.Server.
+      const listen = (...args: any[]) => new Promise<void>((resolve, reject) => {
         server.once('error', reject);
-        Server.prototype.listen.call(server, wanted, host, () => { server.removeListener('error', reject); resolve(); });
+        Server.prototype.listen.call(server, ...args, () => { server.removeListener('error', reject); resolve(); });
       });
-      // lsnode reemplaza http.Server#address; se usa la implementación original.
-      const address = Server.prototype.address.call(server) as { port: number };
-      process.env.API_URL = `http://${host}:${address.port}/api/v1`;
+      let target: { socketPath?: string; host?: string; port?: number } | undefined;
+      // 1) Socket de archivo privado: no usa la red. En hosting compartido
+      //    127.0.0.1 es común a todas las cuentas y puede estar restringido.
+      const socketPath = process.env.API_SOCKET;
+      if (socketPath) {
+        try {
+          try { unlinkSync(socketPath); } catch { /* no existía */ }
+          await listen(socketPath);
+          try { chmodSync(socketPath, 0o600); } catch { /* opcional */ }
+          target = { socketPath };
+        } catch (err: any) {
+          console.error(`[Agencia EH] No se pudo usar el socket ${socketPath}: ${err?.message}. Se usará TCP.`);
+        }
+      }
+      // 2) Respaldo: TCP en un puerto libre asignado por el sistema (API_PORT=0).
+      if (!target) {
+        await listen(Number(process.env.API_PORT ?? 0) || 0, host);
+        const address = Server.prototype.address.call(server) as { port: number };
+        target = { host, port: address.port };
+        process.env.API_URL = `http://${host}:${address.port}/api/v1`;
+      }
+      // El sitio Next.js (mismo proceso) lee aquí la dirección de la API.
+      (globalThis as any).__EH_API_TARGET = target;
     } else {
       await app.listen(Number(process.env.API_PORT || process.env.PORT) || 4000);
     }

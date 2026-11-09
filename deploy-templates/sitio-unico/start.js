@@ -9,6 +9,7 @@
 //   línea, se reintenta con espera creciente (máx. 15 min) y el motivo se ve en
 //   /api/v1/health.
 const path = require('path');
+const os = require('os');
 
 // API_PORT=0: el sistema asigna un puerto libre (en hosting compartido 127.0.0.1
 // es común a todas las cuentas, un puerto fijo puede estar ocupado por otra).
@@ -16,6 +17,9 @@ const path = require('path');
 process.env.API_PORT = process.env.API_PORT || '0';
 process.env.API_HOST = process.env.API_HOST || '127.0.0.1';
 delete process.env.API_URL;
+// Socket de archivo privado para la API (se usa antes que TCP). Va en el /tmp
+// propio de la cuenta (CageFS) y lleva el PID para no chocar entre procesos.
+process.env.API_SOCKET = process.env.API_SOCKET || path.join(os.tmpdir(), `agencia-eh-api-${process.pid}.sock`);
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 process.env.EH_EMBEDDED = '1';
 // Algunos servidores definen HOSTNAME con el nombre de la máquina; Next lo usaría
@@ -58,7 +62,9 @@ async function launch() {
     status.error = null;
     status.since = new Date().toISOString();
     delete status.nextRetrySeconds;
-    log(`API lista en ${process.env.API_URL}`);
+    const t = globalThis.__EH_API_TARGET || {};
+    status.transport = t.socketPath ? 'socket' : `tcp:${t.port}`;
+    log(`API lista (${status.transport})`);
   } catch (err) {
     status.state = 'error';
     status.error = (err && err.response && err.response.message) || (err && err.message) || String(err);
@@ -72,3 +78,6 @@ async function launch() {
   }
 }
 launch();
+
+// Limpia el socket al terminar.
+for (const sig of ['SIGTERM', 'SIGINT']) process.once(sig, () => { try { require('fs').unlinkSync(process.env.API_SOCKET); } catch (_) {} process.exit(0); });

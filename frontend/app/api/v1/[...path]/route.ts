@@ -1,25 +1,20 @@
 // Proxy del sitio hacia la API NestJS.
 // El navegador siempre llama a /api/v1/... en el mismo dominio del frontend y
-// este handler reenvía la petición a API_URL (variable leída en tiempo de
-// ejecución). Así el mismo compilado sirve en cualquier dominio, sin CORS y con
-// la cookie de sesión en el dominio del sitio.
+// este handler reenvía la petición a la API (integrada en el mismo proceso o en
+// API_URL). Así el mismo compilado sirve en cualquier dominio, sin CORS y con la
+// cookie de sesión en el dominio del sitio.
 import { NextRequest } from 'next/server';
+import { ApiStatus, apiReady, callApi, embeddedStatus } from '@/lib/api-transport';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-const FORWARD_REQUEST_HEADERS = ['authorization', 'content-type', 'cookie', 'accept', 'accept-language', 'user-agent'];
+const FORWARD_REQUEST_HEADERS = ['authorization', 'content-type', 'cookie', 'accept', 'accept-language', 'user-agent', 'x-forwarded-for'];
 const FORWARD_RESPONSE_HEADERS = ['content-type', 'cache-control', 'location'];
 
-type ApiStatus = { state: string; error: string | null; since: string; attempts: number };
-const embeddedStatus = () => (globalThis as any).__EH_API_STATUS as ApiStatus | undefined;
-
-function apiBase() {
-  return (process.env.API_URL || 'http://127.0.0.1:4000/api/v1').replace(/\/+$/, '');
-}
-
-function unavailable(status?: ApiStatus) {
+function unavailable(status?: ApiStatus, detail?: string) {
   return Response.json(
-    { statusCode: 502, message: 'La API no está disponible en este momento.', ...(status ? { api: status } : {}) },
+    { statusCode: 502, message: 'La API no está disponible en este momento.', ...(status ? { api: status } : {}), ...(detail ? { detalle: detail } : {}) },
     { status: 502 },
   );
 }
@@ -27,42 +22,40 @@ function unavailable(status?: ApiStatus) {
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
   // Paquete de un solo sitio: mientras la API interna no esté lista no se reenvía
   // nada (ni contraseñas) a ninguna dirección.
-  const status = embeddedStatus();
-  if (status && status.state !== 'lista') return unavailable(status);
+  if (!apiReady()) return unavailable(embeddedStatus());
 
   const { path } = await ctx.params;
-  const target = `${apiBase()}/${path.map(encodeURIComponent).join('/')}${req.nextUrl.search}`;
+  const relative = `${path.map(encodeURIComponent).join('/')}${req.nextUrl.search}`;
 
-  const headers = new Headers();
+  const headers: Record<string, string> = {};
   for (const name of FORWARD_REQUEST_HEADERS) {
     const value = req.headers.get(name);
-    if (value) headers.set(name, value);
+    if (value) headers[name] = value;
   }
-  const forwardedFor = req.headers.get('x-forwarded-for');
-  if (forwardedFor) headers.set('x-forwarded-for', forwardedFor);
-
   const hasBody = !['GET', 'HEAD'].includes(req.method);
-  let upstream: Response;
+
+  let upstream;
   try {
-    upstream = await fetch(target, {
+    upstream = await callApi(relative, {
       method: req.method,
       headers,
-      body: hasBody ? await req.arrayBuffer() : undefined,
-      redirect: 'manual',
-      cache: 'no-store',
+      body: hasBody ? Buffer.from(await req.arrayBuffer()) : undefined,
     });
-  } catch {
-    return unavailable(embeddedStatus());
+  } catch (err: any) {
+    const detail = [err?.code, err?.message].filter(Boolean).join(': ');
+    console.error('[Agencia EH] Proxy /api/v1 →', detail);
+    return unavailable(embeddedStatus(), detail);
   }
 
   const out = new Headers();
   for (const name of FORWARD_RESPONSE_HEADERS) {
-    const value = upstream.headers.get(name);
-    if (value) out.set(name, value);
+    const value = upstream.headers[name];
+    if (typeof value === 'string') out.set(name, value);
   }
-  for (const cookie of upstream.headers.getSetCookie()) out.append('set-cookie', cookie);
+  const cookies = upstream.headers['set-cookie'];
+  for (const cookie of Array.isArray(cookies) ? cookies : cookies ? [cookies] : []) out.append('set-cookie', cookie);
 
-  return new Response(upstream.body, { status: upstream.status, headers: out });
+  return new Response(upstream.status === 204 || upstream.status === 304 ? null : new Uint8Array(upstream.body), { status: upstream.status, headers: out });
 }
 
 export { proxy as GET, proxy as POST, proxy as PATCH, proxy as PUT, proxy as DELETE };
