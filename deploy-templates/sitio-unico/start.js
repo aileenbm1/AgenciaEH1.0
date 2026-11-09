@@ -6,7 +6,8 @@
 //   127.0.0.1 (puerto libre asignado por el sistema). Escucha con net.Server#listen porque LiteSpeed ignora
 //   cualquier http.Server#listen después del primero.
 // - Si la API no puede arrancar (p. ej. MySQL sin configurar) el sitio sigue en
-//   línea, se reintenta cada 30 s y el motivo se ve en /api/v1/health.
+//   línea, se reintenta con espera creciente (máx. 15 min) y el motivo se ve en
+//   /api/v1/health.
 const path = require('path');
 
 // API_PORT=0: el sistema asigna un puerto libre (en hosting compartido 127.0.0.1
@@ -56,13 +57,18 @@ async function launch() {
     status.state = 'lista';
     status.error = null;
     status.since = new Date().toISOString();
+    delete status.nextRetrySeconds;
     log(`API lista en ${process.env.API_URL}`);
   } catch (err) {
     status.state = 'error';
     status.error = (err && err.response && err.response.message) || (err && err.message) || String(err);
     status.since = new Date().toISOString();
-    log('La API no pudo iniciar:', status.error, '— reintento en 30 s');
-    setTimeout(launch, 30000).unref();
+    // Reintentos con espera creciente (30 s, 1, 2, 4, 8 min… máx. 15 min) para no
+    // consumir recursos del hosting si el problema persiste.
+    const delay = Math.min(30000 * 2 ** (status.attempts - 1), 15 * 60000);
+    status.nextRetrySeconds = Math.round(delay / 1000);
+    log('La API no pudo iniciar:', status.error, `— reintento en ${status.nextRetrySeconds} s`);
+    setTimeout(launch, delay).unref();
   }
 }
 launch();

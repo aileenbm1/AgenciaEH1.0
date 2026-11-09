@@ -28,7 +28,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         database: env('DB_NAME'),
         user: env('DB_USER'),
         password: env('DB_PASSWORD'),
-        connectionLimit: Number(process.env.DB_POOL_MAX || 10),
+        connectionLimit: Number(env('DB_POOL_MAX') || 5),   // hosting compartido: pocas conexiones
+        maxIdle: 2,
+        idleTimeout: 60000,     // cierra conexiones inactivas tras 1 min
         charset: 'utf8mb4',
         timezone: 'Z',          // fechas en UTC
         decimalNumbers: true,   // DECIMAL como number, no string

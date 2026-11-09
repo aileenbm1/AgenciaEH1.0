@@ -155,7 +155,7 @@ En Nginx basta con publicar el sitio (`proxy_pass http://127.0.0.1:3000;`); la A
 
 ## Problemas comunes
 
-- **«La API no está disponible»** (paquete de un solo sitio): abre `https://tudominio.com/api/v1/health`. El campo `api.error` dice el motivo exacto (por ejemplo `Faltan las variables: DB_NAME…` o `ER_ACCESS_DENIED_ERROR` si la contraseña de MySQL es incorrecta). La API se reintenta sola cada 30 s, pero si cambias variables de entorno vuelve a desplegar.
+- **«La API no está disponible»** (paquete de un solo sitio): abre `https://tudominio.com/api/v1/health`. El campo `api.error` dice el motivo exacto (por ejemplo `Faltan las variables: DB_NAME…` o `ER_ACCESS_DENIED_ERROR` si la contraseña de MySQL es incorrecta). La API se reintenta sola con espera creciente (30 s, 1, 2, 4… hasta 15 min), pero si cambias variables de entorno vuelve a desplegar.
 - **Por qué la API usa `net.Server#listen`**: Hostinger ejecuta las apps con LiteSpeed (`lsnode`), que solo atiende la primera llamada a `http.Server#listen` del proceso y manda la salida estándar a `/dev/null`. El sitio usa esa primera llamada; la API escucha por otra vía en `127.0.0.1` con un puerto libre que asigna el sistema (en hosting compartido `127.0.0.1` es común a todas las cuentas y un puerto fijo como 4000 puede estar ocupado por otra). Mientras la API no está lista, el sitio no reenvía ninguna petición.
 
 - **El catálogo sale vacío o «API no disponible»**: revisa `API_URL` en el sitio y que `/api/v1/health` de la API responda.
