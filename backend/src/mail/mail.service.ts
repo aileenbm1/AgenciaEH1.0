@@ -59,11 +59,15 @@ export class MailService {
       });
   }
 
-  sendPasswordReset(to: string, token: string) {
+  resetLink(token: string) { return `${this.siteUrl()}/restablecer-contrasena?token=${token}`; }
+
+  sendPasswordReset(to: string, token: string, validFor = '1 hora', byAdmin = false) {
     this.send(to, 'Restablece tu contraseña · Agencia EH', 'Restablece tu contraseña',
-      'Recibimos una solicitud para cambiar la contraseña de tu cuenta. Usa el botón para elegir una nueva. El enlace vence en 1 hora.',
+      byAdmin
+        ? `El equipo de Agencia EH te envió este enlace para que elijas una nueva contraseña. El enlace vence en ${validFor}.`
+        : `Recibimos una solicitud para cambiar la contraseña de tu cuenta. Usa el botón para elegir una nueva. El enlace vence en ${validFor}.`,
       'Elegir nueva contraseña', `/restablecer-contrasena?token=${token}`,
-      'Si no lo solicitaste, ignora este correo: tu contraseña no cambiará.');
+      'Si no lo esperabas, ignora este correo: tu contraseña no cambiará.');
   }
 
   /** Enlace público de activación (se muestra también a quien creó la cuenta). */

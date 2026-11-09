@@ -1,9 +1,21 @@
 import { Type } from 'class-transformer';
-import { IsBoolean, IsDateString, IsIn, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsBoolean, IsDateString, IsEmail, IsIn, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class UpdateUserDto {
   @IsOptional() @IsIn(['BUYER', 'AGENT', 'AGENCY', 'ADMIN']) role?: 'BUYER' | 'AGENT' | 'AGENCY' | 'ADMIN';
   @IsOptional() @IsBoolean() isActive?: boolean;
+  @IsOptional() @IsString() @MinLength(2) @MaxLength(100) fullName?: string;
+  @IsOptional() @IsEmail() @MaxLength(190) email?: string;
+  @IsOptional() @IsString() @MaxLength(25) phone?: string;
+}
+
+export class SetPasswordDto {
+  @IsString() @MinLength(10) @MaxLength(72) password!: string;
+}
+
+export class DeleteUserDto {
+  /** El correo del usuario, escrito a mano como confirmación. */
+  @IsEmail() confirmEmail!: string;
 }
 
 export class CreatePaymentDto {

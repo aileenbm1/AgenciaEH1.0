@@ -1,7 +1,12 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { randomUUID } from 'crypto';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { createHash, randomBytes, randomUUID } from 'crypto';
+import * as bcrypt from 'bcryptjs';
+import { MailService } from '../mail/mail.service';
+import { removeMedia } from '../uploads/media';
 import { DatabaseService } from '../database/database.service';
-import { CreatePaymentDto, UpdateUserDto } from './admin.dto';
+import { CreatePaymentDto, DeleteUserDto, UpdateUserDto } from './admin.dto';
+
+const hashToken = (v: string) => createHash('sha256').update(v).digest('hex');
 
 const dateOnly = (v: any) => (v instanceof Date ? v.toISOString().slice(0, 10) : v ? String(v).slice(0, 10) : null);
 const slugify = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -12,7 +17,7 @@ const LAST_PAYMENT = `SELECT p.UserId, p.Plan, p.PeriodEnd, p.PaidAt FROM Paymen
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(private readonly db: DatabaseService, private readonly mail: MailService) {}
 
   async metrics() {
     const [users] = await this.db.query<any>(`SELECT COUNT(*) AS total,
@@ -68,7 +73,7 @@ export class AdminService {
   }
 
   async updateUser(adminId: string, id: string, d: UpdateUserDto) {
-    const [u] = await this.db.query<any>('SELECT Id, FullName, Role, IsActive FROM Users WHERE Id=? LIMIT 1', [id]);
+    const [u] = await this.db.query<any>('SELECT Id, FullName, Email, Role, IsActive FROM Users WHERE Id=? LIMIT 1', [id]);
     if (!u) throw new NotFoundException('Usuario no encontrado.');
     if (id === adminId && ((d.role && d.role !== 'ADMIN') || d.isActive === false)) throw new ForbiddenException('No puedes quitarte el rol de administrador ni desactivar tu propia cuenta.');
     const losesAdmin = u.Role === 'ADMIN' && ((d.role && d.role !== 'ADMIN') || d.isActive === false);
@@ -79,6 +84,17 @@ export class AdminService {
     const sets: string[] = ['UpdatedAt=UTC_TIMESTAMP()'], params: any[] = [];
     if (d.role) { sets.push('Role=?'); params.push(d.role); }
     if (d.isActive !== undefined) { sets.push('IsActive=?'); params.push(d.isActive ? 1 : 0); if (!d.isActive) sets.push('RefreshTokenHash=NULL'); }
+    if (d.fullName !== undefined) { sets.push('FullName=?'); params.push(d.fullName.trim()); }
+    if (d.phone !== undefined) { sets.push('Phone=?'); params.push(d.phone.trim() || null); }
+    if (d.email !== undefined) {
+      const email = d.email.trim().toLowerCase();
+      if (email !== u.Email) {
+        const [dup] = await this.db.query<any>('SELECT Id FROM Users WHERE Email=? AND Id<>? LIMIT 1', [email, id]);
+        if (dup) throw new ConflictException('Ya existe otra cuenta con ese correo.');
+        // Cambiar el correo cierra la sesión y anula enlaces pendientes enviados al correo anterior.
+        sets.push('Email=?', 'RefreshTokenHash=NULL', 'PasswordResetTokenHash=NULL', 'PasswordResetExpiresAt=NULL', 'EmailVerificationTokenHash=NULL'); params.push(email);
+      }
+    }
     // Un cambio de rol cierra la sesión para que el nuevo rol se aplique al volver a entrar.
     if (d.role && d.role !== u.Role) sets.push('RefreshTokenHash=NULL');
     await this.db.transaction(async (tx) => {
@@ -122,5 +138,53 @@ export class AdminService {
     const r = await this.db.execute('DELETE FROM Payments WHERE Id=?', [id]);
     if (!r.affectedRows) throw new NotFoundException('Pago no encontrado.');
     return { deleted: true };
+  }
+
+  /** El admin fija una contraseña nueva: cierra las sesiones del usuario y anula enlaces pendientes. */
+  async setPassword(id: string, password: string) {
+    const [u] = await this.db.query<any>('SELECT Id, FullName FROM Users WHERE Id=? LIMIT 1', [id]);
+    if (!u) throw new NotFoundException('Usuario no encontrado.');
+    const hash = await bcrypt.hash(password, 12);
+    await this.db.execute(`UPDATE Users SET PasswordHash=?, RefreshTokenHash=NULL, PasswordResetTokenHash=NULL, PasswordResetExpiresAt=NULL,
+      EmailVerifiedAt=COALESCE(EmailVerifiedAt, UTC_TIMESTAMP()), UpdatedAt=UTC_TIMESTAMP() WHERE Id=?`, [hash, id]);
+    return { success: true, message: `Contraseña de ${u.FullName} actualizada. Se cerraron sus sesiones abiertas.` };
+  }
+
+  /** Enlace (24 h) para que el usuario elija su contraseña; se envía por correo y se devuelve para copiar/WhatsApp. */
+  async passwordLink(id: string) {
+    const [u] = await this.db.query<any>('SELECT Id, Email, FullName FROM Users WHERE Id=? LIMIT 1', [id]);
+    if (!u) throw new NotFoundException('Usuario no encontrado.');
+    const raw = randomBytes(32).toString('hex');
+    await this.db.execute('UPDATE Users SET PasswordResetTokenHash=?, PasswordResetExpiresAt=DATE_ADD(UTC_TIMESTAMP(), INTERVAL 24 HOUR), UpdatedAt=UTC_TIMESTAMP() WHERE Id=?', [hashToken(raw), id]);
+    this.mail.sendPasswordReset(u.Email, raw, '24 horas', true);
+    return { link: this.mail.resetLink(raw), emailSent: this.mail.status.configured, email: u.Email, expiresInHours: 24 };
+  }
+
+  /**
+   * Borra un usuario con sus propiedades (y fotos), pagos, favoritos y perfiles.
+   * Se conservan las cuentas que creó y los pagos que registró (pasan a quien borra).
+   */
+  async deleteUser(adminId: string, id: string, d: DeleteUserDto) {
+    if (id === adminId) throw new ForbiddenException('No puedes borrar tu propia cuenta.');
+    const [u] = await this.db.query<any>('SELECT Id, Email, FullName, Role, IsActive FROM Users WHERE Id=? LIMIT 1', [id]);
+    if (!u) throw new NotFoundException('Usuario no encontrado.');
+    if (d.confirmEmail.trim().toLowerCase() !== u.Email) throw new BadRequestException('El correo de confirmación no coincide.');
+    if (u.Role === 'ADMIN') {
+      const [a] = await this.db.query<any>("SELECT COUNT(*) AS n FROM Users WHERE Role='ADMIN' AND IsActive=1 AND Id<>?", [id]);
+      if (Number(a.n) === 0) throw new BadRequestException('Debe quedar al menos un administrador activo.');
+    }
+    const images = (await this.db.query<any>('SELECT i.Url FROM PropertyImages i JOIN Properties p ON p.Id=i.PropertyId WHERE p.OwnerId=?', [id])).map((r) => r.Url as string);
+    const [counts] = await this.db.query<any>('SELECT (SELECT COUNT(*) FROM Properties WHERE OwnerId=?) AS props, (SELECT COUNT(*) FROM Payments WHERE UserId=?) AS pays', [id, id]);
+    await this.db.transaction(async (tx) => {
+      await this.db.execute('UPDATE Payments SET RecordedById=? WHERE RecordedById=?', [adminId, id], tx);
+      await this.db.execute('DELETE FROM Payments WHERE UserId=?', [id], tx);
+      await this.db.execute('UPDATE Leads SET AssignedToId=NULL WHERE AssignedToId=?', [id], tx);
+      await this.db.execute('DELETE FROM Properties WHERE OwnerId=?', [id], tx);
+      await this.db.execute('UPDATE AgentProfiles SET AgencyId=NULL WHERE AgencyId IN (SELECT Id FROM AgencyProfiles WHERE UserId=?)', [id], tx);
+      await this.db.execute('UPDATE Users SET CreatedById=NULL WHERE CreatedById=?', [id], tx);
+      await this.db.execute('DELETE FROM Users WHERE Id=?', [id], tx);
+    });
+    removeMedia(images);
+    return { deleted: true, message: `${u.FullName} fue eliminado junto con ${Number(counts.props)} propiedad(es) y ${Number(counts.pays)} pago(s).` };
   }
 }

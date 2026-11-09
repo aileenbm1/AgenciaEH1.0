@@ -4,6 +4,7 @@ import { authJson, SessionUser, UserRole } from '@/lib/auth';
 import { ROLES } from '@/lib/roles';
 import { AdminUser, fmtDate } from './admin-types';
 import UserMembership from './payment-form';
+import UserEditor from './user-editor';
 
 type Page = { items: AdminUser[]; total: number; page: number; pages: number };
 const ROLE_IDS: UserRole[] = ['BUYER', 'AGENT', 'AGENCY', 'ADMIN'];
@@ -14,6 +15,7 @@ export default function AdminUsers({ me, onChanged }: { me: SessionUser; onChang
   const [data, setData] = useState<Page | null>(null);
   const [error, setError] = useState(''); const [ok, setOk] = useState(''); const [busy, setBusy] = useState('');
   const [selected, setSelected] = useState<AdminUser | null>(null);
+  const [editing, setEditing] = useState<AdminUser | null>(null);
 
   const load = useCallback(async () => {
     const qs = new URLSearchParams({ page: String(page), take: '20' });
@@ -48,6 +50,9 @@ export default function AdminUsers({ me, onChanged }: { me: SessionUser; onChang
     {error && <div className="notice" role="alert">{error}</div>}
     {ok && <div className="notice ok" role="status">{ok}</div>}
 
+    {editing && <UserEditor key={editing.id} user={data?.items.find(x => x.id === editing.id) ?? editing} me={me} onClose={() => setEditing(null)}
+      onSaved={() => { load(); onChanged(); }}
+      onDeleted={msg => { setEditing(null); setOk(msg); load(); onChanged(); }} />}
     {selected && <UserMembership user={data?.items.find(x => x.id === selected.id) ?? selected} onClose={() => setSelected(null)} onSaved={() => { load(); onChanged(); }} />}
 
     {!data ? <p className="muted">Cargando usuarios…</p> : data.items.length === 0 ? <div className="empty-start">No hay usuarios con esos filtros.</div>
@@ -71,7 +76,8 @@ export default function AdminUsers({ me, onChanged }: { me: SessionUser; onChang
             <select id={`rol-${u.id}`} value={u.role} disabled={self || busy === u.id} onChange={e => update(u, { role: e.target.value as UserRole })}>
               {ROLE_IDS.map(r => <option key={r} value={r}>{ROLES[r].label}</option>)}
             </select>
-            <button className="button button-navy" onClick={() => { setSelected(u); setTimeout(() => document.getElementById('membresia')?.scrollIntoView({ behavior: 'smooth' }), 50); }}>Membresía y pagos</button>
+            <button className="button button-outline" onClick={() => { setSelected(null); setEditing(u); setTimeout(() => document.getElementById('editar')?.scrollIntoView({ behavior: 'smooth' }), 50); }}>Editar</button>
+            <button className="button button-navy" onClick={() => { setEditing(null); setSelected(u); setTimeout(() => document.getElementById('membresia')?.scrollIntoView({ behavior: 'smooth' }), 50); }}>Membresía y pagos</button>
             {!self && <button className="button button-ghost" disabled={busy === u.id} onClick={() => update(u, { isActive: !u.isActive })}>{u.isActive ? 'Desactivar' : 'Reactivar'}</button>}
           </div>
         </article>;
