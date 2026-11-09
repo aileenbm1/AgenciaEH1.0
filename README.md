@@ -1,4 +1,4 @@
-# Agencia EH — V0.8.1
+# Agencia EH — V0.10.0
 
 Plataforma inmobiliaria desarrollada con Next.js, NestJS y **MySQL** (compatible con Hostinger). El backend usa `mysql2` con consultas SQL parametrizadas; no se utiliza ORM.
 
@@ -53,6 +53,6 @@ Genera, ya compilados, `deploy/agencia-eh-sitio-unico.zip` (sitio y API en un so
 - `POST /api/v1/properties/:id/submit`, `PATCH /api/v1/properties/:id/moderate`, `DELETE /api/v1/properties/:id`.
 
 ## Pendientes conocidos
-- Las fotografías se guardan por URL; falta integrar un proveedor de almacenamiento.
+- Las fotos se suben desde el panel (se reducen en el navegador) y se guardan en `UPLOADS_DIR` (por defecto `~/agencia-eh-uploads`). Respáldala junto con la base de datos.
 - Los enlaces de verificación y recuperación se imprimen en la consola de la API (solo fuera de producción); falta un proveedor de correo real.
 - No hay pruebas automatizadas todavía. Respalda la base antes de aplicar cambios de esquema en producción.

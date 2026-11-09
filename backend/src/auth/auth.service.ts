@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, OnModuleInit, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes, randomUUID, createHash } from 'crypto';
 import * as bcrypt from 'bcryptjs';
@@ -8,8 +8,14 @@ import { LoginDto } from './dto/login.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 const hashToken=(v:string)=>createHash('sha256').update(v).digest('hex');
 const safeUser=(u:any)=>({id:u.Id,fullName:u.FullName,email:u.Email,role:u.Role,phone:u.Phone??null,emailVerified:!!u.EmailVerifiedAt});
-@Injectable() export class AuthService {
+/** Correos que deben ser administradores (variable ADMIN_EMAILS, separados por comas). */
+const adminEmails=()=>(process.env.ADMIN_EMAILS||'').split(',').map(e=>e.trim().toLowerCase()).filter(Boolean);
+@Injectable() export class AuthService implements OnModuleInit {
  constructor(private readonly db:DatabaseService,private readonly jwt:JwtService){}
+ /** Al arrancar, convierte en ADMIN a los usuarios ya registrados con un correo de ADMIN_EMAILS. */
+ async onModuleInit(){const list=adminEmails();if(!list.length)return;try{const r=await this.db.execute(`UPDATE Users SET Role='ADMIN',UpdatedAt=UTC_TIMESTAMP() WHERE Role<>'ADMIN' AND Email IN (${list.map(()=>'?').join(',')})`,list);if(r.affectedRows)console.error(`[Agencia EH] ${r.affectedRows} usuario(s) promovido(s) a ADMIN por ADMIN_EMAILS`);}catch(e:any){console.error('[Agencia EH] ADMIN_EMAILS:',e?.message);}}
+ /** Si el correo está en ADMIN_EMAILS y aún no es ADMIN, lo promueve. */
+ private async ensureAdmin(u:any){if(u&&u.Role!=='ADMIN'&&adminEmails().includes(String(u.Email).toLowerCase())){await this.db.execute("UPDATE Users SET Role='ADMIN',UpdatedAt=UTC_TIMESTAMP() WHERE Id=?",[u.Id]);return {...u,Role:'ADMIN'};}return u;}
  private async issueTokens(user:any){
   const accessToken=await this.jwt.signAsync({sub:user.Id,role:user.Role,jti:randomUUID()},{secret:process.env.JWT_ACCESS_SECRET,expiresIn:'15m'});
   const refreshToken=await this.jwt.signAsync({sub:user.Id,type:'refresh',jti:randomUUID()},{secret:process.env.JWT_REFRESH_SECRET,expiresIn:'7d'});
@@ -25,10 +31,10 @@ const safeUser=(u:any)=>({id:u.Id,fullName:u.FullName,email:u.Email,role:u.Role,
    if(dto.role==='AGENT') await this.db.execute('INSERT INTO AgentProfiles(Id,UserId) VALUES(?,?)',[randomUUID(),id],tx);
    if(dto.role==='AGENCY'){const slug=dto.agencyName!.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')+'-'+randomUUID().slice(0,6);await this.db.execute('INSERT INTO AgencyProfiles(Id,UserId,Name,Slug) VALUES(?,?,?,?)',[randomUUID(),id,dto.agencyName!.trim(),slug],tx);}
   }); } catch(e:any){if(e?.errno===1062)throw new ConflictException('Ya existe una cuenta con ese correo.');throw e;}
-  const user={Id:id,Email:email,FullName:dto.fullName.trim(),Role:dto.role,Phone:null,EmailVerifiedAt:null}; this.devLink('VERIFICACIÓN DE CORREO',`/verificar-correo?token=${raw}`);return this.issueTokens(user);
+  const user=await this.ensureAdmin({Id:id,Email:email,FullName:dto.fullName.trim(),Role:dto.role,Phone:null,EmailVerifiedAt:null}); this.devLink('VERIFICACIÓN DE CORREO',`/verificar-correo?token=${raw}`);return this.issueTokens(user);
  }
- async login(dto:LoginDto){const [u]=await this.db.query('SELECT * FROM Users WHERE Email=? LIMIT 1',[dto.email.trim().toLowerCase()]);if(!u||!u.IsActive||!(await bcrypt.compare(dto.password,u.PasswordHash)))throw new UnauthorizedException('Correo o contraseña incorrectos.');return this.issueTokens(u);}
- async refresh(token?:string){if(!token)throw new UnauthorizedException('No hay una sesión para renovar.');let p:any;try{p=await this.jwt.verifyAsync(token,{secret:process.env.JWT_REFRESH_SECRET});}catch{throw new UnauthorizedException('La sesión expiró. Inicia sesión nuevamente.');}if(p.type!=='refresh'||!p.sub)throw new UnauthorizedException('Token inválido.');const [u]=await this.db.query('SELECT * FROM Users WHERE Id=? LIMIT 1',[p.sub]);if(!u||!u.IsActive||!u.RefreshTokenHash||hashToken(token)!==u.RefreshTokenHash)throw new UnauthorizedException('La sesión ya no es válida.');return this.issueTokens(u);}
+ async login(dto:LoginDto){const [u]=await this.db.query('SELECT * FROM Users WHERE Email=? LIMIT 1',[dto.email.trim().toLowerCase()]);if(!u||!u.IsActive||!(await bcrypt.compare(dto.password,u.PasswordHash)))throw new UnauthorizedException('Correo o contraseña incorrectos.');return this.issueTokens(await this.ensureAdmin(u));}
+ async refresh(token?:string){if(!token)throw new UnauthorizedException('No hay una sesión para renovar.');let p:any;try{p=await this.jwt.verifyAsync(token,{secret:process.env.JWT_REFRESH_SECRET});}catch{throw new UnauthorizedException('La sesión expiró. Inicia sesión nuevamente.');}if(p.type!=='refresh'||!p.sub)throw new UnauthorizedException('Token inválido.');const [u]=await this.db.query('SELECT * FROM Users WHERE Id=? LIMIT 1',[p.sub]);if(!u||!u.IsActive||!u.RefreshTokenHash||hashToken(token)!==u.RefreshTokenHash)throw new UnauthorizedException('La sesión ya no es válida.');return this.issueTokens(await this.ensureAdmin(u));}
  async logout(id:string){await this.db.execute('UPDATE Users SET RefreshTokenHash=NULL,UpdatedAt=UTC_TIMESTAMP() WHERE Id=?',[id]);return {success:true};}
  async me(id:string){const [u]=await this.db.query('SELECT Id,FullName,Email,Role,Phone,EmailVerifiedAt,IsActive,CreatedAt FROM Users WHERE Id=?',[id]);if(!u||!u.IsActive)throw new UnauthorizedException();return {id:u.Id,fullName:u.FullName,email:u.Email,role:u.Role,phone:u.Phone??null,emailVerified:!!u.EmailVerifiedAt,createdAt:u.CreatedAt};}
  async updateProfile(id:string,d:UpdateProfileDto){const sets:string[]=['UpdatedAt=UTC_TIMESTAMP()'];const params:any[]=[];if(d.fullName!==undefined){sets.push('FullName=?');params.push(d.fullName.trim());}if(d.phone!==undefined){sets.push('Phone=?');params.push(d.phone.trim()||null);}params.push(id);await this.db.execute(`UPDATE Users SET ${sets.join(',')} WHERE Id=?`,params);return this.me(id);}

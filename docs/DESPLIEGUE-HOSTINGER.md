@@ -44,6 +44,9 @@ Hostinger no convierte un sitio PHP en Node.js; hay que crear uno nuevo con el m
    | `JWT_ACCESS_SECRET` | Texto aleatorio de 32+ caracteres |
    | `JWT_REFRESH_SECRET` | **Otro** texto aleatorio de 32+ caracteres |
 
+   | `ADMIN_EMAILS` | (Opcional) Correos de administradores separados por comas. Esas personas se registran normalmente y pasan a ADMIN al registrarse o iniciar sesión. Quitar un correo de la lista **no** le retira el rol (eso se hace en phpMyAdmin). |
+   | `UPLOADS_DIR` | (Opcional) Carpeta de las fotos. Por defecto `~/agencia-eh-uploads`, fuera de la app, para que subir un ZIP nuevo no las borre. |
+
    No pongas `API_URL` ni `PORT`: `start.js` y Hostinger los configuran solos.
 4. Despliega y activa el **SSL** del dominio. Las tablas se crean solas al arrancar si no existen (también puedes importar `backend/database/schema.sql` en phpMyAdmin).
 5. Comprueba `https://tudominio.com/api/v1/health` → `{"status":"ok",...,"tablas":{"ok":true,...}}`.

@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { removeMedia } from '../uploads/media';
 import { DatabaseService, Queryable } from '../database/database.service'; import { CreatePropertyDto } from './dto/create-property.dto'; import { UpdatePropertyDto } from './dto/update-property.dto';
 const WITH_IMAGES=`SELECT p.*,i.Id AS ImageId,i.Url AS ImageUrl,i.Alt AS ImageAlt,i.Position AS ImagePosition`;
 @Injectable() export class PropertiesService { constructor(private db:DatabaseService){}
@@ -33,9 +34,11 @@ const WITH_IMAGES=`SELECT p.*,i.Id AS ImageId,i.Url AS ImageUrl,i.Alt AS ImageAl
   const sets:string[]=[],params:any[]=[];for(const [key,col] of Object.entries(fields)){if((d as any)[key]!==undefined){sets.push(`${col}=?`);params.push((d as any)[key]??null);}}
   if(d.images&&d.images.length>20)throw new BadRequestException('Puedes agregar hasta 20 fotografías.');
   if(role!=='ADMIN')sets.push("Status='DRAFT'");sets.push('UpdatedAt=UTC_TIMESTAMP()');params.push(id);
+  const oldImages=d.images?(await this.db.query<any>('SELECT Url FROM PropertyImages WHERE PropertyId=?',[id])).map(r=>r.Url as string):[];
   await this.db.transaction(async tx=>{if(d.images){await this.db.execute('DELETE FROM PropertyImages WHERE PropertyId=?',[id],tx);await this.insertImages(tx,id,d.images);}await this.db.execute(`UPDATE Properties SET ${sets.join(',')} WHERE Id=?`,params,tx);});
+  if(d.images)removeMedia(oldImages.filter(u=>!d.images!.includes(u)));
   return this.detailInternal(id);}
  async submit(id:string,userId:string){const p=await this.getById(id);if(!p)throw new NotFoundException('Propiedad no encontrada.');if(p.OwnerId!==userId)throw new ForbiddenException();if(!p.Title||!p.Description||!p.Municipality)throw new BadRequestException('Completa los datos antes de enviar a revisión.');await this.db.execute("UPDATE Properties SET Status='REVIEW',UpdatedAt=UTC_TIMESTAMP() WHERE Id=?",[id]);return this.detailInternal(id);}
  async moderate(id:string,status:string){if(!['PUBLISHED','REJECTED','DRAFT'].includes(status))throw new BadRequestException('Estado de moderación no válido.');const p=await this.getById(id);if(!p)throw new NotFoundException('Propiedad no encontrada.');await this.db.execute('UPDATE Properties SET Status=?,UpdatedAt=UTC_TIMESTAMP() WHERE Id=?',[status,id]);return this.detailInternal(id);}
- async remove(id:string,userId:string,role:string){const p=await this.getById(id);if(!p)throw new NotFoundException('Propiedad no encontrada.');if(role!=='ADMIN'&&p.OwnerId!==userId)throw new ForbiddenException();await this.db.execute('DELETE FROM Properties WHERE Id=?',[id]);return {deleted:true};}
+ async remove(id:string,userId:string,role:string){const p=await this.getById(id);if(!p)throw new NotFoundException('Propiedad no encontrada.');if(role!=='ADMIN'&&p.OwnerId!==userId)throw new ForbiddenException();const urls=(await this.db.query<any>('SELECT Url FROM PropertyImages WHERE PropertyId=?',[id])).map(r=>r.Url as string);await this.db.execute('DELETE FROM Properties WHERE Id=?',[id]);removeMedia(urls);return {deleted:true};}
 }

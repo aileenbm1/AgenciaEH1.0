@@ -7,6 +7,7 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './module';
+import { MEDIA_PREFIX, mediaRoot } from './uploads/media';
 
 /**
  * Crea la API y la pone a escuchar.
@@ -25,6 +26,10 @@ export async function startApi(): Promise<NestExpressApplication> {
   app.use(cookieParser());
   // WEB_ORIGIN admite varios orígenes separados por comas.
   app.enableCors({ origin: (process.env.WEB_ORIGIN || 'http://localhost:3000').split(',').map((o) => o.trim()).filter(Boolean), credentials: true });
+  // Fotos subidas: /api/v1/media/... (archivos con nombre único, se pueden cachear 1 año).
+  try {
+    app.useStaticAssets(mediaRoot(), { prefix: MEDIA_PREFIX.replace(/\/$/, ''), index: false, dotfiles: 'deny', maxAge: '365d', immutable: true });
+  } catch (err: any) { console.error('[Agencia EH] Fotos deshabilitadas:', err?.message); }
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.enableShutdownHooks();
   const host = process.env.API_HOST;

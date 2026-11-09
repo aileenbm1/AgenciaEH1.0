@@ -41,7 +41,8 @@ export async function authFetch(path: string, init: RequestInit = {}): Promise<R
   let token = readToken() || await refreshToken();
   const run = (t: string | null) => fetch(`${API_URL}${path}`, {
     ...init, credentials: 'include',
-    headers: { ...(init.body ? { 'Content-Type': 'application/json' } : {}), ...(init.headers || {}), ...(t ? { Authorization: `Bearer ${t}` } : {}) },
+    // JSON solo cuando el cuerpo es texto; con FormData el navegador pone el multipart.
+    headers: { ...(typeof init.body === 'string' ? { 'Content-Type': 'application/json' } : {}), ...(init.headers || {}), ...(t ? { Authorization: `Bearer ${t}` } : {}) },
   });
   let r = await run(token);
   if (r.status === 401) { token = await refreshToken(); if (token) r = await run(token); }
@@ -54,6 +55,14 @@ export async function authJson<T = any>(path: string, init: RequestInit = {}): P
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(errorMessage(d, 'No fue posible completar la acción.'));
   return d as T;
+}
+
+/** Sube una foto y devuelve su URL pública. */
+export async function uploadImage(file: Blob, name = 'foto.jpg'): Promise<string> {
+  const body = new FormData();
+  body.append('file', file, name.replace(/\.[^.]+$/, '') + (file.type === 'image/jpeg' ? '.jpg' : ''));
+  const d = await authJson<{ url: string }>('/uploads/images', { method: 'POST', body });
+  return d.url;
 }
 
 export async function getCurrentUser(): Promise<SessionUser | null> {
