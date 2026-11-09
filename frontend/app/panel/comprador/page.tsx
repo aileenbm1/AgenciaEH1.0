@@ -1,4 +1,22 @@
 "use client";
-const items=["Mis favoritos", "Búsquedas guardadas", "Visitas solicitadas", "Mensajes"]; function PanelContent(){return <main className="page-wrap"><div className="page-heading"><span className="eyebrow">CENTRO DE CONTROL</span><h1>Mi espacio</h1><p>Tus propiedades guardadas y conversaciones, en un solo lugar.</p></div><div className="dashboard-grid">{items.map((x,i)=><article className="dashboard-card" key={x}><span className="dashboard-number">0{i+1}</span><h3>{x}</h3><p>Accede y administra esta sección de tu cuenta.</p><a href="/acceso">Configurar acceso ↗</a></article>)}</div><div className="notice">Panel de interfaz. Los permisos, datos y acciones se conectarán con la autenticación y API.</div></main>}
 import ProtectedPanel from '@/components/protected-panel';
-export default function Page(){return <ProtectedPanel allowed={['BUYER']}><PanelContent /></ProtectedPanel>;}
+import { PanelShell } from '@/components/panel-shell';
+
+export default function Page() {
+  return <ProtectedPanel allowed={['BUYER']}>{user => <PanelShell user={user}
+    intro="Encuentra tu próximo espacio: busca, compara y habla directo con el asesor de cada propiedad."
+    actions={[
+      { title: 'Buscar propiedades', text: 'Filtra por municipio, tipo, precio y recámaras.', href: '/propiedades', primary: true },
+      { title: 'Comparar', text: 'Pon lado a lado las características de varias opciones.', href: '/comparar' },
+      { title: 'Cómo funciona', text: 'Qué pasa cuando contactas a un asesor.', href: '/como-funciona' },
+    ]}>
+    <section className="flow">
+      <h2 className="panel-subtitle">Tu recorrido</h2>
+      <ol className="flow-steps">
+        <li><span className="step-num">1</span><div><b>Explora</b><p>Todas las propiedades del catálogo ya fueron revisadas por Agencia EH.</p></div></li>
+        <li><span className="step-num">2</span><div><b>Compara</b><p>Revisa precio, metros y recámaras antes de decidir.</p></div></li>
+        <li><span className="step-num">3</span><div><b>Contacta</b><p>Desde la ficha, escribe al asesor por WhatsApp o correo para agendar una visita.</p></div></li>
+      </ol>
+    </section>
+  </PanelShell>}</ProtectedPanel>;
+}

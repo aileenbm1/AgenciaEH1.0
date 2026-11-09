@@ -1,15 +1,119 @@
 "use client";
-import { useEffect,useState } from 'react';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getCurrentUser } from '@/lib/auth';
-// En el navegador se usa el proxy del propio sitio (/api/v1 → API_URL).
-const API=process.env.NEXT_PUBLIC_API_URL||'/api/v1';
-type Property={id:string;title:string;municipality:string;neighborhood?:string|null;price:string|number;operation:'SALE'|'RENT';status:string;images:{url:string}[]};
-const money=(n:number|string)=>new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}).format(Number(n));
-export default function MyProperties(){const [items,setItems]=useState<Property[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[busy,setBusy]=useState('');const [form,setForm]=useState({title:'',description:'',operation:'SALE',price:'',municipality:'León',neighborhood:'',propertyType:'Casa',bedrooms:'3',bathrooms:'2',landArea:'',builtArea:'',images:''});
- async function load(){setLoading(true);try{const u=await getCurrentUser();if(!u||!['AGENT','AGENCY','ADMIN'].includes(u.role))throw new Error('Inicia sesión con una cuenta de agente o agencia.');const token=sessionStorage.getItem('eh_access_token');const r=await fetch(`${API}/properties/mine`,{headers:{Authorization:`Bearer ${token}`}});const d=await r.json();if(!r.ok)throw new Error(d.message||'No se pudieron cargar tus propiedades.');setItems(d);}catch(e:any){setError(e.message);}finally{setLoading(false);}}
- useEffect(()=>{load();},[]);
- async function create(e:React.FormEvent){e.preventDefault();setBusy('create');setError('');try{const token=sessionStorage.getItem('eh_access_token');const payload={...form,price:Number(form.price),bedrooms:Number(form.bedrooms),bathrooms:Number(form.bathrooms),landArea:form.landArea?Number(form.landArea):undefined,builtArea:form.builtArea?Number(form.builtArea):undefined,images:form.images.split('\n').map(x=>x.trim()).filter(Boolean)};const r=await fetch(`${API}/properties`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok)throw new Error(Array.isArray(d.message)?d.message.join(' '):d.message);setForm({...form,title:'',description:'',price:'',images:''});await load();}catch(e:any){setError(e.message);}finally{setBusy('');}}
- async function action(id:string,kind:'submit'|'delete'){if(kind==='delete'&&!confirm('¿Eliminar esta propiedad? Esta acción no se puede deshacer.'))return;setBusy(id);try{const token=sessionStorage.getItem('eh_access_token');const r=await fetch(`${API}/properties/${id}${kind==='submit'?'/submit':''}`,{method:kind==='submit'?'POST':'DELETE',headers:{Authorization:`Bearer ${token}`}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.message||'No se pudo completar la acción.');await load();}catch(e:any){setError(e.message);}finally{setBusy('');}}
- return <main className="page-wrap"><div className="page-heading"><span className="eyebrow">GESTIÓN INMOBILIARIA</span><h1>Mis propiedades</h1><p>Registra inmuebles, administra tus publicaciones y envíalas a revisión.</p></div>{error&&<div className="notice" role="alert">{error}</div>}<section className="dashboard-card" style={{marginBottom:28}}><h2>Nueva propiedad</h2><form onSubmit={create} className="property-form"><label>Título<input required minLength={8} value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="Casa con jardín en zona norte"/></label><label>Descripción<textarea required minLength={30} rows={4} value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Describe el inmueble, su estado y principales ventajas."/></label><div className="form-grid"><label>Operación<select value={form.operation} onChange={e=>setForm({...form,operation:e.target.value})}><option value="SALE">Venta</option><option value="RENT">Renta</option></select></label><label>Precio (MXN)<input required type="number" min="1" value={form.price} onChange={e=>setForm({...form,price:e.target.value})}/></label><label>Municipio<input required value={form.municipality} onChange={e=>setForm({...form,municipality:e.target.value})}/></label><label>Colonia<input value={form.neighborhood} onChange={e=>setForm({...form,neighborhood:e.target.value})}/></label><label>Tipo<input required value={form.propertyType} onChange={e=>setForm({...form,propertyType:e.target.value})}/></label><label>Recámaras<input type="number" min="0" value={form.bedrooms} onChange={e=>setForm({...form,bedrooms:e.target.value})}/></label><label>Baños<input type="number" min="0" value={form.bathrooms} onChange={e=>setForm({...form,bathrooms:e.target.value})}/></label><label>Terreno m²<input type="number" min="0" value={form.landArea} onChange={e=>setForm({...form,landArea:e.target.value})}/></label><label>Construcción m²<input type="number" min="0" value={form.builtArea} onChange={e=>setForm({...form,builtArea:e.target.value})}/></label></div><label>Fotografías (una URL por línea)<textarea rows={3} value={form.images} onChange={e=>setForm({...form,images:e.target.value})} placeholder="https://..."/><small>Hasta 20 enlaces HTTPS. La carga directa de archivos a almacenamiento seguro se integrará en una siguiente iteración.</small></label><button className="button button-primary" disabled={busy==='create'}>{busy==='create'?'Guardando…':'Guardar borrador'}</button></form></section><section><div className="section-heading"><h2>Publicaciones registradas</h2><button className="button button-secondary" onClick={load}>Actualizar</button></div>{loading?<p>Cargando propiedades…</p>:items.length===0?<p>Aún no tienes propiedades registradas.</p>:<div className="property-management-list">{items.map(p=><article className="dashboard-card property-management-card" key={p.id}>{p.images[0]?.url&&<img src={p.images[0].url} alt=""/>}<div><h3>{p.title}</h3><p>{p.neighborhood?`${p.neighborhood}, `:''}{p.municipality} · {p.operation==='SALE'?'Venta':'Renta'}</p><strong>{money(p.price)}</strong><p>Estado: <b>{({DRAFT:'Borrador',REVIEW:'En revisión',PUBLISHED:'Publicada',SOLD:'Vendida',RENTED:'Rentada',REJECTED:'Rechazada'} as Record<string,string>)[p.status]||p.status}</b></p><div className="property-actions">{p.status==='DRAFT'||p.status==='REJECTED'?<button className="button button-primary" disabled={busy===p.id} onClick={()=>action(p.id,'submit')}>Enviar a revisión</button>:null}<button className="button button-secondary" disabled={busy===p.id} onClick={()=>action(p.id,'delete')}>Eliminar</button></div></div></article>)}</div>}</section><p style={{marginTop:24}}><Link href="/panel/agente">← Volver al panel</Link></p><style jsx>{`.property-form{display:grid;gap:16px}.property-form label{display:grid;gap:7px;font-size:14px}.property-form input,.property-form textarea,.property-form select{width:100%;padding:12px;border:1px solid #d9d2c7;border-radius:8px;background:#fff;color:#172536;font:inherit}.property-form small{color:#777}.form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.section-heading,.property-actions{display:flex;justify-content:space-between;align-items:center;gap:12px}.property-management-list{display:grid;gap:14px}.property-management-card{display:grid;grid-template-columns:180px 1fr;gap:20px}.property-management-card img{width:100%;height:150px;object-fit:cover;border-radius:8px}.property-management-card h3{margin:0 0 8px}.property-management-card p{margin:6px 0}@media(max-width:700px){.form-grid{grid-template-columns:1fr 1fr}.property-management-card{grid-template-columns:1fr}.property-management-card img{height:190px}}`}</style></main>;
+import ProtectedPanel from '@/components/protected-panel';
+import { authJson, roleHome, SessionUser } from '@/lib/auth';
+import { MUNICIPALITIES, PROPERTY_STATUS, PROPERTY_TYPES } from '@/lib/roles';
+import { mxn } from '@/lib/data';
+
+type Property = { id: string; slug: string; title: string; municipality: string; neighborhood?: string | null; price: string | number; operation: 'SALE' | 'RENT'; status: string; images: { url: string }[] };
+const EMPTY = { title: '', description: '', operation: 'SALE', price: '', municipality: 'León', neighborhood: '', propertyType: 'Casa', bedrooms: '3', bathrooms: '2', landArea: '', builtArea: '', images: '' };
+
+function MyProperties({ user }: { user: SessionUser }) {
+  const [items, setItems] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(''); const [ok, setOk] = useState('');
+  const [busy, setBusy] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(EMPTY);
+  const set = (k: keyof typeof EMPTY) => (e: { target: { value: string } }) => setForm(f => ({ ...f, [k]: e.target.value }));
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setItems(await authJson<Property[]>('/properties/mine')); }
+    catch (e) { setError(e instanceof Error ? e.message : 'No se pudieron cargar tus propiedades.'); }
+    finally { setLoading(false); }
+  }, []);
+  useEffect(() => { load(); if (window.location.hash === '#nueva') setShowForm(true); }, [load]);
+
+  async function create(e: FormEvent) {
+    e.preventDefault(); setBusy('create'); setError(''); setOk('');
+    try {
+      const payload = { ...form, price: Number(form.price), bedrooms: Number(form.bedrooms), bathrooms: Number(form.bathrooms),
+        landArea: form.landArea ? Number(form.landArea) : undefined, builtArea: form.builtArea ? Number(form.builtArea) : undefined,
+        images: form.images.split('\n').map(x => x.trim()).filter(Boolean) };
+      await authJson('/properties', { method: 'POST', body: JSON.stringify(payload) });
+      setForm(EMPTY); setShowForm(false);
+      setOk('Borrador guardado. Cuando esté listo, presiona "Enviar a revisión" para que un administrador lo apruebe.');
+      await load();
+    } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo guardar.'); }
+    finally { setBusy(''); }
+  }
+
+  async function action(p: Property, kind: 'submit' | 'delete') {
+    if (kind === 'delete' && !confirm(`¿Eliminar "${p.title}"? Esta acción no se puede deshacer.`)) return;
+    setBusy(p.id); setError(''); setOk('');
+    try {
+      await authJson(`/properties/${p.id}${kind === 'submit' ? '/submit' : ''}`, { method: kind === 'submit' ? 'POST' : 'DELETE' });
+      setOk(kind === 'submit' ? `"${p.title}" se envió a revisión. Te avisaremos cuando sea aprobada.` : 'Propiedad eliminada.');
+      await load();
+    } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo completar la acción.'); }
+    finally { setBusy(''); }
+  }
+
+  return <main className="page-wrap">
+    <Link href={roleHome[user.role]} className="back-link">← Volver a mi panel</Link>
+    <div className="page-heading panel-heading">
+      <div><span className="eyebrow">GESTIÓN INMOBILIARIA</span><h1>Mis propiedades</h1>
+        <p>Crea un borrador → envíalo a revisión → cuando el administrador lo apruebe, aparece en el catálogo.</p></div>
+      {!showForm && <button className="button button-gold" onClick={() => setShowForm(true)}>+ Nueva propiedad</button>}
+    </div>
+
+    <div className="status-legend">{['DRAFT', 'REVIEW', 'PUBLISHED', 'REJECTED'].map(s =>
+      <span key={s}><i className={`status-pill ${PROPERTY_STATUS[s].tone}`}>{PROPERTY_STATUS[s].label}</i>{PROPERTY_STATUS[s].help}</span>)}
+    </div>
+
+    {error && <div className="notice" role="alert">{error}</div>}
+    {ok && <div className="notice ok" role="status">{ok}</div>}
+
+    {showForm && <section id="nueva" className="dashboard-card form-card">
+      <div className="section-heading"><h2>Nueva propiedad</h2><button type="button" className="inline-link" onClick={() => setShowForm(false)}>Cancelar</button></div>
+      <p className="muted lead">Se guardará como <b>borrador</b>. Nadie más la verá hasta que la envíes a revisión y sea aprobada.</p>
+      <form onSubmit={create} className="property-form">
+        <label>Título<input required minLength={8} value={form.title} onChange={set('title')} placeholder="Casa con jardín en zona norte" /></label>
+        <label>Descripción<textarea required minLength={30} rows={4} value={form.description} onChange={set('description')} placeholder="Describe el inmueble, su estado y principales ventajas (mínimo 30 caracteres)." /></label>
+        <div className="form-grid">
+          <label>Operación<select value={form.operation} onChange={set('operation')}><option value="SALE">Venta</option><option value="RENT">Renta</option></select></label>
+          <label>Precio (MXN){form.operation === 'RENT' ? ' mensual' : ''}<input required type="number" min="1" value={form.price} onChange={set('price')} /></label>
+          <label>Tipo de inmueble<select value={form.propertyType} onChange={set('propertyType')}>{PROPERTY_TYPES.map(t => <option key={t}>{t}</option>)}</select></label>
+          <label>Municipio<select value={form.municipality} onChange={set('municipality')}>{MUNICIPALITIES.map(m => <option key={m}>{m}</option>)}</select></label>
+          <label>Colonia<input value={form.neighborhood} onChange={set('neighborhood')} /></label>
+          <label>Recámaras<input type="number" min="0" value={form.bedrooms} onChange={set('bedrooms')} /></label>
+          <label>Baños<input type="number" min="0" value={form.bathrooms} onChange={set('bathrooms')} /></label>
+          <label>Terreno m²<input type="number" min="0" value={form.landArea} onChange={set('landArea')} /></label>
+          <label>Construcción m²<input type="number" min="0" value={form.builtArea} onChange={set('builtArea')} /></label>
+        </div>
+        <label>Fotografías (una URL por línea)<textarea rows={3} value={form.images} onChange={set('images')} placeholder="https://..." /><small>Hasta 20 enlaces HTTPS. La primera será la portada. La carga directa de archivos llegará en una siguiente versión.</small></label>
+        <button className="button button-navy" disabled={busy === 'create'}>{busy === 'create' ? 'Guardando…' : 'Guardar borrador'}</button>
+      </form>
+    </section>}
+
+    <section>
+      <div className="section-heading"><h2>Publicaciones registradas</h2><button className="button button-outline" onClick={load} disabled={loading}>Actualizar</button></div>
+      {loading ? <p className="muted">Cargando propiedades…</p> : items.length === 0
+        ? <div className="empty-start">Aún no tienes propiedades. <button className="inline-link" onClick={() => setShowForm(true)}>Crea la primera</button>.</div>
+        : <div className="property-management-list">{items.map(p => {
+          const st = PROPERTY_STATUS[p.status] || { label: p.status, help: '', tone: 'neutral' as const };
+          return <article className="dashboard-card property-management-card" key={p.id}>
+            {p.images[0]?.url ? <img src={p.images[0].url} alt="" /> : <div className="img-missing">Sin fotos</div>}
+            <div>
+              <i className={`status-pill ${st.tone}`}>{st.label}</i>
+              <h3>{p.title}</h3>
+              <p className="meta">{p.neighborhood ? `${p.neighborhood}, ` : ''}{p.municipality} · {p.operation === 'SALE' ? 'Venta' : 'Renta'}</p>
+              <strong>{mxn(Number(p.price))}</strong>
+              <p className="meta next-step">{st.help}</p>
+              <div className="property-actions">
+                {(p.status === 'DRAFT' || p.status === 'REJECTED') && <button className="button button-navy" disabled={busy === p.id} onClick={() => action(p, 'submit')}>{p.status === 'REJECTED' ? 'Reenviar a revisión' : 'Enviar a revisión'}</button>}
+                {p.status === 'PUBLISHED' && <Link className="button button-outline" href={`/propiedades/${p.slug}`}>Ver publicación</Link>}
+                <button className="button button-ghost" disabled={busy === p.id} onClick={() => action(p, 'delete')}>Eliminar</button>
+              </div>
+            </div>
+          </article>;
+        })}</div>}
+    </section>
+  </main>;
+}
+
+export default function Page() {
+  return <ProtectedPanel allowed={['AGENT', 'AGENCY']}>{user => <MyProperties user={user} />}</ProtectedPanel>;
 }

@@ -18,7 +18,7 @@ export default async function Listings({searchParams}:{searchParams:Promise<Reco
  <button className="button button-navy" type="submit">Aplicar filtros</button><Link className="button button-outline" href="/propiedades">Limpiar</Link>
  </form>
  <p className="results-count">{result.total} {result.total===1?'propiedad encontrada':'propiedades encontradas'} · Página {result.page} de {Math.max(1,result.pages)}</p>
- {cards.length?<PropertyGrid items={cards}/>:<div className="notice">{result.total===0?'No encontramos propiedades publicadas con esos criterios. Intenta cambiar los filtros.':'No fue posible consultar el catálogo en este momento. Verifica que la API y la base de datos estén disponibles.'}</div>}
+ {cards.length?<PropertyGrid items={cards}/>:<div className="notice">{result.total===0?'No encontramos propiedades publicadas con esos criterios. Intenta cambiar los filtros.':'No fue posible consultar el catálogo en este momento. Verifica que la API y SQL Server estén disponibles.'}</div>}
  {result.pages>1&&<div className="center" style={{display:'flex',gap:12,justifyContent:'center'}}>{result.page>1&&<Link className="button button-outline" href={`/propiedades?${new URLSearchParams({...Object.fromEntries(Object.entries(params).filter(([,v])=>v!==undefined) as [string,string][]),page:String(result.page-1)})}`}>← Anterior</Link>}{result.page<result.pages&&<Link className="button button-outline" href={`/propiedades?${new URLSearchParams({...Object.fromEntries(Object.entries(params).filter(([,v])=>v!==undefined) as [string,string][]),page:String(result.page+1)})}`}>Siguiente →</Link>}</div>}
  </main>
 }

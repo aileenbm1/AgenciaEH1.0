@@ -1,0 +1,74 @@
+import type { UserRole } from './auth';
+
+/**
+ * Fuente única de verdad sobre qué es cada rol, qué puede hacer y a dónde va.
+ * Se usa en el registro, el encabezado, los paneles y la página "Cómo funciona".
+ */
+export type RoleInfo = {
+  id: UserRole;
+  label: string;          // Nombre corto visible
+  who: string;            // "Para quién es"
+  summary: string;        // Una línea que explica el rol
+  can: string[];          // Qué puede hacer hoy
+  soon?: string[];        // Qué llegará después (se muestra como "Próximamente")
+  home: string;           // Ruta de su panel
+  publicSignup: boolean;  // ¿Se puede registrar desde el sitio?
+};
+
+export const ROLES: Record<UserRole, RoleInfo> = {
+  BUYER: {
+    id: 'BUYER',
+    label: 'Comprador / Inquilino',
+    who: 'Busco una propiedad para comprar o rentar',
+    summary: 'Explora el catálogo, compara opciones y contacta al asesor de cada propiedad.',
+    can: ['Buscar y filtrar propiedades publicadas', 'Comparar propiedades', 'Contactar al asesor por WhatsApp o correo', 'Editar tu perfil'],
+    soon: ['Guardar favoritos', 'Búsquedas guardadas con avisos', 'Agendar visitas'],
+    home: '/panel/comprador',
+    publicSignup: true,
+  },
+  AGENT: {
+    id: 'AGENT',
+    label: 'Agente / Asesor',
+    who: 'Soy asesor inmobiliario o dueño y quiero anunciar',
+    summary: 'Registra tus inmuebles, envíalos a revisión y, una vez aprobados, aparecen en el catálogo.',
+    can: ['Crear propiedades como borrador', 'Enviar propiedades a revisión', 'Ver el estado de cada publicación', 'Eliminar tus propiedades'],
+    soon: ['Recibir y dar seguimiento a prospectos (CRM)', 'Plan / membresía de publicaciones'],
+    home: '/panel/agente',
+    publicSignup: true,
+  },
+  AGENCY: {
+    id: 'AGENCY',
+    label: 'Agencia',
+    who: 'Represento a una inmobiliaria con varios asesores',
+    summary: 'Publica como agencia y, próximamente, administra a tu equipo de agentes y sus prospectos.',
+    can: ['Crear y enviar propiedades a revisión a nombre de la agencia', 'Ver el estado de las publicaciones', 'Perfil de agencia'],
+    soon: ['Invitar y administrar agentes', 'Ver prospectos del equipo', 'Perfil público de la agencia'],
+    home: '/panel/agencia',
+    publicSignup: true,
+  },
+  ADMIN: {
+    id: 'ADMIN',
+    label: 'Administrador',
+    who: 'Equipo interno de Agencia EH',
+    summary: 'Revisa cada propiedad antes de que sea pública: la aprueba, la rechaza o la regresa a borrador.',
+    can: ['Ver la cola de propiedades en revisión', 'Aprobar (publicar) o rechazar propiedades', 'Editar o eliminar cualquier propiedad'],
+    soon: ['Gestionar usuarios y roles', 'Registrar membresías y pagos (efectivo / transferencia)', 'Métricas generales'],
+    home: '/panel/admin',
+    publicSignup: false,
+  },
+};
+
+export const SIGNUP_ROLES = (Object.values(ROLES).filter(r => r.publicSignup)) as RoleInfo[];
+
+/** Estados de una propiedad, en el orden del flujo. */
+export const PROPERTY_STATUS: Record<string, { label: string; help: string; tone: 'neutral' | 'warn' | 'ok' | 'bad' }> = {
+  DRAFT:     { label: 'Borrador',    help: 'Solo tú la ves. Complétala y envíala a revisión.', tone: 'neutral' },
+  REVIEW:    { label: 'En revisión', help: 'Un administrador la está revisando. No es pública todavía.', tone: 'warn' },
+  PUBLISHED: { label: 'Publicada',   help: 'Visible para todos en el catálogo.', tone: 'ok' },
+  REJECTED:  { label: 'Rechazada',   help: 'Corrige la información y vuelve a enviarla a revisión.', tone: 'bad' },
+  SOLD:      { label: 'Vendida',     help: 'Operación cerrada.', tone: 'neutral' },
+  RENTED:    { label: 'Rentada',     help: 'Operación cerrada.', tone: 'neutral' },
+};
+
+export const MUNICIPALITIES = ['León', 'Guanajuato', 'Irapuato', 'Celaya', 'San Miguel de Allende', 'Silao'];
+export const PROPERTY_TYPES = ['Casa', 'Departamento', 'Terreno', 'Local comercial', 'Oficina'];

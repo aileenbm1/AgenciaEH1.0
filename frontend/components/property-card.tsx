@@ -1,2 +1,23 @@
-import Link from "next/link"; import {Property,mxn} from "@/lib/data";
-export function PropertyCard({p}:{p:Property}){return <article className="property-card"><Link href={`/propiedades/${p.slug}`} className="property-photo" style={{backgroundImage:`url(${p.image})`}}><span className="pill">{p.operation}</span>{p.tag&&<span className="photo-tag">{p.tag}</span>}</Link><div className="property-body"><div className="price">{mxn(p.price)} <small>{p.operation==="Renta"?"/ mes":""}</small></div><Link href={`/propiedades/${p.slug}`} className="property-title">{p.title}</Link><p className="muted">{p.neighborhood}, {p.city}, Gto.</p><div className="property-stats"><span>{p.beds} recámaras</span><span>{p.baths} baños</span><span>{p.area} m²</span></div></div></article>}
+import Link from "next/link";
+import { BedDouble, Bath, Ruler, MapPin } from "lucide-react";
+import { Property, mxn } from "@/lib/data";
+
+export function PropertyCard({ p }: { p: Property }) {
+  const isRent = p.operation === "Renta";
+  return <article className="property-card">
+    <Link href={`/propiedades/${p.slug}`} className="property-photo" style={{ backgroundImage: `url(${p.image})` }} aria-label={p.title}>
+      <span className={`pill${isRent ? " rent" : ""}`}>{p.operation}</span>
+      {p.tag && <span className="photo-tag">{p.tag}</span>}
+    </Link>
+    <div className="property-body">
+      <div className="price">{mxn(p.price)} <small>{isRent ? "/ mes" : "MXN"}</small></div>
+      <Link href={`/propiedades/${p.slug}`} className="property-title">{p.title}</Link>
+      <p className="property-location"><MapPin size={15} strokeWidth={1.5} aria-hidden />{p.neighborhood}, {p.city}, Gto.</p>
+      <div className="property-stats">
+        <span title="Recámaras"><BedDouble size={17} strokeWidth={1.5} aria-hidden />{p.beds} rec.</span>
+        <span title="Baños"><Bath size={17} strokeWidth={1.5} aria-hidden />{p.baths} baños</span>
+        <span title="Superficie"><Ruler size={17} strokeWidth={1.5} aria-hidden />{p.area} m²</span>
+      </div>
+    </div>
+  </article>;
+}
