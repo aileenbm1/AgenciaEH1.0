@@ -117,3 +117,29 @@ CREATE TABLE IF NOT EXISTS Favorites (
   CONSTRAINT FK_Favorites_Users FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE,
   CONSTRAINT FK_Favorites_Properties FOREIGN KEY (PropertyId) REFERENCES Properties(Id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Pagos de membresía registrados por un administrador (efectivo o transferencia).
+-- La membresía de un usuario está activa mientras su último PeriodEnd no haya pasado.
+CREATE TABLE IF NOT EXISTS Payments (
+  Id CHAR(36) NOT NULL,
+  UserId CHAR(36) NOT NULL,
+  Plan VARCHAR(60) NOT NULL,
+  Amount DECIMAL(12,2) NOT NULL,
+  Currency CHAR(3) NOT NULL DEFAULT 'MXN',
+  Method VARCHAR(12) NOT NULL,
+  Reference VARCHAR(120) NULL,
+  PaidAt DATE NOT NULL,
+  PeriodStart DATE NOT NULL,
+  PeriodEnd DATE NOT NULL,
+  Notes VARCHAR(500) NULL,
+  RecordedById CHAR(36) NOT NULL,
+  CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT PK_Payments PRIMARY KEY (Id),
+  CONSTRAINT FK_Payments_Users FOREIGN KEY (UserId) REFERENCES Users(Id),
+  CONSTRAINT FK_Payments_RecordedBy FOREIGN KEY (RecordedById) REFERENCES Users(Id),
+  CONSTRAINT CK_Payments_Method CHECK (Method IN ('CASH','TRANSFER')),
+  CONSTRAINT CK_Payments_Amount CHECK (Amount > 0),
+  CONSTRAINT CK_Payments_Period CHECK (PeriodEnd >= PeriodStart),
+  INDEX IX_Payments_User_Period (UserId, PeriodEnd),
+  INDEX IX_Payments_PaidAt (PaidAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

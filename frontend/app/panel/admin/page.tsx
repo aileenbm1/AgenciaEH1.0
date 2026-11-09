@@ -1,5 +1,8 @@
 "use client";
 import { useCallback, useEffect, useState } from 'react';
+import AdminMetrics from '@/components/admin/admin-metrics';
+import AdminUsers from '@/components/admin/admin-users';
+import AdminPayments from '@/components/admin/admin-payments';
 import ProtectedPanel from '@/components/protected-panel';
 import { PanelShell, PublishFlow } from '@/components/panel-shell';
 import { authJson, SessionUser } from '@/lib/auth';
@@ -67,15 +70,22 @@ function ModerationQueue() {
 }
 
 function AdminPanel({ user }: { user: SessionUser }) {
+  // Al cambiar usuarios o pagos se refrescan las métricas y la lista de pagos.
+  const [refreshKey, setRefreshKey] = useState(0);
+  const changed = useCallback(() => setRefreshKey(k => k + 1), []);
   return <PanelShell user={user}
-    intro="Eres el filtro de calidad: revisas cada propiedad que envían agentes y agencias antes de que sea pública."
+    intro="Revisas cada propiedad antes de que sea pública y administras usuarios, membresías y pagos."
     actions={[
       { title: 'Revisar propiedades', text: 'Aprueba o rechaza lo que está en revisión.', href: '#revision', primary: true },
+      { title: 'Usuarios y membresías', text: 'Roles, cuentas activas y registro de pagos.', href: '#usuarios' },
+      { title: 'Pagos del mes', text: 'Ingresos por efectivo y transferencia.', href: '#pagos' },
       { title: 'Ver catálogo público', text: 'Comprueba cómo se ven las propiedades publicadas.', href: '/propiedades' },
-      { title: 'Roles y flujo', text: 'Resumen de qué hace cada tipo de cuenta.', href: '/como-funciona' },
     ]}>
-    <PublishFlow />
+    <AdminMetrics refreshKey={refreshKey} />
     <ModerationQueue />
+    <AdminUsers me={user} onChanged={changed} />
+    <AdminPayments refreshKey={refreshKey} />
+    <PublishFlow />
   </PanelShell>;
 }
 
