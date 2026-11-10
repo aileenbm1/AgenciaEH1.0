@@ -81,6 +81,7 @@ function AdminPanel({ user }: { user: SessionUser }) {
       { title: 'Crear cuentas', text: 'Agencias, vendedores, compradores y administradores.', href: '#cuentas' },
       { title: 'Usuarios y membresías', text: 'Roles, cuentas activas y registro de pagos.', href: '#usuarios' },
       { title: 'Pagos del mes', text: 'Ingresos por efectivo y transferencia.', href: '#pagos' },
+      { title: 'Prospectos y visitas', text: 'Todos los mensajes y visitas del sitio.', href: '/panel/prospectos' },
       { title: 'Ver catálogo público', text: 'Comprueba cómo se ven las propiedades publicadas.', href: '/propiedades' },
     ]}>
     <AdminMetrics refreshKey={refreshKey} />

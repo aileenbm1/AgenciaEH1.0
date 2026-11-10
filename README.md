@@ -1,4 +1,4 @@
-# Agencia EH — V0.14.0
+# Agencia EH — V0.15.0
 
 Plataforma inmobiliaria desarrollada con Next.js, NestJS y **MySQL** (compatible con Hostinger). El backend usa `mysql2` con consultas SQL parametrizadas; no se utiliza ORM.
 
@@ -61,6 +61,13 @@ Genera, ya compilados, `deploy/agencia-eh-sitio-unico.zip` (sitio y API en un so
 ## Cuentas y acceso
 - Registro público cerrado (se abre con `PUBLIC_SIGNUP=true`). Las cuentas las crean: el admin (todas), las agencias (agentes y compradores) y los agentes (compradores), con `POST /api/v1/users`. Se genera un enlace de activación de 7 días (por correo y para copiar/WhatsApp).
 - Membresía vencida (último periodo pagado < hoy) = sin acceso. Sin pagos registrados no se bloquea. Los administradores nunca se bloquean.
+
+## Compradores y prospectos
+- Ficha: contacto real del anunciante (WhatsApp) y formularios de mensaje y visita → `POST /api/v1/leads` (aviso por correo al anunciante).
+- Prospectos (CRM): `GET /api/v1/leads/mine` (`?scope=team` para agencias), `PATCH /api/v1/leads/:id`; el comprador ve los suyos en `GET /api/v1/leads/sent`.
+- Favoritos: `/api/v1/favorites`. Búsquedas guardadas con aviso por correo al publicarse algo que coincide: `/api/v1/saved-searches`.
+- Perfil público de agencia: `/agencias/[slug]` (`GET /api/v1/agencies/:slug`, la agencia lo edita con `PATCH /api/v1/agencies/me`).
+- Comparar usa propiedades reales elegidas con "+ Comparar" (se guardan en el navegador).
 
 ## Pendientes conocidos
 - Las fotos se suben desde el panel (se reducen en el navegador) y se guardan en `UPLOADS_DIR` (por defecto `~/agencia-eh-uploads`). Respáldala junto con la base de datos.

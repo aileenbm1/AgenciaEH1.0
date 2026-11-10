@@ -1,9 +1,10 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { removeMedia } from '../uploads/media';
+import { EngagementService } from '../engagement/engagement.service';
 import { DatabaseService, Queryable } from '../database/database.service'; import { CreatePropertyDto } from './dto/create-property.dto'; import { UpdatePropertyDto } from './dto/update-property.dto';
 const WITH_IMAGES=`SELECT p.*,i.Id AS ImageId,i.Url AS ImageUrl,i.Alt AS ImageAlt,i.Position AS ImagePosition`;
-@Injectable() export class PropertiesService { constructor(private db:DatabaseService){}
+@Injectable() export class PropertiesService { constructor(private db:DatabaseService,private engagement:EngagementService){}
  private slug(title:string){return `${title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'').slice(0,65)}-${Date.now().toString(36)}`;}
  private async getById(id:string){const [p]=await this.db.query('SELECT * FROM Properties WHERE Id=? LIMIT 1',[id]);return p;}
  private async insertImages(tx:Queryable,propertyId:string,images:string[]){for(let i=0;i<images.length;i++)await this.db.execute('INSERT INTO PropertyImages(Id,PropertyId,Url,Position) VALUES(?,?,?,?)',[randomUUID(),propertyId,images[i],i],tx);}
@@ -29,7 +30,12 @@ const WITH_IMAGES=`SELECT p.*,i.Id AS ImageId,i.Url AS ImageUrl,i.Alt AS ImageAl
  }
  /** Cola de revisión del administrador: propiedades en REVIEW con datos del anunciante. */
  async reviewQueue(){const rows=await this.db.query(`${WITH_IMAGES},u.FullName AS OwnerName,u.Email AS OwnerEmail,u.Role AS OwnerRole FROM Properties p JOIN Users u ON u.Id=p.OwnerId LEFT JOIN PropertyImages i ON i.PropertyId=p.Id WHERE p.Status='REVIEW' ORDER BY p.UpdatedAt ASC,p.Id,i.Position`);const items=this.group(rows);const owners=new Map(rows.map((r:any)=>[r.Id,{fullName:r.OwnerName,email:r.OwnerEmail,role:r.OwnerRole}]));return items.map(p=>({...p,owner:owners.get(p.id)}));}
- async bySlug(slug:string){const rows=await this.db.query(`${WITH_IMAGES} FROM Properties p LEFT JOIN PropertyImages i ON i.PropertyId=p.Id WHERE p.Slug=? AND p.Status='PUBLISHED' ORDER BY i.Position`,[slug]);const items=this.group(rows);if(!items.length)throw new NotFoundException('Propiedad no encontrada.');return items[0];}
+ async bySlug(slug:string){const rows=await this.db.query(`${WITH_IMAGES} FROM Properties p LEFT JOIN PropertyImages i ON i.PropertyId=p.Id WHERE p.Slug=? AND p.Status='PUBLISHED' ORDER BY i.Position`,[slug]);const items=this.group(rows);if(!items.length)throw new NotFoundException('Propiedad no encontrada.');
+  // Contacto público del anunciante (nombre, teléfono para WhatsApp y agencia). El correo no se publica: los mensajes llegan por el formulario.
+  const [o]=await this.db.query<any>(`SELECT u.FullName,u.Role,COALESCE(u.Phone,ap.Phone,own.Phone,ag.Phone) AS Phone,COALESCE(own.Name,ag.Name) AS AgencyName,COALESCE(own.Slug,ag.Slug) AS AgencySlug
+   FROM Users u LEFT JOIN AgentProfiles ap ON ap.UserId=u.Id LEFT JOIN AgencyProfiles ag ON ag.Id=ap.AgencyId LEFT JOIN AgencyProfiles own ON own.UserId=u.Id WHERE u.Id=? LIMIT 1`,[items[0].ownerId]);
+  const {ownerId,...pub}=items[0];
+  return {...pub,owner:o?{fullName:o.AgencyName&&o.Role==='AGENCY'?o.AgencyName:o.FullName,role:o.Role,phone:o.Phone||process.env.CONTACT_PHONE?.trim()||null,agency:o.AgencySlug?{name:o.AgencyName,slug:o.AgencySlug}:null}:null};}
  private async detailInternal(id:string){const rows=await this.db.query(`${WITH_IMAGES} FROM Properties p LEFT JOIN PropertyImages i ON i.PropertyId=p.Id WHERE p.Id=? ORDER BY i.Position`,[id]);return this.group(rows)[0];}
  async update(id:string,userId:string,role:string,d:UpdatePropertyDto){const p=await this.getById(id);if(!p)throw new NotFoundException('Propiedad no encontrada.');if(role!=='ADMIN'&&p.OwnerId!==userId)throw new ForbiddenException('No puedes modificar esta propiedad.');if(p.Status==='PUBLISHED'&&role!=='ADMIN')throw new BadRequestException('Una propiedad publicada debe volver a revisión para aplicar cambios.');
   const fields:Record<string,string>={title:'Title',description:'Description',operation:'Operation',price:'Price',municipality:'Municipality',neighborhood:'Neighborhood',propertyType:'PropertyType',bedrooms:'Bedrooms',bathrooms:'Bathrooms',landArea:'LandArea',builtArea:'BuiltArea'};
@@ -41,6 +47,6 @@ const WITH_IMAGES=`SELECT p.*,i.Id AS ImageId,i.Url AS ImageUrl,i.Alt AS ImageAl
   if(d.images)removeMedia(oldImages.filter(u=>!d.images!.includes(u)));
   return this.detailInternal(id);}
  async submit(id:string,userId:string){const p=await this.getById(id);if(!p)throw new NotFoundException('Propiedad no encontrada.');if(p.OwnerId!==userId)throw new ForbiddenException();if(!p.Title||!p.Description||!p.Municipality)throw new BadRequestException('Completa los datos antes de enviar a revisión.');await this.db.execute("UPDATE Properties SET Status='REVIEW',UpdatedAt=UTC_TIMESTAMP() WHERE Id=?",[id]);return this.detailInternal(id);}
- async moderate(id:string,status:string){if(!['PUBLISHED','REJECTED','DRAFT'].includes(status))throw new BadRequestException('Estado de moderación no válido.');const p=await this.getById(id);if(!p)throw new NotFoundException('Propiedad no encontrada.');await this.db.execute('UPDATE Properties SET Status=?,UpdatedAt=UTC_TIMESTAMP() WHERE Id=?',[status,id]);return this.detailInternal(id);}
+ async moderate(id:string,status:string){if(!['PUBLISHED','REJECTED','DRAFT'].includes(status))throw new BadRequestException('Estado de moderación no válido.');const p=await this.getById(id);if(!p)throw new NotFoundException('Propiedad no encontrada.');await this.db.execute('UPDATE Properties SET Status=?,UpdatedAt=UTC_TIMESTAMP() WHERE Id=?',[status,id]);if(status==='PUBLISHED'&&p.Status!=='PUBLISHED')this.engagement.notifySearches(id);return this.detailInternal(id);}
  async remove(id:string,userId:string,role:string){const p=await this.getById(id);if(!p)throw new NotFoundException('Propiedad no encontrada.');if(role!=='ADMIN'&&p.OwnerId!==userId)throw new ForbiddenException();const urls=(await this.db.query<any>('SELECT Url FROM PropertyImages WHERE PropertyId=?',[id])).map(r=>r.Url as string);await this.db.execute('DELETE FROM Properties WHERE Id=?',[id]);removeMedia(urls);return {deleted:true};}
 }

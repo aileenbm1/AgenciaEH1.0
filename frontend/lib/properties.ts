@@ -1,6 +1,6 @@
 import { Property } from './data';
 import { getJson } from './api-transport';
-export type ApiProperty = { id:string; slug:string; title:string; description?:string|null; operation:'RENT'|'SALE'; price:string|number; municipality:string; neighborhood?:string|null; propertyType:string; bedrooms?:number|null; bathrooms?:number|null; landArea?:string|number|null; builtArea?:string|number|null; images?:{url:string;alt?:string|null;position:number}[] };
+export type ApiProperty = { id:string; slug:string; title:string; description?:string|null; operation:'RENT'|'SALE'; price:string|number; municipality:string; neighborhood?:string|null; propertyType:string; bedrooms?:number|null; bathrooms?:number|null; landArea?:string|number|null; builtArea?:string|number|null; images?:{url:string;alt?:string|null;position:number}[]; owner?:{fullName:string;role:string;phone?:string|null;agency?:{name:string;slug:string}|null}|null };
 export type PropertyPage = {items:ApiProperty[];total:number;page:number;take:number;pages:number};
 export function toCard(p:ApiProperty):Property { return {id:p.id,slug:p.slug,title:p.title,city:p.municipality,neighborhood:p.neighborhood||p.municipality,price:Number(p.price),operation:p.operation==='RENT'?'Renta':'Venta',beds:p.bedrooms||0,baths:p.bathrooms||0,area:Number(p.builtArea||p.landArea||0),image:p.images?.[0]?.url||'/placeholder-property.svg'}; }
 export async function getPublicProperties(params:Record<string,string|number|undefined>={},take=12):Promise<PropertyPage>{

@@ -101,7 +101,12 @@ CREATE TABLE IF NOT EXISTS Leads (
   Message VARCHAR(2000) NULL,
   Status VARCHAR(24) NOT NULL DEFAULT 'NEW',
   AssignedToId CHAR(36) NULL,
+  UserId CHAR(36) NULL,
+  Kind VARCHAR(10) NOT NULL DEFAULT 'MESSAGE',
+  VisitAt DATETIME NULL,
+  Notes VARCHAR(1000) NULL,
   CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UpdatedAt DATETIME NULL,
   CONSTRAINT PK_Leads PRIMARY KEY (Id),
   CONSTRAINT FK_Leads_Properties FOREIGN KEY (PropertyId) REFERENCES Properties(Id) ON DELETE SET NULL,
   CONSTRAINT FK_Leads_AssignedTo FOREIGN KEY (AssignedToId) REFERENCES Users(Id),
@@ -144,4 +149,19 @@ CREATE TABLE IF NOT EXISTS Payments (
   CONSTRAINT CK_Payments_Period CHECK (PeriodEnd >= PeriodStart),
   INDEX IX_Payments_User_Period (UserId, PeriodEnd),
   INDEX IX_Payments_PaidAt (PaidAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Búsquedas guardadas por usuarios; con Alerts=1 se avisa por correo cuando se
+-- publica una propiedad que coincide.
+CREATE TABLE IF NOT EXISTS SavedSearches (
+  Id CHAR(36) NOT NULL,
+  UserId CHAR(36) NOT NULL,
+  Name VARCHAR(120) NOT NULL,
+  Query VARCHAR(600) NOT NULL,
+  Alerts TINYINT(1) NOT NULL DEFAULT 1,
+  LastNotifiedAt DATETIME NULL,
+  CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT PK_SavedSearches PRIMARY KEY (Id),
+  CONSTRAINT FK_SavedSearches_Users FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE,
+  INDEX IX_SavedSearches_User (UserId)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

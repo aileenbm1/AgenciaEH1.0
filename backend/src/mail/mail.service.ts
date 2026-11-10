@@ -80,6 +80,21 @@ export class MailService {
       'Si no esperabas este correo, puedes ignorarlo.');
   }
 
+  /** Aviso al anunciante: llegó un mensaje o una solicitud de visita. */
+  sendLeadNotice(to: string, kind: 'MESSAGE' | 'VISIT', property: string, from: string, when?: string) {
+    this.send(to, kind === 'VISIT' ? `Solicitud de visita · ${property}` : `Nuevo prospecto · ${property}`,
+      kind === 'VISIT' ? 'Te pidieron una visita' : 'Tienes un nuevo prospecto',
+      kind === 'VISIT' ? `${from} quiere visitar "${property}"${when ? ` el ${when}` : ''}. Confírmale desde tu panel.` : `${from} te escribió por "${property}". Responde pronto desde tu panel.`,
+      'Ver en mi panel', '/panel/prospectos', 'Recibes este aviso porque publicaste esta propiedad en Agencia EH.');
+  }
+
+  /** Aviso de búsqueda guardada: se publicó una propiedad que coincide. */
+  sendSearchAlert(to: string, searchName: string, title: string, slug: string) {
+    this.send(to, `Nueva propiedad para "${searchName}" · Agencia EH`, 'Hay una propiedad nueva para ti',
+      `Se publicó "${title}", que coincide con tu búsqueda guardada "${searchName}".`,
+      'Ver propiedad', `/propiedades/${slug}`, 'Puedes desactivar estos avisos en tu panel, en "Búsquedas guardadas".');
+  }
+
   sendEmailVerification(to: string, token: string) {
     this.send(to, 'Confirma tu correo · Agencia EH', 'Confirma tu correo',
       'Gracias por registrarte en Agencia EH. Confirma que este correo es tuyo para terminar de activar tu cuenta. El enlace vence en 24 horas.',

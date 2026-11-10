@@ -8,6 +8,8 @@ export type UserRole = 'BUYER' | 'AGENT' | 'AGENCY' | 'ADMIN';
 export type SessionUser = { id: string; fullName: string; email: string; role: UserRole; phone?: string | null; emailVerified?: boolean };
 type AuthResponse = { accessToken: string; user: SessionUser };
 
+/** Token actual si hay sesión iniciada en esta pestaña (sin intentar renovarla). */
+export function currentToken() { return readToken(); }
 function readToken() { try { return sessionStorage.getItem(TOKEN_KEY); } catch { return null; } }
 function writeToken(token: string | null) {
   try { token ? sessionStorage.setItem(TOKEN_KEY, token) : sessionStorage.removeItem(TOKEN_KEY); } catch { /* sin almacenamiento */ }

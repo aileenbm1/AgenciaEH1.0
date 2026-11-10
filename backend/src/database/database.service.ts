@@ -27,10 +27,19 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
   /** Cambios en tablas existentes (idempotentes). */
   private async migrate() {
-    const cols = await this.query<any>("SELECT COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Users'");
-    if (cols.length && !cols.some((r) => r.c === 'CreatedById')) {
-      await this.getPool().query('ALTER TABLE Users ADD COLUMN CreatedById CHAR(36) NULL, ADD INDEX IX_Users_CreatedBy (CreatedById)');
-      console.error('[Agencia EH] Migración: columna Users.CreatedById agregada');
+    const cols = await this.query<any>("SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('Users','Leads')");
+    const has = (t: string, c: string) => cols.some((r) => r.t === t && r.c === c);
+    const tables = new Set(cols.map((r) => r.t));
+    const changes: [string, string, string][] = [
+      ['Users', 'CreatedById', 'ALTER TABLE Users ADD COLUMN CreatedById CHAR(36) NULL, ADD INDEX IX_Users_CreatedBy (CreatedById)'],
+      ['Leads', 'UserId', 'ALTER TABLE Leads ADD COLUMN UserId CHAR(36) NULL'],
+      ['Leads', 'Kind', "ALTER TABLE Leads ADD COLUMN Kind VARCHAR(10) NOT NULL DEFAULT 'MESSAGE'"],
+      ['Leads', 'VisitAt', 'ALTER TABLE Leads ADD COLUMN VisitAt DATETIME NULL'],
+      ['Leads', 'Notes', 'ALTER TABLE Leads ADD COLUMN Notes VARCHAR(1000) NULL'],
+      ['Leads', 'UpdatedAt', 'ALTER TABLE Leads ADD COLUMN UpdatedAt DATETIME NULL'],
+    ];
+    for (const [t, c, sql] of changes) {
+      if (tables.has(t) && !has(t, c)) { await this.getPool().query(sql); console.error(`[Agencia EH] Migración: columna ${t}.${c} agregada`); }
     }
   }
 
@@ -45,7 +54,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
    * Así no hace falta importar el esquema a mano en phpMyAdmin.
    */
   private async ensureSchema() {
-    const required = ['Users', 'AgencyProfiles', 'AgentProfiles', 'Properties', 'PropertyImages', 'Leads', 'Favorites', 'Payments'];
+    const required = ['Users', 'AgencyProfiles', 'AgentProfiles', 'Properties', 'PropertyImages', 'Leads', 'Favorites', 'Payments', 'SavedSearches'];
     try {
       const before = await this.tableNames();
       const missingBefore = required.filter((t) => !before.includes(t));
