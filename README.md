@@ -1,4 +1,4 @@
-# Agencia EH — V0.16.0
+# Agencia EH — V0.17.0
 
 Plataforma inmobiliaria desarrollada con Next.js, NestJS y **MySQL** (compatible con Hostinger). El backend usa `mysql2` con consultas SQL parametrizadas; no se utiliza ORM.
 
@@ -73,6 +73,13 @@ Genera, ya compilados, `deploy/agencia-eh-sitio-unico.zip` (sitio y API en un so
 ## Datos de prueba
 - `backend/database/datos-prueba.sql`: cuentas `*.demo@example.com` (contraseña `PruebaEH2026`) para cada rol, 14 propiedades en renta y venta (publicadas, en revisión, borrador y rechazada) con ilustraciones de `frontend/public/demo/`, prospectos, visitas, favoritos, búsqueda guardada y membresías (una vencida).
 - `backend/database/datos-prueba-borrar.sql`: quita todo lo anterior sin tocar datos reales.
+
+## Propiedades
+- Operación: Venta, Renta o **Venta y renta** (precio de venta + renta mensual). Los filtros de renta incluyen las de ambas y comparan la renta mensual.
+- Categoría (Residencial, Comercial, Industrial, Terreno, Vacacional) y **disponibilidad** independiente de la revisión: Disponible, Apartada (sigue en catálogo), Rentada o Vendida (salen del catálogo; el enlace muestra "No disponible"). `PATCH /api/v1/properties/:id/availability`. Para rentas, "Disponible a partir de".
+- Fotos con **etiqueta** (Fachada, Sala, Cocina, Plano…) y orden; la etiqueta "Plano" se muestra en "Plano de planta".
+- **Campos personalizados** (RF-03) que define el admin (`/api/v1/admin/custom-fields`): texto, número, sí/no o lista; opcionalmente obligatorios y filtrables (`cf_<clave>` en la búsqueda).
+- Para enviar a revisión: superficie, al menos una foto y los campos obligatorios.
 
 ## Pendientes conocidos
 - Las fotos se suben desde el panel (se reducen en el navegador) y se guardan en `UPLOADS_DIR` (por defecto `~/agencia-eh-uploads`). Respáldala junto con la base de datos.

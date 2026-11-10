@@ -4,7 +4,7 @@ import { DatabaseService } from '../database/database.service';
 import { MailService } from '../mail/mail.service';
 import { CreateLeadDto, SaveSearchDto, UpdateAgencyDto, UpdateLeadDto } from './engagement.dto';
 
-const SEARCH_KEYS = ['operation', 'municipality', 'propertyType', 'minPrice', 'maxPrice', 'bedrooms', 'search', 'neighborhood'];
+const SEARCH_KEYS = ['operation', 'category', 'municipality', 'propertyType', 'minPrice', 'maxPrice', 'bedrooms', 'search', 'neighborhood'];
 const toMysqlDate = (iso: string) => new Date(iso).toISOString().slice(0, 19).replace('T', ' ');
 const fmtWhen = (d: Date) => d.toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short', timeZone: 'America/Mexico_City' });
 
@@ -94,10 +94,10 @@ export class EngagementService {
     return (await this.db.query<any>('SELECT PropertyId FROM Favorites WHERE UserId=?', [userId])).map((r) => r.PropertyId as string);
   }
   async favorites(userId: string) {
-    const rows = await this.db.query<any>(`SELECT p.Id, p.Slug, p.Title, p.Operation, p.Price, p.Municipality, p.Neighborhood, p.PropertyType, p.Bedrooms, p.Bathrooms, p.BuiltArea, p.LandArea, p.Status,
+    const rows = await this.db.query<any>(`SELECT p.Id, p.Slug, p.Title, p.Operation, p.Price, p.RentPrice, p.Availability, p.Municipality, p.Neighborhood, p.PropertyType, p.Bedrooms, p.Bathrooms, p.BuiltArea, p.LandArea, p.Status,
       (SELECT i.Url FROM PropertyImages i WHERE i.PropertyId=p.Id ORDER BY i.Position LIMIT 1) AS Cover
       FROM Favorites f JOIN Properties p ON p.Id = f.PropertyId WHERE f.UserId=? ORDER BY f.CreatedAt DESC`, [userId]);
-    return rows.map((r: any) => ({ id: r.Id, slug: r.Slug, title: r.Title, operation: r.Operation, price: r.Price, municipality: r.Municipality, neighborhood: r.Neighborhood,
+    return rows.map((r: any) => ({ id: r.Id, slug: r.Slug, title: r.Title, operation: r.Operation, price: r.Price, rentPrice: r.RentPrice, availability: r.Availability, municipality: r.Municipality, neighborhood: r.Neighborhood,
       propertyType: r.PropertyType, bedrooms: r.Bedrooms, bathrooms: r.Bathrooms, builtArea: r.BuiltArea, landArea: r.LandArea, available: r.Status === 'PUBLISHED', images: r.Cover ? [{ url: r.Cover, position: 0 }] : [] }));
   }
   async addFavorite(userId: string, propertyId: string) {
@@ -149,10 +149,13 @@ export class EngagementService {
       const rows = await this.db.query<any>(`SELECT s.Id, s.Name, s.Query, u.Email FROM SavedSearches s JOIN Users u ON u.Id = s.UserId
         WHERE s.Alerts=1 AND u.IsActive=1 AND u.Id <> ?`, [p.OwnerId]);
       const has = (a: any, b: string) => String(a || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(b.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''));
-      const price = Number(p.Price);
+      if (!['AVAILABLE', 'RESERVED'].includes(p.Availability || 'AVAILABLE')) return;
       for (const s of rows) {
         const q = new URLSearchParams(s.Query);
-        const ok = (!q.get('operation') || q.get('operation') === p.Operation)
+        // Venta y renta coincide con ambas búsquedas; en renta se compara la renta mensual.
+        const price = Number(q.get('operation') === 'RENT' && p.Operation === 'BOTH' ? p.RentPrice : p.Price);
+        const ok = (!q.get('operation') || q.get('operation') === p.Operation || p.Operation === 'BOTH')
+          && (!q.get('category') || q.get('category') === (p.Category || ''))
           && (!q.get('municipality') || has(p.Municipality, q.get('municipality')!))
           && (!q.get('neighborhood') || has(p.Neighborhood, q.get('neighborhood')!))
           && (!q.get('propertyType') || has(p.PropertyType, q.get('propertyType')!))
@@ -175,10 +178,10 @@ export class EngagementService {
     const agents = await this.db.query<any>(`SELECT u.Id, u.FullName FROM AgentProfiles ap JOIN Users u ON u.Id = ap.UserId WHERE ap.AgencyId=? AND u.IsActive=1 ORDER BY u.FullName`, [a.Id]);
     const owners = [a.UserId, ...agents.map((x: any) => x.Id)];
     const rows = await this.db.query<any>(`SELECT p.*, (SELECT i.Url FROM PropertyImages i WHERE i.PropertyId=p.Id ORDER BY i.Position LIMIT 1) AS Cover
-      FROM Properties p WHERE p.Status='PUBLISHED' AND p.OwnerId IN (${owners.map(() => '?').join(',')}) ORDER BY p.CreatedAt DESC LIMIT 60`, owners);
+      FROM Properties p WHERE p.Status='PUBLISHED' AND p.Availability IN ('AVAILABLE','RESERVED') AND p.OwnerId IN (${owners.map(() => '?').join(',')}) ORDER BY p.CreatedAt DESC LIMIT 60`, owners);
     return {
       name: a.Name, slug: a.Slug, description: a.Description, phone: a.Phone, kind: a.Role === 'DEVELOPER' ? 'DEVELOPER' : 'AGENCY', agents: agents.map((x: any) => ({ id: x.Id, fullName: x.FullName })),
-      properties: rows.map((r: any) => ({ id: r.Id, slug: r.Slug, title: r.Title, operation: r.Operation, price: r.Price, municipality: r.Municipality, neighborhood: r.Neighborhood,
+      properties: rows.map((r: any) => ({ id: r.Id, slug: r.Slug, title: r.Title, operation: r.Operation, price: r.Price, rentPrice: r.RentPrice, availability: r.Availability, municipality: r.Municipality, neighborhood: r.Neighborhood,
         propertyType: r.PropertyType, bedrooms: r.Bedrooms, bathrooms: r.Bathrooms, builtArea: r.BuiltArea, landArea: r.LandArea, images: r.Cover ? [{ url: r.Cover, position: 0 }] : [] })),
     };
   }

@@ -340,6 +340,26 @@ h1,h2{font-family:var(--font-title);color:var(--navy);font-weight:600;letter-spa
 .danger-zone h3{color:#a8322a}
 .button-danger{background:#a8322a;color:#fff;border:0}.button-danger:hover:not(:disabled){background:#8c2820}.button-danger:disabled{opacity:.45;cursor:not-allowed}
 
+/* Ficha: galería con etiquetas, ficha técnica, plano */
+.gallery{display:grid;gap:10px}
+.gallery .detail-image{position:relative}
+.gallery-label{position:absolute;left:14px;bottom:14px;background:rgba(15,23,42,.8);color:#fff;font-size:13px;font-weight:600;padding:5px 10px;border-radius:999px}
+.gallery-count{position:absolute;right:14px;bottom:14px;background:rgba(255,255,255,.9);color:var(--navy);font-size:12px;font-weight:700;padding:4px 9px;border-radius:999px}
+.gallery-nav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.9);font-size:24px;line-height:1;cursor:pointer;color:var(--navy)}
+.gallery-nav.prev{left:10px}.gallery-nav.next{right:10px}
+.gallery-thumbs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.gallery-thumbs button{width:100%;aspect-ratio:4/3;border-radius:8px;border:2px solid transparent;background:#eee center/cover;cursor:pointer;position:relative;padding:0}
+.gallery-thumbs button.is-on{border-color:var(--gold)}
+.gallery-thumbs span{position:absolute;left:4px;right:4px;bottom:4px;background:rgba(15,23,42,.78);color:#fff;font-size:11px;padding:2px 6px;border-radius:6px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.detail-section{margin-top:28px}.detail-section h3{margin:0 0 12px}
+.facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin:0}
+.facts div{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 12px}.facts dt{font-size:12px;color:var(--muted)}.facts dd{margin:2px 0 0;font-weight:600;color:var(--navy)}
+.floor-plan{margin:0 0 14px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}.floor-plan img{width:100%;display:block}.floor-plan figcaption{padding:10px 14px;font-size:13px;color:var(--muted)}
+.detail-price.rent{font-size:20px;margin-top:-6px}
+.price-rent{font-size:14px;font-weight:600;color:var(--navy);margin:-2px 0 6px}.price-rent small{font-weight:500;color:var(--muted)}
+.pill.both{background:var(--gold);color:var(--navy)}
+.availability-pick{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600}.availability-pick select{min-height:40px}
+
 /* Compartir */
 .property-card{position:relative}
 .share-compact{position:absolute;top:12px;right:12px;z-index:2;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
@@ -394,9 +414,13 @@ h1,h2{font-family:var(--font-title);color:var(--navy);font-weight:600;letter-spa
 /* Subida de fotos */
 .photo-uploader{display:grid;gap:12px}
 .photo-uploader-label{font-size:14px;font-weight:600;color:var(--navy)}.photo-uploader-label small{font-weight:500;color:var(--muted)}
-.photo-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
-.photo-grid li{position:relative;aspect-ratio:4/3;border-radius:8px;overflow:hidden;border:1.5px solid var(--line);background:#f1efe9}
-.photo-grid li.is-cover{border-color:var(--gold)}
+.photo-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.photo-grid li{display:grid;gap:6px}
+.photo-thumb{position:relative;aspect-ratio:4/3;border-radius:8px;overflow:hidden;border:1.5px solid var(--line);background:#f1efe9}
+.photo-grid li.is-cover .photo-thumb{border-color:var(--gold)}
+.photo-pos{position:absolute;top:6px;left:6px;min-width:24px;height:24px;border-radius:12px;background:var(--navy);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;padding:0 6px}
+.photo-meta{display:flex;gap:4px;align-items:center}.photo-meta select{flex:1;min-width:0;min-height:34px;font-size:12px;padding:0 6px}
+.photo-move{display:flex;gap:2px}.photo-move button{width:30px;height:34px;border:1.5px solid var(--line);background:#fff;border-radius:6px;cursor:pointer;font-size:11px}.photo-move button:disabled{opacity:.35;cursor:default}
 .photo-grid img{width:100%;height:100%;object-fit:cover;display:block}
 .photo-badge,.photo-cover{position:absolute;left:6px;bottom:6px;font-size:11px;font-weight:600;padding:4px 8px;border-radius:999px;border:0}
 .photo-badge{background:var(--navy);color:var(--ivory)}

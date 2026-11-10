@@ -4,6 +4,7 @@ import AdminMetrics from '@/components/admin/admin-metrics';
 import AdminUsers from '@/components/admin/admin-users';
 import AdminPayments from '@/components/admin/admin-payments';
 import TeamManager from '@/components/team-manager';
+import CustomFieldsManager from '@/components/admin/custom-fields-manager';
 import ProtectedPanel from '@/components/protected-panel';
 import { PanelShell, PublishFlow } from '@/components/panel-shell';
 import { authJson, SessionUser } from '@/lib/auth';
@@ -80,6 +81,7 @@ function AdminPanel({ user }: { user: SessionUser }) {
       { title: 'Revisar propiedades', text: 'Aprueba o rechaza lo que está en revisión.', href: '#revision', primary: true },
       { title: 'Cuentas por aprobar', text: 'Agentes, agencias y desarrolladores registrados que esperan tu aprobación.', href: '#usuarios' },
       { title: 'Crear cuentas', text: 'Agencias, desarrolladoras, vendedores, compradores y administradores.', href: '#cuentas' },
+      { title: 'Campos personalizados', text: 'Datos extra para las propiedades y filtros de búsqueda.', href: '#campos' },
       { title: 'Cómo funciona', text: 'Guía interna de roles y flujos (solo administradores).', href: '/como-funciona' },
       { title: 'Usuarios y membresías', text: 'Roles, cuentas activas y registro de pagos.', href: '#usuarios' },
       { title: 'Pagos del mes', text: 'Ingresos por efectivo y transferencia.', href: '#pagos' },
@@ -91,6 +93,7 @@ function AdminPanel({ user }: { user: SessionUser }) {
     <TeamManager roles={['AGENCY', 'DEVELOPER', 'AGENT', 'BUYER', 'ADMIN']} title="Crear cuentas" intro="Además del registro público, tú puedes crear agencias, desarrolladoras, vendedores, compradores y otros administradores. Las cuentas que creas tú quedan aprobadas de inmediato." />
     <AdminUsers me={user} onChanged={changed} />
     <AdminPayments refreshKey={refreshKey} />
+    <CustomFieldsManager />
     <PublishFlow />
   </PanelShell>;
 }

@@ -27,7 +27,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
   /** Cambios en tablas existentes (idempotentes). */
   private async migrate() {
-    const cols = await this.query<any>("SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('Users','Leads')");
+    const cols = await this.query<any>("SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('Users','Leads','Properties','PropertyImages')");
     const has = (t: string, c: string) => cols.some((r) => r.t === t && r.c === c);
     const tables = new Set(cols.map((r) => r.t));
     const changes: [string, string, string][] = [
@@ -38,19 +38,39 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       ['Leads', 'Notes', 'ALTER TABLE Leads ADD COLUMN Notes VARCHAR(1000) NULL'],
       ['Leads', 'UpdatedAt', 'ALTER TABLE Leads ADD COLUMN UpdatedAt DATETIME NULL'],
       ['Users', 'ApprovalStatus', "ALTER TABLE Users ADD COLUMN ApprovalStatus VARCHAR(10) NOT NULL DEFAULT 'APPROVED'"],
+      ['Properties', 'RentPrice', 'ALTER TABLE Properties ADD COLUMN RentPrice DECIMAL(12,2) NULL'],
+      ['Properties', 'Category', 'ALTER TABLE Properties ADD COLUMN Category VARCHAR(30) NULL'],
+      ['Properties', 'Availability', "ALTER TABLE Properties ADD COLUMN Availability VARCHAR(12) NOT NULL DEFAULT 'AVAILABLE'"],
+      ['Properties', 'AvailableFrom', 'ALTER TABLE Properties ADD COLUMN AvailableFrom DATE NULL'],
+      ['PropertyImages', 'Label', 'ALTER TABLE PropertyImages ADD COLUMN Label VARCHAR(40) NULL'],
     ];
     for (const [t, c, sql] of changes) {
       if (tables.has(t) && !has(t, c)) { await this.getPool().query(sql); console.error(`[Agencia EH] Migración: columna ${t}.${c} agregada`); }
     }
-    // Rol Desarrollador: actualizar la restricción CHECK de Users.Role si es la anterior.
-    try {
-      const [ck] = await this.query<any>("SELECT CHECK_CLAUSE AS c FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_NAME = 'CK_Users_Role' LIMIT 1");
-      if (ck && !String(ck.c).includes('DEVELOPER')) {
-        await this.getPool().query('ALTER TABLE Users DROP CONSTRAINT CK_Users_Role');
-        await this.getPool().query("ALTER TABLE Users ADD CONSTRAINT CK_Users_Role CHECK (Role IN ('BUYER','AGENT','AGENCY','DEVELOPER','ADMIN'))");
-        console.error('[Agencia EH] Migración: rol DEVELOPER habilitado');
-      }
-    } catch (e: any) { console.error('[Agencia EH] No se pudo actualizar CK_Users_Role:', e?.message); }
+    // Propiedades sin categoría (creadas antes de RF-01): se asigna según el tipo de inmueble.
+    if (tables.has('Properties')) try {
+      const r: any = await this.getPool().query(`UPDATE Properties SET Category = CASE
+        WHEN PropertyType LIKE '%erreno%' OR PropertyType LIKE '%ote%' THEN 'Terreno'
+        WHEN PropertyType LIKE '%odega%' OR PropertyType LIKE '%ave%' OR PropertyType LIKE '%ndustrial%' THEN 'Industrial'
+        WHEN PropertyType LIKE '%ocal%' OR PropertyType LIKE '%ficina%' OR PropertyType LIKE '%omercial%' THEN 'Comercial'
+        ELSE 'Residencial' END WHERE Category IS NULL`);
+      const n = r?.[0]?.affectedRows; if (n) console.error(`[Agencia EH] Migración: categoría asignada a ${n} propiedad(es)`);
+    } catch (e: any) { console.error('[Agencia EH] No se pudo asignar categorías:', e?.message); }
+    // Restricciones CHECK que cambiaron: rol Desarrollador y operación "Venta y renta".
+    const checks: [string, string, string, string][] = [
+      ['Users', 'CK_Users_Role', 'DEVELOPER', "Role IN ('BUYER','AGENT','AGENCY','DEVELOPER','ADMIN')"],
+      ['Properties', 'CK_Properties_Operation', 'BOTH', "Operation IN ('RENT','SALE','BOTH')"],
+    ];
+    for (const [table, name, needle, clause] of checks) {
+      try {
+        const [ck] = await this.query<any>('SELECT CHECK_CLAUSE AS c FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_NAME = ? LIMIT 1', [name]);
+        if (ck && !String(ck.c).includes(needle)) {
+          await this.getPool().query(`ALTER TABLE ${table} DROP CONSTRAINT ${name}`);
+          await this.getPool().query(`ALTER TABLE ${table} ADD CONSTRAINT ${name} CHECK (${clause})`);
+          console.error(`[Agencia EH] Migración: ${name} actualizada`);
+        }
+      } catch (e: any) { console.error(`[Agencia EH] No se pudo actualizar ${name}:`, e?.message); }
+    }
   }
 
   private async tableNames(): Promise<string[]> {
@@ -64,7 +84,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
    * Así no hace falta importar el esquema a mano en phpMyAdmin.
    */
   private async ensureSchema() {
-    const required = ['Users', 'AgencyProfiles', 'AgentProfiles', 'Properties', 'PropertyImages', 'Leads', 'Favorites', 'Payments', 'SavedSearches'];
+    const required = ['Users', 'AgencyProfiles', 'AgentProfiles', 'Properties', 'PropertyImages', 'Leads', 'Favorites', 'Payments', 'SavedSearches', 'CustomFields', 'PropertyCustomValues'];
     try {
       const before = await this.tableNames();
       const missingBefore = required.filter((t) => !before.includes(t));

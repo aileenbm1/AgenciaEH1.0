@@ -82,4 +82,17 @@ export const PROPERTY_STATUS: Record<string, { label: string; help: string; tone
 };
 
 export const MUNICIPALITIES = ['León', 'Guanajuato', 'Irapuato', 'Celaya', 'San Miguel de Allende', 'Silao'];
-export const PROPERTY_TYPES = ['Casa', 'Departamento', 'Terreno', 'Local comercial', 'Oficina'];
+export const PROPERTY_TYPES = ['Casa', 'Departamento', 'Terreno', 'Local comercial', 'Oficina', 'Bodega'];
+/** RF-01: categorías de propiedad. */
+export const CATEGORIES = ['Residencial', 'Comercial', 'Industrial', 'Terreno', 'Vacacional'];
+/** Categoría sugerida según el tipo de inmueble. */
+export const categoryFor = (type: string) => /terreno|lote/i.test(type) ? 'Terreno' : /bodega|nave|industrial/i.test(type) ? 'Industrial' : /local|oficina|comercial/i.test(type) ? 'Comercial' : 'Residencial';
+/** Disponibilidad comercial (independiente de la revisión del administrador). */
+export const AVAILABILITY: Record<'AVAILABLE' | 'RESERVED' | 'RENTED' | 'SOLD', { label: string; help: string; tone: 'ok' | 'warn' | 'neutral' | 'bad' }> = {
+  AVAILABLE: { label: 'Disponible', help: 'Aparece en el catálogo y acepta interesados.', tone: 'ok' },
+  RESERVED:  { label: 'Apartada',   help: 'Sigue en el catálogo con la etiqueta "Apartada".', tone: 'warn' },
+  RENTED:    { label: 'Rentada',    help: 'Sale del catálogo; el enlace muestra "No disponible".', tone: 'neutral' },
+  SOLD:      { label: 'Vendida',    help: 'Sale del catálogo; el enlace muestra "No disponible".', tone: 'neutral' },
+};
+/** Etiquetas para las fotos (indican qué muestra cada una y su lugar). */
+export const IMAGE_LABELS = ['Fachada', 'Sala', 'Comedor', 'Cocina', 'Recámara principal', 'Recámara', 'Baño', 'Patio/Jardín', 'Terraza', 'Cochera', 'Vista', 'Áreas comunes', 'Plano', 'Otro'];

@@ -6,6 +6,8 @@ import { join, resolve, sep } from 'path';
 export const MEDIA_PREFIX = '/api/v1/media/';
 /** Ruta pública válida de una foto subida. */
 export const MEDIA_PATH_RE = /^\/api\/v1\/media\/properties\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.(jpg|png|webp)$/;
+/** Fotos de ejemplo incluidas en el sitio (datos de prueba). */
+export const DEMO_PATH_RE = /^\/demo\/[a-z0-9-]{1,60}\.jpg$/;
 
 let cachedRoot: string | undefined;
 

@@ -1,6 +1,6 @@
 {
   "name": "agencia-eh-api",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "private": true,
   "scripts": {
     "start:dev": "nest start --watch",
@@ -13,6 +13,7 @@
     "@nestjs/common": "^11.2.8",
     "@nestjs/core": "^11.2.8",
     "@nestjs/jwt": "^11.0.0",
+    "@nestjs/mapped-types": "^2.1.1",
     "@nestjs/platform-express": "^11.2.8",
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",

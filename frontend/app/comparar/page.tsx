@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { mxn } from '@/lib/data';
 import { readCompare, writeCompare } from '@/components/property-tools';
 
-type P = { id: string; slug: string; title: string; operation: 'RENT' | 'SALE'; price: number | string; municipality: string; neighborhood?: string | null; propertyType: string;
+type P = { id: string; slug: string; title: string; operation: 'RENT' | 'SALE' | 'BOTH'; price: number | string; rentPrice?: number | string | null; category?: string | null; availability?: string; municipality: string; neighborhood?: string | null; propertyType: string;
   bedrooms?: number | null; bathrooms?: number | null; builtArea?: number | string | null; landArea?: number | string | null; images?: { url: string }[] };
 
 /** Comparación de propiedades reales elegidas con "+ Comparar" en cada ficha (se guardan en este navegador). */
@@ -18,7 +18,10 @@ export default function Compare() {
   const remove = (slug: string) => { const next = (items || []).filter(p => p.slug !== slug); writeCompare(next.map(p => p.slug)); setItems(next); };
   const rows: [string, (p: P) => string][] = [
     ['Precio', p => `${mxn(Number(p.price))}${p.operation === 'RENT' ? ' / mes' : ''}`],
-    ['Operación', p => p.operation === 'RENT' ? 'Renta' : 'Venta'],
+    ['Renta mensual', p => p.operation === 'BOTH' && p.rentPrice ? mxn(Number(p.rentPrice)) : p.operation === 'RENT' ? mxn(Number(p.price)) : '—'],
+    ['Operación', p => p.operation === 'RENT' ? 'Renta' : p.operation === 'BOTH' ? 'Venta y renta' : 'Venta'],
+    ['Categoría', p => p.category || '—'],
+    ['Disponibilidad', p => ({ AVAILABLE: 'Disponible', RESERVED: 'Apartada', RENTED: 'Rentada', SOLD: 'Vendida' } as Record<string, string>)[p.availability || 'AVAILABLE']],
     ['Tipo', p => p.propertyType],
     ['Ubicación', p => `${p.neighborhood ? p.neighborhood + ', ' : ''}${p.municipality}`],
     ['Recámaras', p => String(p.bedrooms ?? '—')],

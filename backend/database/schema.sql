@@ -62,10 +62,14 @@ CREATE TABLE IF NOT EXISTS Properties (
   Operation VARCHAR(10) NOT NULL,
   Status VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
   Price DECIMAL(12,2) NOT NULL,
+  RentPrice DECIMAL(12,2) NULL,
   Currency CHAR(3) NOT NULL DEFAULT 'MXN',
   Municipality VARCHAR(100) NOT NULL,
   Neighborhood VARCHAR(120) NULL,
   PropertyType VARCHAR(80) NOT NULL,
+  Category VARCHAR(30) NULL,
+  Availability VARCHAR(12) NOT NULL DEFAULT 'AVAILABLE',
+  AvailableFrom DATE NULL,
   Bedrooms INT NULL,
   Bathrooms INT NULL,
   LandArea DECIMAL(12,2) NULL,
@@ -76,7 +80,7 @@ CREATE TABLE IF NOT EXISTS Properties (
   CONSTRAINT PK_Properties PRIMARY KEY (Id),
   CONSTRAINT UQ_Properties_Slug UNIQUE (Slug),
   CONSTRAINT FK_Properties_Users FOREIGN KEY (OwnerId) REFERENCES Users(Id),
-  CONSTRAINT CK_Properties_Operation CHECK (Operation IN ('RENT','SALE')),
+  CONSTRAINT CK_Properties_Operation CHECK (Operation IN ('RENT','SALE','BOTH')),
   CONSTRAINT CK_Properties_Status CHECK (Status IN ('DRAFT','REVIEW','PUBLISHED','RENTED','SOLD','REJECTED')),
   CONSTRAINT CK_Properties_Price CHECK (Price > 0),
   INDEX IX_Properties_PublicSearch (Status, Operation, Municipality, Price),
@@ -88,6 +92,7 @@ CREATE TABLE IF NOT EXISTS PropertyImages (
   PropertyId CHAR(36) NOT NULL,
   Url VARCHAR(2048) NOT NULL,
   Alt VARCHAR(250) NULL,
+  Label VARCHAR(40) NULL,
   Position INT NOT NULL DEFAULT 0,
   CONSTRAINT PK_PropertyImages PRIMARY KEY (Id),
   CONSTRAINT FK_PropertyImages_Properties FOREIGN KEY (PropertyId) REFERENCES Properties(Id) ON DELETE CASCADE
@@ -165,4 +170,31 @@ CREATE TABLE IF NOT EXISTS SavedSearches (
   CONSTRAINT PK_SavedSearches PRIMARY KEY (Id),
   CONSTRAINT FK_SavedSearches_Users FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE,
   INDEX IX_SavedSearches_User (UserId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Campos personalizados que define el administrador (RF-03).
+CREATE TABLE IF NOT EXISTS CustomFields (
+  Id CHAR(36) NOT NULL,
+  FieldKey VARCHAR(40) NOT NULL,
+  Label VARCHAR(80) NOT NULL,
+  Type VARCHAR(10) NOT NULL,
+  Options VARCHAR(1000) NULL,
+  Required TINYINT(1) NOT NULL DEFAULT 0,
+  Filterable TINYINT(1) NOT NULL DEFAULT 0,
+  Position INT NOT NULL DEFAULT 0,
+  Active TINYINT(1) NOT NULL DEFAULT 1,
+  CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT PK_CustomFields PRIMARY KEY (Id),
+  CONSTRAINT UQ_CustomFields_Key UNIQUE (FieldKey),
+  CONSTRAINT CK_CustomFields_Type CHECK (Type IN ('TEXT','NUMBER','BOOLEAN','SELECT'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS PropertyCustomValues (
+  PropertyId CHAR(36) NOT NULL,
+  FieldId CHAR(36) NOT NULL,
+  Value VARCHAR(500) NOT NULL,
+  CONSTRAINT PK_PropertyCustomValues PRIMARY KEY (PropertyId, FieldId),
+  CONSTRAINT FK_PCV_Properties FOREIGN KEY (PropertyId) REFERENCES Properties(Id) ON DELETE CASCADE,
+  CONSTRAINT FK_PCV_Fields FOREIGN KEY (FieldId) REFERENCES CustomFields(Id) ON DELETE CASCADE,
+  INDEX IX_PCV_Field_Value (FieldId, Value)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
