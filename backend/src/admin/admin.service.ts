@@ -21,7 +21,7 @@ export class AdminService {
 
   async metrics() {
     const [users] = await this.db.query<any>(`SELECT COUNT(*) AS total,
-      SUM(Role='BUYER') AS buyers, SUM(Role='AGENT') AS agents, SUM(Role='AGENCY') AS agencies, SUM(Role='ADMIN') AS admins,
+      SUM(Role='BUYER') AS buyers, SUM(Role='AGENT') AS agents, SUM(Role='AGENCY') AS agencies, SUM(Role='DEVELOPER') AS developers, SUM(Role='ADMIN') AS admins, SUM(ApprovalStatus='PENDING') AS pending,
       SUM(IsActive=0) AS inactive, SUM(CreatedAt >= UTC_TIMESTAMP() - INTERVAL 30 DAY) AS new30, SUM(EmailVerifiedAt IS NOT NULL) AS verified FROM Users`);
     const props = await this.db.query<any>('SELECT Status, COUNT(*) AS n FROM Properties GROUP BY Status');
     const [members] = await this.db.query<any>(`SELECT
@@ -39,7 +39,7 @@ export class AdminService {
     const n = (v: any) => Number(v || 0);
     const byStatus = Object.fromEntries(props.map((r: any) => [r.Status, n(r.n)]));
     return {
-      users: { total: n(users.total), byRole: { BUYER: n(users.buyers), AGENT: n(users.agents), AGENCY: n(users.agencies), ADMIN: n(users.admins) }, inactive: n(users.inactive), new30: n(users.new30), verified: n(users.verified) },
+      users: { total: n(users.total), byRole: { BUYER: n(users.buyers), AGENT: n(users.agents), AGENCY: n(users.agencies), DEVELOPER: n(users.developers), ADMIN: n(users.admins) }, pending: n(users.pending), inactive: n(users.inactive), new30: n(users.new30), verified: n(users.verified) },
       properties: { total: props.reduce((a: number, r: any) => a + n(r.n), 0), byStatus },
       memberships: { active: n(members?.active), expiring7: n(members?.expiring7), expired: n(members?.expired),
         expiring: expiring.map((r: any) => ({ id: r.Id, fullName: r.FullName, email: r.Email, role: r.Role, plan: r.Plan, periodEnd: dateOnly(r.PeriodEnd) })) },
@@ -51,21 +51,22 @@ export class AdminService {
     const page = Math.max(1, Number(q.page) || 1), take = Math.min(50, Math.max(5, Number(q.take) || 20));
     const where: string[] = ['1=1'], params: any[] = [];
     if (q.search) { const t = String(q.search).trim().slice(0, 100); where.push(`(u.FullName LIKE CONCAT('%',?,'%') OR u.Email LIKE CONCAT('%',?,'%') OR u.Phone LIKE CONCAT('%',?,'%'))`); params.push(t, t, t); }
-    if (q.role) { if (!['BUYER', 'AGENT', 'AGENCY', 'ADMIN'].includes(String(q.role))) throw new BadRequestException('Rol no válido.'); where.push('u.Role=?'); params.push(q.role); }
+    if (q.approval) { if (!['PENDING', 'APPROVED', 'REJECTED'].includes(String(q.approval))) throw new BadRequestException('Estado no válido.'); where.push('u.ApprovalStatus=?'); params.push(q.approval); }
+    if (q.role) { if (!['BUYER', 'AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN'].includes(String(q.role))) throw new BadRequestException('Rol no válido.'); where.push('u.Role=?'); params.push(q.role); }
     if (q.status === 'active') where.push('u.IsActive=1'); else if (q.status === 'inactive') where.push('u.IsActive=0');
     if (q.membership === 'active') where.push('l.PeriodEnd >= UTC_DATE()');
     else if (q.membership === 'expired') where.push('l.PeriodEnd < UTC_DATE()');
     else if (q.membership === 'none') where.push('l.UserId IS NULL');
     const from = `FROM Users u LEFT JOIN (${LAST_PAYMENT}) l ON l.UserId = u.Id LEFT JOIN Users cb ON cb.Id = u.CreatedById WHERE ${where.join(' AND ')}`;
     const [count] = await this.db.query<any>(`SELECT COUNT(*) AS total ${from}`, params);
-    const rows = await this.db.query<any>(`SELECT u.Id, u.FullName, u.Email, u.Phone, u.Role, u.IsActive, u.EmailVerifiedAt, u.CreatedAt,
+    const rows = await this.db.query<any>(`SELECT u.Id, u.FullName, u.Email, u.Phone, u.Role, u.IsActive, u.EmailVerifiedAt, u.CreatedAt, u.ApprovalStatus,
       l.Plan, l.PeriodEnd, (SELECT COUNT(*) FROM Properties pr WHERE pr.OwnerId = u.Id) AS Properties, cb.FullName AS CreatedByName
-      ${from} ORDER BY u.CreatedAt DESC LIMIT ? OFFSET ?`, [...params, take, (page - 1) * take]);
+      ${from} ORDER BY (u.ApprovalStatus='PENDING') DESC, u.CreatedAt DESC LIMIT ? OFFSET ?`, [...params, take, (page - 1) * take]);
     const total = Number(count.total);
     return {
       items: rows.map((r: any) => ({
         id: r.Id, fullName: r.FullName, email: r.Email, phone: r.Phone, role: r.Role, isActive: !!r.IsActive, emailVerified: !!r.EmailVerifiedAt,
-        createdAt: r.CreatedAt, properties: Number(r.Properties), createdBy: r.CreatedByName ?? null,
+        createdAt: r.CreatedAt, properties: Number(r.Properties), createdBy: r.CreatedByName ?? null, approvalStatus: r.ApprovalStatus || 'APPROVED',
         membership: r.PeriodEnd ? { plan: r.Plan, periodEnd: dateOnly(r.PeriodEnd), active: dateOnly(r.PeriodEnd)! >= new Date().toISOString().slice(0, 10) } : null,
       })),
       total, page, take, pages: Math.ceil(total / take),
@@ -73,7 +74,7 @@ export class AdminService {
   }
 
   async updateUser(adminId: string, id: string, d: UpdateUserDto) {
-    const [u] = await this.db.query<any>('SELECT Id, FullName, Email, Role, IsActive FROM Users WHERE Id=? LIMIT 1', [id]);
+    const [u] = await this.db.query<any>('SELECT Id, FullName, Email, Role, IsActive, ApprovalStatus FROM Users WHERE Id=? LIMIT 1', [id]);
     if (!u) throw new NotFoundException('Usuario no encontrado.');
     if (id === adminId && ((d.role && d.role !== 'ADMIN') || d.isActive === false)) throw new ForbiddenException('No puedes quitarte el rol de administrador ni desactivar tu propia cuenta.');
     const losesAdmin = u.Role === 'ADMIN' && ((d.role && d.role !== 'ADMIN') || d.isActive === false);
@@ -84,6 +85,7 @@ export class AdminService {
     const sets: string[] = ['UpdatedAt=UTC_TIMESTAMP()'], params: any[] = [];
     if (d.role) { sets.push('Role=?'); params.push(d.role); }
     if (d.isActive !== undefined) { sets.push('IsActive=?'); params.push(d.isActive ? 1 : 0); if (!d.isActive) sets.push('RefreshTokenHash=NULL'); }
+    if (d.approval && d.approval !== u.ApprovalStatus) { sets.push('ApprovalStatus=?'); params.push(d.approval); if (d.approval === 'REJECTED') sets.push('RefreshTokenHash=NULL'); }
     if (d.fullName !== undefined) { sets.push('FullName=?'); params.push(d.fullName.trim()); }
     if (d.phone !== undefined) { sets.push('Phone=?'); params.push(d.phone.trim() || null); }
     if (d.email !== undefined) {
@@ -100,8 +102,9 @@ export class AdminService {
     await this.db.transaction(async (tx) => {
       await this.db.execute(`UPDATE Users SET ${sets.join(',')} WHERE Id=?`, [...params, id], tx);
       if (d.role === 'AGENT') await this.db.execute('INSERT IGNORE INTO AgentProfiles(Id,UserId) VALUES(?,?)', [randomUUID(), id], tx);
-      if (d.role === 'AGENCY') await this.db.execute('INSERT IGNORE INTO AgencyProfiles(Id,UserId,Name,Slug) VALUES(?,?,?,?)', [randomUUID(), id, u.FullName, `${slugify(u.FullName) || 'agencia'}-${randomUUID().slice(0, 6)}`], tx);
+      if (d.role === 'AGENCY' || d.role === 'DEVELOPER') await this.db.execute('INSERT IGNORE INTO AgencyProfiles(Id,UserId,Name,Slug) VALUES(?,?,?,?)', [randomUUID(), id, u.FullName, `${slugify(u.FullName) || 'agencia'}-${randomUUID().slice(0, 6)}`], tx);
     });
+    if (d.approval && d.approval !== u.ApprovalStatus && d.approval !== 'PENDING') this.mail.sendApprovalResult(d.email?.trim().toLowerCase() || u.Email, d.approval === 'APPROVED');
     return (await this.users({ search: '', take: 50 })).items.find((x) => x.id === id) ?? { id };
   }
 

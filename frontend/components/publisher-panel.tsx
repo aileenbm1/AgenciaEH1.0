@@ -15,7 +15,9 @@ export function PublisherPanel({ user }: { user: SessionUser }) {
       .catch(e => setError(e.message));
   }, []);
   const total = counts ? Object.values(counts).reduce((a, b) => a + b, 0) : 0;
-  const isAgency = user.role === 'AGENCY';
+  // Agencia y desarrolladora: empresas con equipo de vendedores.
+  const isAgency = user.role === 'AGENCY' || user.role === 'DEVELOPER';
+  const orgWord = user.role === 'DEVELOPER' ? 'desarrolladora' : 'agencia';
 
   const actions: PanelAction[] = [
     { title: 'Nueva propiedad', text: 'Captura un inmueble. Se guarda como borrador hasta que lo envíes a revisión.', href: '/panel/agente/propiedades#nueva', primary: true },
@@ -27,7 +29,7 @@ export function PublisherPanel({ user }: { user: SessionUser }) {
 
   return <PanelShell user={user} actions={actions}
     intro={isAgency
-      ? 'Publica propiedades a nombre de tu agencia. Cada una pasa por revisión antes de aparecer en el catálogo.'
+      ? `Publica propiedades a nombre de tu ${orgWord}. Cada una pasa por revisión antes de aparecer en el catálogo.`
       : 'Publica tus propiedades. Cada una pasa por revisión antes de aparecer en el catálogo.'}>
     {error && <div className="notice" role="alert">{error}</div>}
     {counts && total === 0 && <div className="empty-start">

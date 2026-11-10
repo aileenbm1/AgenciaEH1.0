@@ -7,10 +7,10 @@ import UserMembership from './payment-form';
 import UserEditor from './user-editor';
 
 type Page = { items: AdminUser[]; total: number; page: number; pages: number };
-const ROLE_IDS: UserRole[] = ['BUYER', 'AGENT', 'AGENCY', 'ADMIN'];
+const ROLE_IDS: UserRole[] = ['BUYER', 'AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN'];
 
 export default function AdminUsers({ me, onChanged }: { me: SessionUser; onChanged: () => void }) {
-  const [filters, setFilters] = useState({ search: '', role: '', status: '', membership: '' });
+  const [filters, setFilters] = useState({ search: '', role: '', status: '', membership: '', approval: '' });
   const [page, setPage] = useState(1);
   const [data, setData] = useState<Page | null>(null);
   const [error, setError] = useState(''); const [ok, setOk] = useState(''); const [busy, setBusy] = useState('');
@@ -25,13 +25,13 @@ export default function AdminUsers({ me, onChanged }: { me: SessionUser; onChang
   }, [filters, page]);
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t); }, [load]);
 
-  async function update(u: AdminUser, change: { role?: UserRole; isActive?: boolean }) {
-    const what = change.role ? `cambiar el rol de ${u.fullName} a "${ROLES[change.role].label}"` : change.isActive ? `reactivar la cuenta de ${u.fullName}` : `desactivar la cuenta de ${u.fullName}? Ya no podrá iniciar sesión`;
+  async function update(u: AdminUser, change: { role?: UserRole; isActive?: boolean; approval?: 'APPROVED' | 'REJECTED' }) {
+    const what = change.approval ? `${change.approval === 'APPROVED' ? 'aprobar' : 'rechazar'} la cuenta de ${u.fullName} (${ROLES[u.role]?.label})? Le avisaremos por correo` : change.role ? `cambiar el rol de ${u.fullName} a "${ROLES[change.role].label}"` : change.isActive ? `reactivar la cuenta de ${u.fullName}` : `desactivar la cuenta de ${u.fullName}? Ya no podrá iniciar sesión`;
     if (!confirm(`¿Seguro que quieres ${what}?`)) { load(); return; }
     setBusy(u.id); setError(''); setOk('');
     try {
       await authJson(`/admin/users/${u.id}`, { method: 'PATCH', body: JSON.stringify(change) });
-      setOk(change.role ? `${u.fullName} ahora es ${ROLES[change.role].label}. El cambio se aplica cuando vuelva a iniciar sesión.` : change.isActive ? `Cuenta de ${u.fullName} reactivada.` : `Cuenta de ${u.fullName} desactivada.`);
+      setOk(change.approval ? `Cuenta de ${u.fullName} ${change.approval === 'APPROVED' ? 'aprobada: ya puede publicar' : 'rechazada'}.` : change.role ? `${u.fullName} ahora es ${ROLES[change.role].label}. El cambio se aplica cuando vuelva a iniciar sesión.` : change.isActive ? `Cuenta de ${u.fullName} reactivada.` : `Cuenta de ${u.fullName} desactivada.`);
       await load(); onChanged();
     } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo actualizar.'); await load(); }
     finally { setBusy(''); }
@@ -45,6 +45,7 @@ export default function AdminUsers({ me, onChanged }: { me: SessionUser; onChang
       <input type="search" placeholder="Buscar por nombre, correo o teléfono" value={filters.search} onChange={setFilter('search')} />
       <select value={filters.role} onChange={setFilter('role')}><option value="">Todos los roles</option>{ROLE_IDS.map(r => <option key={r} value={r}>{ROLES[r].label}</option>)}</select>
       <select value={filters.membership} onChange={setFilter('membership')}><option value="">Toda membresía</option><option value="active">Membresía activa</option><option value="expired">Membresía vencida</option><option value="none">Sin membresía</option></select>
+      <select value={filters.approval} onChange={setFilter('approval')}><option value="">Toda aprobación</option><option value="PENDING">Por aprobar</option><option value="APPROVED">Aprobadas</option><option value="REJECTED">Rechazadas</option></select>
       <select value={filters.status} onChange={setFilter('status')}><option value="">Activos e inactivos</option><option value="active">Solo activos</option><option value="inactive">Solo desactivados</option></select>
     </div>
     {error && <div className="notice" role="alert">{error}</div>}
@@ -68,10 +69,14 @@ export default function AdminUsers({ me, onChanged }: { me: SessionUser; onChang
             </div>
           </div>
           <div className="user-tags">
+            {u.approvalStatus === 'PENDING' && <i className="status-pill warn">Por aprobar</i>}
+            {u.approvalStatus === 'REJECTED' && <i className="status-pill bad">Rechazada</i>}
             {!u.isActive && <i className="status-pill bad">Desactivado</i>}
             {m ? <i className={`status-pill ${m.active ? 'ok' : 'warn'}`}>{m.active ? 'Membresía activa' : u.role === 'ADMIN' ? 'Membresía vencida' : 'Vencida · sin acceso'} · {m.plan} · {fmtDate(m.periodEnd)}</i> : <i className="status-pill neutral">Sin membresía</i>}
           </div>
           <div className="user-actions">
+            {u.approvalStatus === 'PENDING' && <><button className="button button-navy" disabled={busy === u.id} onClick={() => update(u, { approval: 'APPROVED' })}>Aprobar</button><button className="button button-ghost" disabled={busy === u.id} onClick={() => update(u, { approval: 'REJECTED' })}>Rechazar</button></>}
+            {u.approvalStatus === 'REJECTED' && <button className="button button-outline" disabled={busy === u.id} onClick={() => update(u, { approval: 'APPROVED' })}>Aprobar</button>}
             <label className="sr-only" htmlFor={`rol-${u.id}`}>Rol</label>
             <select id={`rol-${u.id}`} value={u.role} disabled={self || busy === u.id} onChange={e => update(u, { role: e.target.value as UserRole })}>
               {ROLE_IDS.map(r => <option key={r} value={r}>{ROLES[r].label}</option>)}

@@ -33,5 +33,5 @@ function Profile({ initial }: { initial: SessionUser }) {
 }
 
 export default function Cuenta() {
-  return <ProtectedPanel allowed={['BUYER', 'AGENT', 'AGENCY', 'ADMIN']}>{u => <Profile initial={u} />}</ProtectedPanel>;
+  return <ProtectedPanel allowed={['BUYER', 'AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN']}>{u => <Profile initial={u} />}</ProtectedPanel>;
 }

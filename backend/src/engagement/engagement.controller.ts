@@ -16,9 +16,9 @@ export class LeadsController {
     if (h?.startsWith('Bearer ')) { try { userId = (await this.jwt.verifyAsync(h.slice(7), { secret: process.env.JWT_ACCESS_SECRET })).sub; } catch { /* sin sesión */ } }
     return this.svc.createLead(d, r.ip, userId);
   }
-  @Get('mine') @UseGuards(JwtAuthGuard, RolesGuard) @Roles('AGENT', 'AGENCY', 'ADMIN') mine(@Req() r: any, @Query('scope') scope?: string) { return this.svc.myLeads(r.user.sub, r.user.role, scope); }
+  @Get('mine') @UseGuards(JwtAuthGuard, RolesGuard) @Roles('AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN') mine(@Req() r: any, @Query('scope') scope?: string) { return this.svc.myLeads(r.user.sub, r.user.role, scope); }
   @Get('sent') @UseGuards(JwtAuthGuard) sent(@Req() r: any) { return this.svc.sentLeads(r.user.sub); }
-  @Patch(':id') @UseGuards(JwtAuthGuard, RolesGuard) @Roles('AGENT', 'AGENCY', 'ADMIN') update(@Req() r: any, @Param('id', ParseUUIDPipe) id: string, @Body() d: UpdateLeadDto) { return this.svc.updateLead(r.user.sub, r.user.role, id, d); }
+  @Patch(':id') @UseGuards(JwtAuthGuard, RolesGuard) @Roles('AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN') update(@Req() r: any, @Param('id', ParseUUIDPipe) id: string, @Body() d: UpdateLeadDto) { return this.svc.updateLead(r.user.sub, r.user.role, id, d); }
 }
 
 @Controller('favorites')
@@ -44,7 +44,7 @@ export class SavedSearchesController {
 @Controller('agencies')
 export class AgenciesController {
   constructor(private readonly svc: EngagementService) {}
-  @Get('me') @UseGuards(JwtAuthGuard, RolesGuard) @Roles('AGENCY') me(@Req() r: any) { return this.svc.myAgency(r.user.sub); }
-  @Patch('me') @UseGuards(JwtAuthGuard, RolesGuard) @Roles('AGENCY') update(@Req() r: any, @Body() d: UpdateAgencyDto) { return this.svc.updateMyAgency(r.user.sub, d); }
+  @Get('me') @UseGuards(JwtAuthGuard, RolesGuard) @Roles('AGENCY', 'DEVELOPER') me(@Req() r: any) { return this.svc.myAgency(r.user.sub); }
+  @Patch('me') @UseGuards(JwtAuthGuard, RolesGuard) @Roles('AGENCY', 'DEVELOPER') update(@Req() r: any, @Body() d: UpdateAgencyDto) { return this.svc.updateMyAgency(r.user.sub, d); }
   @Get(':slug') bySlug(@Param('slug') slug: string) { return this.svc.agencyBySlug(slug); }
 }

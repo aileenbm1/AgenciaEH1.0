@@ -21,7 +21,7 @@ export default function TeamManager({ roles, title, intro }: { roles: UserRole[]
   async function create(e: FormEvent) {
     e.preventDefault(); setBusy('create'); setError(''); setInvite(null); setCopied(false);
     try {
-      const r = await authJson<Invite>('/users', { method: 'POST', body: JSON.stringify({ ...form, phone: form.phone || undefined, agencyName: form.role === 'AGENCY' ? form.agencyName : undefined }) });
+      const r = await authJson<Invite>('/users', { method: 'POST', body: JSON.stringify({ ...form, phone: form.phone || undefined, agencyName: form.role === 'AGENCY' || form.role === 'DEVELOPER' ? form.agencyName : undefined }) });
       setInvite({ ...r, name: form.fullName, email: form.email });
       setForm({ ...empty, role: form.role }); await load();
     } catch (err) { setError(err instanceof Error ? err.message : 'No se pudo crear la cuenta.'); }
@@ -47,7 +47,7 @@ export default function TeamManager({ roles, title, intro }: { roles: UserRole[]
       <div className="form-grid">
         {roles.length > 1 && <label>Tipo de cuenta<select value={form.role} onChange={e => setForm({ ...form, role: e.target.value as UserRole })}>{roles.map(r => <option key={r} value={r}>{ROLES[r].label}</option>)}</select></label>}
         <label>Nombre completo<input required minLength={2} maxLength={100} value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} /></label>
-        {form.role === 'AGENCY' && <label>Nombre de la agencia<input required minLength={2} maxLength={140} value={form.agencyName} onChange={e => setForm({ ...form, agencyName: e.target.value })} /></label>}
+        {(form.role === 'AGENCY' || form.role === 'DEVELOPER') && <label>{form.role === 'DEVELOPER' ? 'Nombre de la desarrolladora' : 'Nombre de la agencia'}<input required minLength={2} maxLength={140} value={form.agencyName} onChange={e => setForm({ ...form, agencyName: e.target.value })} /></label>}
         <label>Correo<input required type="email" maxLength={190} value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="nombre@correo.com" /></label>
         <label>Teléfono (opcional)<input type="tel" maxLength={25} value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></label>
       </div>

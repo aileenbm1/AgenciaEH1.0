@@ -9,7 +9,7 @@ export function SiteHeader() {
   const { user, loading } = useSession();
   const router = useRouter();
   const role = user ? ROLES[user.role] : null;
-  const canPublish = user && (user.role === 'AGENT' || user.role === 'AGENCY');
+  const canPublish = user && ['AGENT', 'AGENCY', 'DEVELOPER'].includes(user.role);
 
   async function logout() { await signOut(); router.push('/'); router.refresh(); }
 
@@ -18,7 +18,7 @@ export function SiteHeader() {
     <nav>
       <Link href="/propiedades">Explorar propiedades</Link>
       <Link href="/comparar">Comparar</Link>
-      <Link href="/como-funciona">Cómo funciona</Link>
+      {user?.role === 'ADMIN' && <Link href="/como-funciona">Cómo funciona</Link>}
     </nav>
     <div className="header-actions">
       {loading ? null : user && role ? <>
@@ -31,7 +31,7 @@ export function SiteHeader() {
         <button className="login-link link-button" onClick={logout}>Salir</button>
       </> : <>
         <Link className="login-link" href="/acceso">Ingresar</Link>
-        <Link className="button button-gold" href="/como-funciona">Anunciar propiedad</Link>
+        <Link className="button button-gold" href="/acceso?registro=1&rol=AGENT">Anunciar propiedad</Link>
       </>}
     </div>
   </header>;

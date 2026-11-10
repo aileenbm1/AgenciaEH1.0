@@ -7,7 +7,7 @@ import { UsersService } from './users.service';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'AGENCY', 'AGENT')
+@Roles('ADMIN', 'AGENCY', 'DEVELOPER', 'AGENT')
 export class UsersController {
   constructor(private readonly users: UsersService) {}
   @Get('mine') mine(@Req() r: any) { return this.users.mine(r.user.sub); }

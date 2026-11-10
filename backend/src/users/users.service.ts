@@ -5,11 +5,12 @@ import { DatabaseService } from '../database/database.service';
 import { MailService } from '../mail/mail.service';
 import { CreateUserDto } from './users.dto';
 
-type Role = 'BUYER' | 'AGENT' | 'AGENCY' | 'ADMIN';
+type Role = 'BUYER' | 'AGENT' | 'AGENCY' | 'DEVELOPER' | 'ADMIN';
 /** Quién puede crear qué tipo de cuenta. */
 export const CAN_CREATE: Record<Role, Role[]> = {
-  ADMIN: ['BUYER', 'AGENT', 'AGENCY', 'ADMIN'],
+  ADMIN: ['BUYER', 'AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN'],
   AGENCY: ['AGENT', 'BUYER'],
+  DEVELOPER: ['AGENT', 'BUYER'],
   AGENT: ['BUYER'],
   BUYER: [],
 };
@@ -37,8 +38,10 @@ export class UsersService {
 
   async create(creatorId: string, d: CreateUserDto) {
     const c = await this.creator(creatorId);
+    const [ap] = await this.db.query<any>('SELECT ApprovalStatus FROM Users WHERE Id=? LIMIT 1', [c.Id]);
+    if (ap && ap.ApprovalStatus !== 'APPROVED') throw new ForbiddenException('Tu cuenta está en revisión. Podrás crear cuentas cuando el administrador la apruebe.');
     if (!CAN_CREATE[c.Role]?.includes(d.role)) throw new ForbiddenException('No puedes crear ese tipo de cuenta.');
-    if (d.role === 'AGENCY' && !d.agencyName?.trim()) throw new BadRequestException('Indica el nombre de la agencia.');
+    if ((d.role === 'AGENCY' || d.role === 'DEVELOPER') && !d.agencyName?.trim()) throw new BadRequestException('Indica el nombre de la empresa.');
     const email = d.email.trim().toLowerCase();
     const [exists] = await this.db.query('SELECT Id FROM Users WHERE Email=? LIMIT 1', [email]);
     if (exists) throw new ConflictException('Ya existe una cuenta con ese correo.');
@@ -46,7 +49,7 @@ export class UsersService {
     // Contraseña aleatoria imposible de adivinar: la persona elige la suya con el enlace de activación.
     const unusable = await bcrypt.hash(randomBytes(32).toString('hex'), 10);
     let agencyId: string | null = null;
-    if (c.Role === 'AGENCY' && d.role === 'AGENT') {
+    if ((c.Role === 'AGENCY' || c.Role === 'DEVELOPER') && d.role === 'AGENT') {
       const [a] = await this.db.query<any>('SELECT Id FROM AgencyProfiles WHERE UserId=? LIMIT 1', [c.Id]);
       agencyId = a?.Id ?? null;
     }
@@ -55,7 +58,7 @@ export class UsersService {
         await this.db.execute('INSERT INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,CreatedById) VALUES(?,?,?,?,?,?,?)',
           [id, email, d.fullName.trim(), d.phone?.trim() || null, unusable, d.role, c.Id], tx);
         if (d.role === 'AGENT') await this.db.execute('INSERT INTO AgentProfiles(Id,UserId,AgencyId) VALUES(?,?,?)', [randomUUID(), id, agencyId], tx);
-        if (d.role === 'AGENCY') await this.db.execute('INSERT INTO AgencyProfiles(Id,UserId,Name,Slug) VALUES(?,?,?,?)',
+        if (d.role === 'AGENCY' || d.role === 'DEVELOPER') await this.db.execute('INSERT INTO AgencyProfiles(Id,UserId,Name,Slug) VALUES(?,?,?,?)',
           [randomUUID(), id, d.agencyName!.trim(), `${slugify(d.agencyName!) || 'agencia'}-${randomUUID().slice(0, 6)}`], tx);
       });
     } catch (e: any) { if (e?.errno === 1062) throw new ConflictException('Ya existe una cuenta con ese correo.'); throw e; }

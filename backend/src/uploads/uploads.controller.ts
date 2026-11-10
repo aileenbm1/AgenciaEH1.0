@@ -23,7 +23,7 @@ function detectImage(buf: Buffer): 'jpg' | 'png' | 'webp' | null {
 export class UploadsController {
   @Post('images')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('AGENT', 'AGENCY', 'ADMIN')
+  @Roles('AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN')
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_BYTES, files: 1, fields: 0 } }))
   upload(@UploadedFile() file?: Express.Multer.File) {
     if (!file?.buffer?.length) throw new BadRequestException('Selecciona una imagen.');

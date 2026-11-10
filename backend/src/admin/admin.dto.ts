@@ -2,7 +2,8 @@ import { Type } from 'class-transformer';
 import { IsBoolean, IsDateString, IsEmail, IsIn, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class UpdateUserDto {
-  @IsOptional() @IsIn(['BUYER', 'AGENT', 'AGENCY', 'ADMIN']) role?: 'BUYER' | 'AGENT' | 'AGENCY' | 'ADMIN';
+  @IsOptional() @IsIn(['BUYER', 'AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN']) role?: 'BUYER' | 'AGENT' | 'AGENCY' | 'DEVELOPER' | 'ADMIN';
+  @IsOptional() @IsIn(['APPROVED', 'REJECTED', 'PENDING']) approval?: 'APPROVED' | 'REJECTED' | 'PENDING';
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsString() @MinLength(2) @MaxLength(100) fullName?: string;
   @IsOptional() @IsEmail() @MaxLength(190) email?: string;

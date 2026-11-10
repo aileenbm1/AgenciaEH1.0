@@ -48,7 +48,7 @@ function LeadCard({ lead, me, onSaved }: { lead: Lead; me: SessionUser; onSaved:
 }
 
 function Leads({ user }: { user: SessionUser }) {
-  const [scope, setScope] = useState(user.role === 'AGENCY' ? 'team' : user.role === 'ADMIN' ? 'all' : 'mine');
+  const [scope, setScope] = useState(user.role === 'AGENCY' || user.role === 'DEVELOPER' ? 'team' : user.role === 'ADMIN' ? 'all' : 'mine');
   const [status, setStatus] = useState('');
   const [items, setItems] = useState<Lead[] | null>(null); const [error, setError] = useState('');
   const load = useCallback(() => { setItems(null); authJson<Lead[]>(`/leads/mine${scope !== 'mine' ? `?scope=${scope}` : ''}`).then(setItems).catch(e => setError(e.message)); }, [scope]);
@@ -60,7 +60,7 @@ function Leads({ user }: { user: SessionUser }) {
     <div className="page-heading"><span className="eyebrow">SEGUIMIENTO</span><h1>Prospectos y visitas</h1>
       <p>Mensajes y solicitudes de visita que llegan desde tus propiedades. Cambia el estado conforme avanzas y anota lo importante.</p></div>
     <div className="filterbar admin-filters lead-filters">
-      {user.role === 'AGENCY' && <select value={scope} onChange={e => setScope(e.target.value)}><option value="team">Míos y de mi equipo</option><option value="mine">Solo míos</option></select>}
+      {(user.role === 'AGENCY' || user.role === 'DEVELOPER') && <select value={scope} onChange={e => setScope(e.target.value)}><option value="team">Míos y de mi equipo</option><option value="mine">Solo míos</option></select>}
       {user.role === 'ADMIN' && <select value={scope} onChange={e => setScope(e.target.value)}><option value="all">Todos</option><option value="mine">Solo míos</option></select>}
       <select value={status} onChange={e => setStatus(e.target.value)}><option value="">Todos los estados ({items?.length ?? 0})</option>{Object.entries(LEAD_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label} ({count(k)})</option>)}</select>
       <button className="button button-outline" onClick={load}>Actualizar</button>
@@ -72,4 +72,4 @@ function Leads({ user }: { user: SessionUser }) {
   </main>;
 }
 
-export default function Page() { return <ProtectedPanel allowed={['AGENT', 'AGENCY', 'ADMIN']}>{user => <Leads user={user} />}</ProtectedPanel>; }
+export default function Page() { return <ProtectedPanel allowed={['AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN']}>{user => <Leads user={user} />}</ProtectedPanel>; }

@@ -33,8 +33,8 @@ export default function PropertyContact({ propertyId, title, owner }: { property
   const wa = owner?.phone ? `https://wa.me/${waNumber(owner.phone)}?text=${encodeURIComponent(`Hola, vi "${title}" en Agencia EH y me interesa.`)}` : null;
   return <div className="agent-box contact-box">
     <b>{owner?.fullName || 'Agencia EH'}</b>
-    <small>{owner?.role === 'AGENCY' ? 'Agencia inmobiliaria' : 'Asesor inmobiliario'}{owner?.agency && owner.role !== 'AGENCY' ? <> · <Link href={`/agencias/${owner.agency.slug}`}>{owner.agency.name}</Link></> : null}</small>
-    {owner?.agency && owner.role === 'AGENCY' && <Link className="small-link" href={`/agencias/${owner.agency.slug}`}>Ver perfil de la agencia →</Link>}
+    <small>{owner?.role === 'AGENCY' ? 'Agencia inmobiliaria' : owner?.role === 'DEVELOPER' ? 'Desarrolladora' : 'Asesor inmobiliario'}{owner?.agency && owner.role !== 'AGENCY' && owner.role !== 'DEVELOPER' ? <> · <Link href={`/agencias/${owner.agency.slug}`}>{owner.agency.name}</Link></> : null}</small>
+    {owner?.agency && (owner.role === 'AGENCY' || owner.role === 'DEVELOPER') && <Link className="small-link" href={`/agencias/${owner.agency.slug}`}>Ver perfil →</Link>}
     {wa && <a className="button button-navy full" href={wa} target="_blank" rel="noopener noreferrer">Contactar por WhatsApp</a>}
 
     {ok ? <div className="notice ok" role="status">{ok}</div> : <form onSubmit={send} className="contact-form">

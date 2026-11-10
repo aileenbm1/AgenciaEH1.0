@@ -6,7 +6,7 @@ import { authenticate, getCurrentUser, roleHome, UserRole } from '@/lib/auth';
 import { ROLES, SIGNUP_ROLES } from '@/lib/roles';
 
 type Mode = 'login' | 'register';
-type SignupRole = 'BUYER' | 'AGENT' | 'AGENCY';
+type SignupRole = 'BUYER' | 'AGENT' | 'AGENCY' | 'DEVELOPER';
 
 export default function Access() {
   const router = useRouter();
@@ -24,7 +24,7 @@ export default function Access() {
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const r = q.get('rol') as SignupRole | null;
-    if (r && ['BUYER', 'AGENT', 'AGENCY'].includes(r)) setRole(r);
+    if (r && ['BUYER', 'AGENT', 'AGENCY', 'DEVELOPER'].includes(r)) setRole(r);
     const n = q.get('next'); if (n && n.startsWith('/')) setNext(n);
     // Si ya hay sesión, no tiene sentido mostrar este formulario.
     fetch('/api/v1/auth/config').then(r => r.json()).then(c => {
@@ -43,7 +43,7 @@ export default function Access() {
     try {
       const payload = mode === 'login'
         ? { email, password }
-        : { fullName, email, password, role: role!, ...(role === 'AGENCY' ? { agencyName } : {}) };
+        : { fullName, email, password, role: role!, ...(role === 'AGENCY' || role === 'DEVELOPER' ? { agencyName } : {}) };
       const result = await authenticate(mode, payload);
       const home = roleHome[result.user.role as UserRole];
       router.push(next || (mode === 'register' ? `${home}?bienvenida=1` : home));
@@ -81,12 +81,12 @@ export default function Access() {
           <p>{selected.summary}</p>
           <ul>{selected.can.map(c => <li key={c}>{c}</li>)}</ul>
         </div>}
-        <small className="muted">Las cuentas de administrador las crea el equipo de Agencia EH. <Link href="/como-funciona">Ver todos los roles</Link></small>
+        <small className="muted">Las cuentas de agente, agencia y desarrollador las revisa y aprueba el equipo de Agencia EH antes de que puedas publicar.</small>
       </fieldset>}
 
       {mode === 'register' && <p className="form-step"><span className="step-num">2</span> Tus datos</p>}
       {mode === 'register' && <label>Nombre completo<input value={fullName} onChange={e => setFullName(e.target.value)} required minLength={2} autoComplete="name" placeholder="Tu nombre" /></label>}
-      {mode === 'register' && role === 'AGENCY' && <label>Nombre de la agencia<input value={agencyName} onChange={e => setAgencyName(e.target.value)} required minLength={2} placeholder="Nombre comercial" /></label>}
+      {mode === 'register' && (role === 'AGENCY' || role === 'DEVELOPER') && <label>{role === 'DEVELOPER' ? 'Nombre de la desarrolladora' : 'Nombre de la agencia'}<input value={agencyName} onChange={e => setAgencyName(e.target.value)} required minLength={2} placeholder="Nombre comercial" /></label>}
       <label>Correo electrónico<input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" placeholder="nombre@correo.com" /></label>
       <label>Contraseña<input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={mode === 'register' ? 10 : 1} maxLength={72} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder={mode === 'register' ? 'Mínimo 10 caracteres' : 'Tu contraseña'} /></label>
       {mode === 'login' && <Link className="small-link" href="/recuperar">¿Olvidaste tu contraseña?</Link>}

@@ -4,8 +4,8 @@ const TOKEN_KEY = 'eh_access_token';
 /** Evento que avisa al encabezado y paneles que la sesión cambió (login/logout). */
 export const SESSION_EVENT = 'eh:session';
 
-export type UserRole = 'BUYER' | 'AGENT' | 'AGENCY' | 'ADMIN';
-export type SessionUser = { id: string; fullName: string; email: string; role: UserRole; phone?: string | null; emailVerified?: boolean };
+export type UserRole = 'BUYER' | 'AGENT' | 'AGENCY' | 'DEVELOPER' | 'ADMIN';
+export type SessionUser = { id: string; fullName: string; email: string; role: UserRole; phone?: string | null; emailVerified?: boolean; approvalStatus?: 'APPROVED' | 'PENDING' | 'REJECTED' };
 type AuthResponse = { accessToken: string; user: SessionUser };
 
 /** Token actual si hay sesión iniciada en esta pestaña (sin intentar renovarla). */
@@ -83,4 +83,4 @@ export async function signOut() {
   writeToken(null);
 }
 
-export const roleHome: Record<UserRole, string> = { BUYER: '/panel/comprador', AGENT: '/panel/agente', AGENCY: '/panel/agencia', ADMIN: '/panel/admin' };
+export const roleHome: Record<UserRole, string> = { BUYER: '/panel/comprador', AGENT: '/panel/agente', AGENCY: '/panel/agencia', DEVELOPER: '/panel/desarrollador', ADMIN: '/panel/admin' };

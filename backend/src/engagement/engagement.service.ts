@@ -54,7 +54,7 @@ export class EngagementService {
   /** Prospectos asignados a mí; para una agencia con scope=team, también los de sus agentes. */
   async myLeads(userId: string, role: string, scope?: string) {
     let where = 'l.AssignedToId=?'; const params: any[] = [userId];
-    if (scope === 'team' && role === 'AGENCY') {
+    if (scope === 'team' && (role === 'AGENCY' || role === 'DEVELOPER')) {
       where = `(l.AssignedToId=? OR l.AssignedToId IN (SELECT ap.UserId FROM AgentProfiles ap JOIN AgencyProfiles ag ON ag.Id = ap.AgencyId WHERE ag.UserId=?))`;
       params.push(userId);
     } else if (scope === 'all' && role === 'ADMIN') { where = '1=1'; params.length = 0; }
@@ -68,7 +68,7 @@ export class EngagementService {
     const [l] = await this.db.query<any>('SELECT Id, AssignedToId FROM Leads WHERE Id=? LIMIT 1', [id]);
     if (!l) throw new NotFoundException('Prospecto no encontrado.');
     let allowed = role === 'ADMIN' || l.AssignedToId === userId;
-    if (!allowed && role === 'AGENCY') {
+    if (!allowed && (role === 'AGENCY' || role === 'DEVELOPER')) {
       const [t] = await this.db.query<any>('SELECT 1 AS ok FROM AgentProfiles ap JOIN AgencyProfiles ag ON ag.Id = ap.AgencyId WHERE ag.UserId=? AND ap.UserId=? LIMIT 1', [userId, l.AssignedToId]);
       allowed = !!t;
     }
@@ -169,15 +169,15 @@ export class EngagementService {
 
   // ───────────── Perfil público de agencia ─────────────
   async agencyBySlug(slug: string) {
-    const [a] = await this.db.query<any>(`SELECT ag.Id, ag.UserId, ag.Name, ag.Slug, ag.Description, COALESCE(ag.Phone, u.Phone) AS Phone FROM AgencyProfiles ag
-      JOIN Users u ON u.Id = ag.UserId WHERE ag.Slug=? AND u.IsActive=1 LIMIT 1`, [slug]);
+    const [a] = await this.db.query<any>(`SELECT ag.Id, ag.UserId, ag.Name, ag.Slug, ag.Description, COALESCE(ag.Phone, u.Phone) AS Phone, u.Role FROM AgencyProfiles ag
+      JOIN Users u ON u.Id = ag.UserId WHERE ag.Slug=? AND u.IsActive=1 AND u.ApprovalStatus='APPROVED' LIMIT 1`, [slug]);
     if (!a) throw new NotFoundException('Agencia no encontrada.');
     const agents = await this.db.query<any>(`SELECT u.Id, u.FullName FROM AgentProfiles ap JOIN Users u ON u.Id = ap.UserId WHERE ap.AgencyId=? AND u.IsActive=1 ORDER BY u.FullName`, [a.Id]);
     const owners = [a.UserId, ...agents.map((x: any) => x.Id)];
     const rows = await this.db.query<any>(`SELECT p.*, (SELECT i.Url FROM PropertyImages i WHERE i.PropertyId=p.Id ORDER BY i.Position LIMIT 1) AS Cover
       FROM Properties p WHERE p.Status='PUBLISHED' AND p.OwnerId IN (${owners.map(() => '?').join(',')}) ORDER BY p.CreatedAt DESC LIMIT 60`, owners);
     return {
-      name: a.Name, slug: a.Slug, description: a.Description, phone: a.Phone, agents: agents.map((x: any) => ({ id: x.Id, fullName: x.FullName })),
+      name: a.Name, slug: a.Slug, description: a.Description, phone: a.Phone, kind: a.Role === 'DEVELOPER' ? 'DEVELOPER' : 'AGENCY', agents: agents.map((x: any) => ({ id: x.Id, fullName: x.FullName })),
       properties: rows.map((r: any) => ({ id: r.Id, slug: r.Slug, title: r.Title, operation: r.Operation, price: r.Price, municipality: r.Municipality, neighborhood: r.Neighborhood,
         propertyType: r.PropertyType, bedrooms: r.Bedrooms, bathrooms: r.Bathrooms, builtArea: r.BuiltArea, landArea: r.LandArea, images: r.Cover ? [{ url: r.Cover, position: 0 }] : [] })),
     };

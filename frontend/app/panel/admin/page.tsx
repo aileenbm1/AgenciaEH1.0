@@ -78,7 +78,9 @@ function AdminPanel({ user }: { user: SessionUser }) {
     intro="Revisas cada propiedad antes de que sea pública y administras usuarios, membresías y pagos."
     actions={[
       { title: 'Revisar propiedades', text: 'Aprueba o rechaza lo que está en revisión.', href: '#revision', primary: true },
-      { title: 'Crear cuentas', text: 'Agencias, vendedores, compradores y administradores.', href: '#cuentas' },
+      { title: 'Cuentas por aprobar', text: 'Agentes, agencias y desarrolladores registrados que esperan tu aprobación.', href: '#usuarios' },
+      { title: 'Crear cuentas', text: 'Agencias, desarrolladoras, vendedores, compradores y administradores.', href: '#cuentas' },
+      { title: 'Cómo funciona', text: 'Guía interna de roles y flujos (solo administradores).', href: '/como-funciona' },
       { title: 'Usuarios y membresías', text: 'Roles, cuentas activas y registro de pagos.', href: '#usuarios' },
       { title: 'Pagos del mes', text: 'Ingresos por efectivo y transferencia.', href: '#pagos' },
       { title: 'Prospectos y visitas', text: 'Todos los mensajes y visitas del sitio.', href: '/panel/prospectos' },
@@ -86,7 +88,7 @@ function AdminPanel({ user }: { user: SessionUser }) {
     ]}>
     <AdminMetrics refreshKey={refreshKey} />
     <ModerationQueue />
-    <TeamManager roles={['AGENCY', 'AGENT', 'BUYER', 'ADMIN']} title="Crear cuentas" intro="El registro público está cerrado: tú creas agencias, vendedores, compradores y otros administradores. Las agencias y los vendedores también pueden crear cuentas desde su panel." />
+    <TeamManager roles={['AGENCY', 'DEVELOPER', 'AGENT', 'BUYER', 'ADMIN']} title="Crear cuentas" intro="Además del registro público, tú puedes crear agencias, desarrolladoras, vendedores, compradores y otros administradores. Las cuentas que creas tú quedan aprobadas de inmediato." />
     <AdminUsers me={user} onChanged={changed} />
     <AdminPayments refreshKey={refreshKey} />
     <PublishFlow />

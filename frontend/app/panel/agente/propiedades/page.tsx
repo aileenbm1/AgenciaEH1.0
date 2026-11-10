@@ -140,5 +140,5 @@ function MyProperties({ user }: { user: SessionUser }) {
 }
 
 export default function Page() {
-  return <ProtectedPanel allowed={['AGENT', 'AGENCY']}>{user => <MyProperties user={user} />}</ProtectedPanel>;
+  return <ProtectedPanel allowed={['AGENT', 'AGENCY', 'DEVELOPER']}>{user => <MyProperties user={user} />}</ProtectedPanel>;
 }

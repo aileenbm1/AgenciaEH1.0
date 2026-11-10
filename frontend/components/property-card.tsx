@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BedDouble, Bath, Ruler, MapPin } from "lucide-react";
 import { Property, mxn } from "@/lib/data";
+import ShareButtons from "@/components/share-buttons";
 
 export function PropertyCard({ p }: { p: Property }) {
   const isRent = p.operation === "Renta";
@@ -9,6 +10,7 @@ export function PropertyCard({ p }: { p: Property }) {
       <span className={`pill${isRent ? " rent" : ""}`}>{p.operation}</span>
       {p.tag && <span className="photo-tag">{p.tag}</span>}
     </Link>
+    <ShareButtons compact path={`/propiedades/${p.slug}`} title={p.title} />
     <div className="property-body">
       <div className="price">{mxn(p.price)} <small>{isRent ? "/ mes" : "MXN"}</small></div>
       <Link href={`/propiedades/${p.slug}`} className="property-title">{p.title}</Link>

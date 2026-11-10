@@ -16,6 +16,7 @@ export function PanelShell({ user, intro, actions, children }: { user: SessionUs
   useEffect(() => { setWelcome(new URLSearchParams(window.location.search).has('bienvenida')); }, []);
 
   return <main className="page-wrap">
+    {user.approvalStatus === 'PENDING' && <div className="notice" role="status"><b>Tu cuenta está en revisión.</b> El equipo de Agencia EH la aprobará pronto; mientras tanto puedes completar tu perfil. Podrás publicar propiedades y crear cuentas en cuanto quede aprobada (te avisaremos por correo).</div>}
     {welcome && <div className="welcome-banner" role="status">
       <b>¡Tu cuenta de {role.label.toLowerCase()} está lista, {user.fullName.split(' ')[0]}!</b>
       <span>{role.summary} Revisa tu correo para verificar tu cuenta.</span>

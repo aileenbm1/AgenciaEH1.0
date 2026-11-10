@@ -19,7 +19,6 @@ export function SiteFooter() {
         <Link href="/propiedades?operation=RENT">Propiedades en renta</Link>
         <Link href="/propiedades?operation=SALE">Propiedades en venta</Link>
         <Link href="/comparar">Comparar</Link>
-        <Link href="/como-funciona">Cómo funciona</Link>
       </div>
       <div className="footer-col">
         <h4>Municipios</h4>
@@ -27,8 +26,9 @@ export function SiteFooter() {
       </div>
       <div className="footer-col">
         <h4>Anunciantes</h4>
-        <Link href="/como-funciona">Soy agente</Link>
-        <Link href="/como-funciona">Soy agencia</Link>
+        <Link href="/acceso?registro=1&rol=AGENT">Soy agente</Link>
+        <Link href="/acceso?registro=1&rol=AGENCY">Soy agencia</Link>
+        <Link href="/acceso?registro=1&rol=DEVELOPER">Soy desarrollador</Link>
         <Link href="/acceso">Ingresar</Link>
         <a href="mailto:contacto@agenciaeh.mx">contacto@agenciaeh.mx</a>
       </div>

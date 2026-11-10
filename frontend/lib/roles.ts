@@ -19,7 +19,7 @@ export type RoleInfo = {
 export const ROLES: Record<UserRole, RoleInfo> = {
   BUYER: {
     id: 'BUYER',
-    accountBy: 'Tu asesor, tu agencia o el equipo de Agencia EH.',
+    accountBy: 'Te registras tú (sin aprobación) o te crea la cuenta tu asesor o agencia.',
     label: 'Comprador / Inquilino',
     who: 'Busco una propiedad para comprar o rentar',
     summary: 'Explora el catálogo, compara opciones y contacta al asesor de cada propiedad.',
@@ -29,7 +29,7 @@ export const ROLES: Record<UserRole, RoleInfo> = {
   },
   AGENT: {
     id: 'AGENT',
-    accountBy: 'Tu agencia o el equipo de Agencia EH.',
+    accountBy: 'Te registras tú y el administrador aprueba tu cuenta (o la crea tu agencia).',
     label: 'Agente / Asesor',
     who: 'Soy asesor inmobiliario o dueño y quiero anunciar',
     summary: 'Registra tus inmuebles, envíalos a revisión y, una vez aprobados, aparecen en el catálogo.',
@@ -39,12 +39,22 @@ export const ROLES: Record<UserRole, RoleInfo> = {
   },
   AGENCY: {
     id: 'AGENCY',
-    accountBy: 'El equipo de Agencia EH.',
+    accountBy: 'Te registras tú y el administrador aprueba tu cuenta.',
     label: 'Agencia',
     who: 'Represento a una inmobiliaria con varios asesores',
     summary: 'Publica como agencia y crea las cuentas de tus vendedores y compradores.',
     can: ['Crear y enviar propiedades a revisión a nombre de la agencia', 'Ver el estado de las publicaciones', 'Crear cuentas para tus vendedores y compradores', 'Ver y dar seguimiento a los prospectos del equipo', 'Perfil público de la agencia'],
     home: '/panel/agencia',
+    publicSignup: true,
+  },
+  DEVELOPER: {
+    id: 'DEVELOPER',
+    accountBy: 'Te registras tú y el administrador aprueba tu cuenta.',
+    label: 'Desarrollador',
+    who: 'Desarrollo proyectos inmobiliarios (fraccionamientos, torres, preventas)',
+    summary: 'Publica los inmuebles de tus proyectos, administra a tu equipo de vendedores y da seguimiento a prospectos.',
+    can: ['Crear y enviar propiedades a revisión a nombre de la desarrolladora', 'Crear cuentas para tus vendedores y compradores', 'Ver y dar seguimiento a los prospectos del equipo', 'Perfil público de la desarrolladora'],
+    home: '/panel/desarrollador',
     publicSignup: true,
   },
   ADMIN: {

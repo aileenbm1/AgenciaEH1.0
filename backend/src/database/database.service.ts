@@ -37,10 +37,20 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       ['Leads', 'VisitAt', 'ALTER TABLE Leads ADD COLUMN VisitAt DATETIME NULL'],
       ['Leads', 'Notes', 'ALTER TABLE Leads ADD COLUMN Notes VARCHAR(1000) NULL'],
       ['Leads', 'UpdatedAt', 'ALTER TABLE Leads ADD COLUMN UpdatedAt DATETIME NULL'],
+      ['Users', 'ApprovalStatus', "ALTER TABLE Users ADD COLUMN ApprovalStatus VARCHAR(10) NOT NULL DEFAULT 'APPROVED'"],
     ];
     for (const [t, c, sql] of changes) {
       if (tables.has(t) && !has(t, c)) { await this.getPool().query(sql); console.error(`[Agencia EH] Migración: columna ${t}.${c} agregada`); }
     }
+    // Rol Desarrollador: actualizar la restricción CHECK de Users.Role si es la anterior.
+    try {
+      const [ck] = await this.query<any>("SELECT CHECK_CLAUSE AS c FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_NAME = 'CK_Users_Role' LIMIT 1");
+      if (ck && !String(ck.c).includes('DEVELOPER')) {
+        await this.getPool().query('ALTER TABLE Users DROP CONSTRAINT CK_Users_Role');
+        await this.getPool().query("ALTER TABLE Users ADD CONSTRAINT CK_Users_Role CHECK (Role IN ('BUYER','AGENT','AGENCY','DEVELOPER','ADMIN'))");
+        console.error('[Agencia EH] Migración: rol DEVELOPER habilitado');
+      }
+    } catch (e: any) { console.error('[Agencia EH] No se pudo actualizar CK_Users_Role:', e?.message); }
   }
 
   private async tableNames(): Promise<string[]> {

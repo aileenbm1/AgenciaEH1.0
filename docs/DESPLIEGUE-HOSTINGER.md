@@ -53,7 +53,7 @@ Hostinger no convierte un sitio PHP en Node.js; hay que crear uno nuevo con el m
    | `SMTP_PASSWORD` | Contraseña de esa cuenta de correo |
    | `MAIL_FROM` | (Opcional) Remitente, p. ej. `Agencia EH <no-reply@tudominio.com>` |
 
-   | `PUBLIC_SIGNUP` | (Opcional) `true` para permitir que cualquiera se registre desde `/acceso`. Por defecto está cerrado: las cuentas las crean el admin, las agencias y los agentes. |
+   | `PUBLIC_SIGNUP` | (Opcional) `false` para cerrar el registro público. Por defecto está abierto: compradores entran al instante; agentes, agencias y desarrolladores quedan por aprobar. |
 
    No pongas `API_URL` ni `PORT`: `start.js` y Hostinger los configuran solos.
 4. Despliega y activa el **SSL** del dominio. Las tablas se crean solas al arrancar si no existen (también puedes importar `backend/database/schema.sql` en phpMyAdmin).

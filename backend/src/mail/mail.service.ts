@@ -95,6 +95,18 @@ export class MailService {
       'Ver propiedad', `/propiedades/${slug}`, 'Puedes desactivar estos avisos en tu panel, en "Búsquedas guardadas".');
   }
 
+  sendApprovalNeeded(to: string, name: string, role: string) {
+    const label = ({ AGENT: 'agente', AGENCY: 'agencia', DEVELOPER: 'desarrolladora' } as any)[role] || role;
+    this.send(to, `Cuenta por aprobar · ${name}`, 'Hay una cuenta por aprobar', `${name} se registró como ${label}. Revísala y apruébala o recházala desde tu panel.`,
+      'Revisar cuentas', '/panel/admin#usuarios', 'Recibes este aviso porque eres administrador de Agencia EH.');
+  }
+
+  sendApprovalResult(to: string, approved: boolean) {
+    this.send(to, approved ? 'Tu cuenta fue aprobada · Agencia EH' : 'Tu solicitud de cuenta · Agencia EH', approved ? '¡Tu cuenta fue aprobada!' : 'Tu solicitud no fue aprobada',
+      approved ? 'Ya puedes publicar propiedades y usar todas las herramientas de tu panel.' : 'Revisamos tu solicitud y por ahora no fue aprobada. Si crees que es un error, contáctanos.',
+      approved ? 'Ir a mi panel' : 'Ir a Agencia EH', approved ? '/acceso' : '/', 'Gracias por tu interés en Agencia EH.');
+  }
+
   sendEmailVerification(to: string, token: string) {
     this.send(to, 'Confirma tu correo · Agencia EH', 'Confirma tu correo',
       'Gracias por registrarte en Agencia EH. Confirma que este correo es tuyo para terminar de activar tu cuenta. El enlace vence en 24 horas.',
