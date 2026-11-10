@@ -107,6 +107,11 @@ export class MailService {
       approved ? 'Ir a mi panel' : 'Ir a Agencia EH', approved ? '/acceso' : '/', 'Gracias por tu interés en Agencia EH.');
   }
 
+  /** Aviso genérico con botón a una ruta del sitio (reservas, chat, citas). */
+  notify(to: string, subject: string, title: string, intro: string, button: string, path: string, footnote = 'Recibes este aviso por tu actividad en Agencia EH.') {
+    this.send(to, subject, title, intro, button, path, footnote);
+  }
+
   sendEmailVerification(to: string, token: string) {
     this.send(to, 'Confirma tu correo · Agencia EH', 'Confirma tu correo',
       'Gracias por registrarte en Agencia EH. Confirma que este correo es tuyo para terminar de activar tu cuenta. El enlace vence en 24 horas.',

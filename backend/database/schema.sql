@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS AgencyProfiles (
   Slug VARCHAR(180) NOT NULL,
   Description VARCHAR(1000) NULL,
   Phone VARCHAR(25) NULL,
+  Views INT NOT NULL DEFAULT 0,
   CONSTRAINT PK_AgencyProfiles PRIMARY KEY (Id),
   CONSTRAINT UQ_AgencyProfiles_User UNIQUE (UserId),
   CONSTRAINT UQ_AgencyProfiles_Slug UNIQUE (Slug),
@@ -48,7 +49,11 @@ CREATE TABLE IF NOT EXISTS AgentProfiles (
   AgencyId CHAR(36) NULL,
   Bio VARCHAR(1000) NULL,
   Phone VARCHAR(25) NULL,
+  Slug VARCHAR(180) NULL,
+  PhotoUrl VARCHAR(500) NULL,
+  Views INT NOT NULL DEFAULT 0,
   CONSTRAINT PK_AgentProfiles PRIMARY KEY (Id),
+  CONSTRAINT UQ_AgentProfiles_Slug UNIQUE (Slug),
   CONSTRAINT UQ_AgentProfiles_User UNIQUE (UserId),
   CONSTRAINT FK_AgentProfiles_Users FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE,
   CONSTRAINT FK_AgentProfiles_Agencies FOREIGN KEY (AgencyId) REFERENCES AgencyProfiles(Id)
@@ -70,6 +75,9 @@ CREATE TABLE IF NOT EXISTS Properties (
   Category VARCHAR(30) NULL,
   Availability VARCHAR(12) NOT NULL DEFAULT 'AVAILABLE',
   AvailableFrom DATE NULL,
+  Latitude DECIMAL(9,6) NULL,
+  Longitude DECIMAL(9,6) NULL,
+  ShowExactLocation TINYINT(1) NOT NULL DEFAULT 0,
   Bedrooms INT NULL,
   Bathrooms INT NULL,
   LandArea DECIMAL(12,2) NULL,
@@ -111,6 +119,8 @@ CREATE TABLE IF NOT EXISTS Leads (
   Kind VARCHAR(10) NOT NULL DEFAULT 'MESSAGE',
   VisitAt DATETIME NULL,
   Notes VARCHAR(1000) NULL,
+  Source VARCHAR(40) NULL,
+  Campaign VARCHAR(80) NULL,
   CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UpdatedAt DATETIME NULL,
   CONSTRAINT PK_Leads PRIMARY KEY (Id),
@@ -197,4 +207,176 @@ CREATE TABLE IF NOT EXISTS PropertyCustomValues (
   CONSTRAINT FK_PCV_Properties FOREIGN KEY (PropertyId) REFERENCES Properties(Id) ON DELETE CASCADE,
   CONSTRAINT FK_PCV_Fields FOREIGN KEY (FieldId) REFERENCES CustomFields(Id) ON DELETE CASCADE,
   INDEX IX_PCV_Field_Value (FieldId, Value)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── Reservas en línea (RF-20 a RF-27). El pago es en persona; aquí solo se registra. ──
+-- Configuración de reservas por propiedad (renta mensual o por noche).
+CREATE TABLE IF NOT EXISTS RentalSettings (
+  PropertyId CHAR(36) NOT NULL,
+  Enabled TINYINT(1) NOT NULL DEFAULT 0,
+  Mode VARCHAR(10) NOT NULL DEFAULT 'MONTHLY',
+  NightPrice DECIMAL(12,2) NULL,
+  MinStay INT NOT NULL DEFAULT 1,
+  MaxStay INT NULL,
+  MaxGuests INT NULL,
+  Deposit DECIMAL(12,2) NOT NULL DEFAULT 0,
+  TaxRate DECIMAL(5,2) NOT NULL DEFAULT 0,
+  CancellationPolicy VARCHAR(1000) NULL,
+  Seasons VARCHAR(4000) NULL,
+  SaleRequests TINYINT(1) NOT NULL DEFAULT 1,
+  UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT PK_RentalSettings PRIMARY KEY (PropertyId),
+  CONSTRAINT FK_RentalSettings_Properties FOREIGN KEY (PropertyId) REFERENCES Properties(Id) ON DELETE CASCADE,
+  CONSTRAINT CK_RentalSettings_Mode CHECK (Mode IN ('MONTHLY','NIGHTLY'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Solicitudes de reserva (renta por noche, renta mensual o apartado de compra).
+-- Estados: PENDING → APPROVED → DEPOSIT_PAID (apartada, anticipo registrado) → COMPLETED; REJECTED; CANCELLED.
+CREATE TABLE IF NOT EXISTS Reservations (
+  Id CHAR(36) NOT NULL,
+  PropertyId CHAR(36) NOT NULL,
+  GuestId CHAR(36) NOT NULL,
+  OwnerId CHAR(36) NOT NULL,
+  Kind VARCHAR(10) NOT NULL,
+  Status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+  CheckIn DATE NULL,
+  CheckOut DATE NULL,
+  Months INT NULL,
+  Nights INT NULL,
+  Guests INT NULL,
+  PaymentType VARCHAR(20) NULL,
+  Subtotal DECIMAL(12,2) NOT NULL DEFAULT 0,
+  Taxes DECIMAL(12,2) NOT NULL DEFAULT 0,
+  Deposit DECIMAL(12,2) NOT NULL DEFAULT 0,
+  Total DECIMAL(12,2) NOT NULL DEFAULT 0,
+  AdvanceRequired DECIMAL(12,2) NULL,
+  AdvanceAmount DECIMAL(12,2) NULL,
+  AdvanceMethod VARCHAR(12) NULL,
+  AdvancePaidAt DATETIME NULL,
+  PaidAmount DECIMAL(12,2) NULL,
+  PaidMethod VARCHAR(12) NULL,
+  PaidAt DATETIME NULL,
+  PaymentNotes VARCHAR(500) NULL,
+  AppointmentAt DATETIME NULL,
+  AppointmentPlace VARCHAR(250) NULL,
+  GuestConfirmedAt DATETIME NULL,
+  ReminderSentAt DATETIME NULL,
+  CheckinReminderAt DATETIME NULL,
+  GuestNote VARCHAR(1000) NULL,
+  OwnerNote VARCHAR(1000) NULL,
+  CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT PK_Reservations PRIMARY KEY (Id),
+  CONSTRAINT FK_Reservations_Properties FOREIGN KEY (PropertyId) REFERENCES Properties(Id) ON DELETE CASCADE,
+  CONSTRAINT CK_Reservations_Kind CHECK (Kind IN ('NIGHTLY','MONTHLY','SALE')),
+  CONSTRAINT CK_Reservations_Status CHECK (Status IN ('PENDING','APPROVED','DEPOSIT_PAID','COMPLETED','REJECTED','CANCELLED')),
+  INDEX IX_Reservations_Property (PropertyId, Status, CheckIn),
+  INDEX IX_Reservations_Guest (GuestId, CreatedAt),
+  INDEX IX_Reservations_Owner (OwnerId, Status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Chat de cada reserva.
+CREATE TABLE IF NOT EXISTS ReservationMessages (
+  Id CHAR(36) NOT NULL,
+  ReservationId CHAR(36) NOT NULL,
+  UserId CHAR(36) NOT NULL,
+  Body VARCHAR(2000) NOT NULL,
+  Seq INT NOT NULL DEFAULT 0,
+  CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT PK_ReservationMessages PRIMARY KEY (Id),
+  CONSTRAINT FK_ResMessages_Reservations FOREIGN KEY (ReservationId) REFERENCES Reservations(Id) ON DELETE CASCADE,
+  INDEX IX_ResMessages (ReservationId, CreatedAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Documentos privados de la reserva (INE, comprobantes). Se guardan fuera de la carpeta pública.
+CREATE TABLE IF NOT EXISTS ReservationDocuments (
+  Id CHAR(36) NOT NULL,
+  ReservationId CHAR(36) NOT NULL,
+  UserId CHAR(36) NOT NULL,
+  Kind VARCHAR(40) NULL,
+  FileName VARCHAR(200) NOT NULL,
+  StoredName VARCHAR(80) NOT NULL,
+  Mime VARCHAR(60) NOT NULL,
+  Size INT NOT NULL,
+  CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT PK_ReservationDocuments PRIMARY KEY (Id),
+  CONSTRAINT FK_ResDocs_Reservations FOREIGN KEY (ReservationId) REFERENCES Reservations(Id) ON DELETE CASCADE,
+  INDEX IX_ResDocs (ReservationId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Fechas bloqueadas manualmente por el anunciante (calendario).
+CREATE TABLE IF NOT EXISTS BlockedDates (
+  Id CHAR(36) NOT NULL,
+  PropertyId CHAR(36) NOT NULL,
+  StartDate DATE NOT NULL,
+  EndDate DATE NOT NULL,
+  Reason VARCHAR(200) NULL,
+  CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT PK_BlockedDates PRIMARY KEY (Id),
+  CONSTRAINT FK_BlockedDates_Properties FOREIGN KEY (PropertyId) REFERENCES Properties(Id) ON DELETE CASCADE,
+  INDEX IX_BlockedDates (PropertyId, StartDate)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Fanpage de cada propiedad (RF fanpage). Solo bloques y colores: nunca HTML ni CSS.
+-- Blocks/Theme = versión publicada; DraftBlocks/DraftTheme = borrador en edición.
+CREATE TABLE IF NOT EXISTS Fanpages (
+  PropertyId CHAR(36) NOT NULL,
+  Status VARCHAR(10) NOT NULL DEFAULT 'DRAFT',
+  Theme TEXT NULL,
+  Blocks MEDIUMTEXT NULL,
+  DraftTheme TEXT NULL,
+  DraftBlocks MEDIUMTEXT NULL,
+  ReviewNote VARCHAR(500) NULL,
+  UpdatedById CHAR(36) NULL,
+  UpdatedAt DATETIME NULL,
+  PublishedAt DATETIME NULL,
+  CONSTRAINT PK_Fanpages PRIMARY KEY (PropertyId),
+  CONSTRAINT FK_Fanpages_Properties FOREIGN KEY (PropertyId) REFERENCES Properties(Id) ON DELETE CASCADE,
+  CONSTRAINT CK_Fanpages_Status CHECK (Status IN ('DRAFT','PENDING','PUBLISHED','REJECTED'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Historial de versiones publicadas/guardadas de la fanpage (para revertir).
+CREATE TABLE IF NOT EXISTS FanpageVersions (
+  Id CHAR(36) NOT NULL,
+  PropertyId CHAR(36) NOT NULL,
+  Theme TEXT NULL,
+  Blocks MEDIUMTEXT NULL,
+  Note VARCHAR(200) NULL,
+  CreatedById CHAR(36) NULL,
+  CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT PK_FanpageVersions PRIMARY KEY (Id),
+  CONSTRAINT FK_FanpageVersions_Properties FOREIGN KEY (PropertyId) REFERENCES Properties(Id) ON DELETE CASCADE,
+  INDEX IX_FanpageVersions (PropertyId, CreatedAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Plantillas de fanpage que administra el admin (se clonan al crear una fanpage).
+CREATE TABLE IF NOT EXISTS FanpageTemplates (
+  Id CHAR(36) NOT NULL,
+  Name VARCHAR(80) NOT NULL,
+  Description VARCHAR(300) NULL,
+  Theme TEXT NULL,
+  Blocks MEDIUMTEXT NULL,
+  IsActive TINYINT(1) NOT NULL DEFAULT 1,
+  CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT PK_FanpageTemplates PRIMARY KEY (Id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Estadísticas de la fanpage: visitas, clics en compartir, clics en botones y prospectos.
+CREATE TABLE IF NOT EXISTS FanpageEvents (
+  Id BIGINT NOT NULL AUTO_INCREMENT,
+  PropertyId CHAR(36) NOT NULL,
+  Kind VARCHAR(10) NOT NULL,
+  Channel VARCHAR(30) NULL,
+  Campaign VARCHAR(80) NULL,
+  CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT PK_FanpageEvents PRIMARY KEY (Id),
+  CONSTRAINT FK_FanpageEvents_Properties FOREIGN KEY (PropertyId) REFERENCES Properties(Id) ON DELETE CASCADE,
+  INDEX IX_FanpageEvents (PropertyId, Kind, CreatedAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Ajustes generales que cambia el admin desde el panel (clave → valor JSON).
+CREATE TABLE IF NOT EXISTS SiteSettings (
+  K VARCHAR(60) NOT NULL,
+  V TEXT NULL,
+  CONSTRAINT PK_SiteSettings PRIMARY KEY (K)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

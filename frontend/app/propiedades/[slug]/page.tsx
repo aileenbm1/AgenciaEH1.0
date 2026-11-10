@@ -7,6 +7,9 @@ import PropertyContact from '@/components/property-contact';
 import PropertyTools from '@/components/property-tools';
 import ShareButtons from '@/components/share-buttons';
 import PropertyGallery from '@/components/property-gallery';
+import ReservationWidget from '@/components/reservation-widget';
+import PropertyMap from '@/components/property-map';
+import FanpageEditLink from '@/components/fanpage-edit-link';
 export const dynamic = 'force-dynamic';
 
 const fmtDate = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -40,6 +43,8 @@ export default async function Detail({ params }: { params: Promise<{ slug: strin
           <dl className="facts">{facts.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl></section>
         {custom.length > 0 && <section className="detail-section"><h3>Características</h3>
           <dl className="facts">{custom.map(c => <div key={c.label}><dt>{c.label}</dt><dd>{c.value}</dd></div>)}</dl></section>}
+        {raw.latitude != null && raw.longitude != null && <section className="detail-section"><h3>Ubicación</h3>
+          <PropertyMap lat={Number(raw.latitude)} lng={Number(raw.longitude)} title={p.title} exact={!!raw.showExactLocation} /></section>}
         {plans.length > 0 && <section className="detail-section"><h3>Plano de planta</h3>
           {plans.map((pl, k) => <figure key={pl.url + k} className="floor-plan"><img src={pl.url} alt={`Plano de ${p.title}`} />
             <figcaption>{[raw.builtArea ? `${Number(raw.builtArea)} m² de construcción` : '', raw.landArea ? `${Number(raw.landArea)} m² de terreno` : '', raw.bedrooms ? `${raw.bedrooms} recámaras` : '', raw.bathrooms ? `${raw.bathrooms} baños` : ''].filter(Boolean).join(' · ')}</figcaption></figure>)}
@@ -56,6 +61,8 @@ export default async function Detail({ params }: { params: Promise<{ slug: strin
         <h3>Descripción</h3><p>{raw.description || 'Solicita más información sobre esta propiedad.'}</p>
         <PropertyTools propertyId={raw.id} slug={raw.slug} />
         <ShareButtons path={`/propiedades/${raw.slug}`} title={p.title} />
+        <p className="fp-links"><Link className="small-link" href={`/propiedades/${raw.slug}/fanpage`}>Ver fanpage de la propiedad →</Link> <FanpageEditLink propertyId={raw.id} /></p>
+        {!closed && <ReservationWidget propertyId={raw.id} slug={raw.slug} operation={raw.operation} />}
         {!closed && <PropertyContact propertyId={raw.id} title={p.title} owner={raw.owner} />}
       </aside>
     </div>

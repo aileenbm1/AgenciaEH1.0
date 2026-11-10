@@ -7,6 +7,7 @@ import { AVAILABILITY, PROPERTY_STATUS } from '@/lib/roles';
 import { mxn } from '@/lib/data';
 import { OPERATION_LABEL } from '@/lib/properties';
 import PropertyForm, { EditableProperty } from '@/components/property-form';
+import RentalSettings from '@/components/rental-settings';
 
 type Property = EditableProperty & { slug: string; availability: keyof typeof AVAILABILITY };
 
@@ -15,6 +16,7 @@ function MyProperties({ user }: { user: SessionUser }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(''); const [ok, setOk] = useState('');
   const [busy, setBusy] = useState('');
+  const [reserving, setReserving] = useState('');
   // null = sin formulario; 'new' = nueva; o la propiedad que se edita.
   const [editing, setEditing] = useState<Property | 'new' | null>(null);
 
@@ -91,9 +93,12 @@ function MyProperties({ user }: { user: SessionUser }) {
                 {p.status === 'PUBLISHED' && <label className="availability-pick">Disponibilidad
                   <select value={p.availability} disabled={busy === p.id} onChange={e => setAvailability(p, e.target.value)}>{options.map(k => <option key={k} value={k}>{AVAILABILITY[k].label}</option>)}</select></label>}
                 <button className="button button-outline" disabled={busy === p.id} onClick={() => open(p)}>Editar</button>
+                <button className="button button-outline" aria-expanded={reserving === p.id} onClick={() => setReserving(reserving === p.id ? '' : p.id)}>{p.operation === 'SALE' ? 'Apartado en línea' : 'Reservas y calendario'}</button>
+                <Link className="button button-outline" href={`/panel/fanpage/${p.id}`}>Fanpage</Link>
                 {p.status === 'PUBLISHED' && <Link className="button button-outline" href={`/propiedades/${p.slug}`}>Ver publicación</Link>}
                 <button className="button button-ghost" disabled={busy === p.id} onClick={() => action(p, 'delete')}>Eliminar</button>
               </div>
+              {reserving === p.id && <div className="reserve-config"><RentalSettings propertyId={p.id} operation={p.operation} /></div>}
             </div>
           </article>;
         })}</div>}

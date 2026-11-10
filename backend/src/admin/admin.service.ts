@@ -181,6 +181,8 @@ export class AdminService {
     await this.db.transaction(async (tx) => {
       await this.db.execute('UPDATE Payments SET RecordedById=? WHERE RecordedById=?', [adminId, id], tx);
       await this.db.execute('DELETE FROM Payments WHERE UserId=?', [id], tx);
+      await this.db.execute('DELETE FROM Reservations WHERE GuestId=?', [id], tx);
+      await this.db.execute('DELETE FROM ReservationMessages WHERE UserId=?', [id], tx);
       await this.db.execute('UPDATE Leads SET AssignedToId=NULL WHERE AssignedToId=?', [id], tx);
       await this.db.execute('DELETE FROM Properties WHERE OwnerId=?', [id], tx);
       await this.db.execute('UPDATE AgentProfiles SET AgencyId=NULL WHERE AgencyId IN (SELECT Id FROM AgencyProfiles WHERE UserId=?)', [id], tx);

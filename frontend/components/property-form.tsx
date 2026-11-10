@@ -4,11 +4,13 @@ import { authJson } from '@/lib/auth';
 import { CATEGORIES, categoryFor, MUNICIPALITIES, PROPERTY_TYPES } from '@/lib/roles';
 import { CustomField } from '@/lib/properties';
 import PhotoUploader, { Photo } from './photo-uploader';
+import LocationPicker from './location-picker';
 
 export type EditableProperty = {
   id: string; title: string; description?: string | null; operation: 'RENT' | 'SALE' | 'BOTH'; price: number | string; rentPrice?: number | string | null;
   category?: string | null; municipality: string; neighborhood?: string | null; propertyType: string; bedrooms?: number | null; bathrooms?: number | null;
   landArea?: number | string | null; builtArea?: number | string | null; availableFrom?: string | null; status: string;
+  latitude?: number | null; longitude?: number | null; showExactLocation?: boolean;
   images: { url: string; label?: string | null }[]; custom?: Record<string, string>;
 };
 
@@ -26,6 +28,7 @@ export default function PropertyForm({ property, onDone, onCancel }: { property?
   const [photos, setPhotos] = useState<Photo[]>(property ? property.images.map(i => ({ url: i.url, label: i.label || '' })) : []);
   const [custom, setCustom] = useState<Record<string, string>>(property?.custom || {});
   const [fields, setFields] = useState<CustomField[]>([]);
+  const [loc, setLoc] = useState({ latitude: property?.latitude ?? null, longitude: property?.longitude ?? null, showExactLocation: !!property?.showExactLocation });
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   useEffect(() => { fetch('/api/v1/custom-fields').then(r => r.ok ? r.json() : []).then(setFields).catch(() => {}); }, []);
@@ -44,7 +47,7 @@ export default function PropertyForm({ property, onDone, onCancel }: { property?
       municipality: form.municipality, neighborhood: form.neighborhood, propertyType: form.propertyType,
       bedrooms: num(form.bedrooms), bathrooms: num(form.bathrooms), landArea: num(form.landArea), builtArea: num(form.builtArea),
       availableFrom: (isRent || both) && form.availableFrom ? form.availableFrom : undefined,
-      images: photos.map(p => p.url), imageLabels: photos.map(p => p.label || ''), custom,
+      images: photos.map(p => p.url), imageLabels: photos.map(p => p.label || ''), custom, ...loc,
     };
     try {
       await authJson(property ? `/properties/${property.id}` : '/properties', { method: property ? 'PATCH' : 'POST', body: JSON.stringify(payload) });
@@ -75,6 +78,7 @@ export default function PropertyForm({ property, onDone, onCancel }: { property?
           : <input type={f.type === 'NUMBER' ? 'number' : 'text'} maxLength={500} value={custom[f.key] || ''} onChange={e => setCustom(c => ({ ...c, [f.key]: e.target.value }))} />}
       </label>)}
     </div>
+    <LocationPicker value={loc} onChange={setLoc} hint={[form.neighborhood, form.municipality, 'Guanajuato'].filter(Boolean).join(', ')} />
     <PhotoUploader value={photos} onChange={setPhotos} onBusyChange={setUploading} />
     <small className="muted">Para enviar a revisión se necesitan: superficie, al menos una foto{fields.some(f => f.required) ? ' y los campos marcados con *' : ''}. Etiqueta una foto como <b>Plano</b> para mostrarla en la sección "Plano de planta".</small>
     {error && <div className="notice" role="alert">{error}</div>}

@@ -5,12 +5,13 @@ import ProtectedPanel from '@/components/protected-panel';
 import { authJson, roleHome, SessionUser } from '@/lib/auth';
 
 type Lead = { id: string; kind: 'MESSAGE' | 'VISIT'; status: string; name: string; email: string; phone?: string | null; message?: string | null; notes?: string | null;
-  visitAt?: string | null; createdAt: string; property: { id: string; title: string; slug: string } | null; assignedTo: { id: string; fullName: string } | null };
+  visitAt?: string | null; createdAt: string; source?: string | null; campaign?: string | null; property: { id: string; title: string; slug: string } | null; assignedTo: { id: string; fullName: string } | null };
 
 export const LEAD_STATUS: Record<string, { label: string; tone: string }> = {
   NEW: { label: 'Nuevo', tone: 'warn' }, CONTACTED: { label: 'Contactado', tone: 'neutral' }, VISIT_SCHEDULED: { label: 'Visita agendada', tone: 'ok' },
   CLOSED: { label: 'Cerrado', tone: 'ok' }, LOST: { label: 'Perdido', tone: 'bad' },
 };
+const sourceLabel = (s?: string | null) => ({ ficha: 'Ficha', fanpage: 'Fanpage', facebook: 'Facebook', instagram: 'Instagram', whatsapp: 'WhatsApp', tiktok: 'TikTok', email: 'Correo', google: 'Google' } as Record<string, string>)[s || 'ficha'] || s || 'Ficha';
 const fmt = (iso?: string | null) => iso ? new Date(iso).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' }) : '';
 const waNumber = (phone: string) => { const d = phone.replace(/\D/g, ''); return d.length === 10 ? `52${d}` : d; };
 
@@ -24,7 +25,7 @@ function LeadCard({ lead, me, onSaved }: { lead: Lead; me: SessionUser; onSaved:
   const st = LEAD_STATUS[lead.status] || { label: lead.status, tone: 'neutral' };
   return <article className={`dashboard-card lead-card${lead.status === 'NEW' ? ' is-new' : ''}`}>
     <div className="lead-head">
-      <div><i className={`status-pill ${st.tone}`}>{st.label}</i> <i className="status-pill neutral">{lead.kind === 'VISIT' ? '📅 Visita' : '✉️ Mensaje'}</i></div>
+      <div><i className={`status-pill ${st.tone}`}>{st.label}</i> <i className="status-pill neutral">{lead.kind === 'VISIT' ? '📅 Visita' : '✉️ Mensaje'}</i> <i className="status-pill neutral" title="Origen del prospecto">Origen: {sourceLabel(lead.source)}{lead.campaign ? ` · ${lead.campaign}` : ''}</i></div>
       <small className="muted">{fmt(lead.createdAt)}</small>
     </div>
     <h3>{lead.name}</h3>
@@ -49,11 +50,12 @@ function LeadCard({ lead, me, onSaved }: { lead: Lead; me: SessionUser; onSaved:
 
 function Leads({ user }: { user: SessionUser }) {
   const [scope, setScope] = useState(user.role === 'AGENCY' || user.role === 'DEVELOPER' ? 'team' : user.role === 'ADMIN' ? 'all' : 'mine');
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState(''); const [source, setSource] = useState('');
   const [items, setItems] = useState<Lead[] | null>(null); const [error, setError] = useState('');
   const load = useCallback(() => { setItems(null); authJson<Lead[]>(`/leads/mine${scope !== 'mine' ? `?scope=${scope}` : ''}`).then(setItems).catch(e => setError(e.message)); }, [scope]);
   useEffect(() => { load(); }, [load]);
-  const shown = (items || []).filter(l => !status || l.status === status);
+  const shown = (items || []).filter(l => (!status || l.status === status) && (!source || (l.source || 'ficha') === source));
+  const sources = [...new Set((items || []).map(l => l.source || 'ficha'))];
   const count = (s: string) => (items || []).filter(l => l.status === s).length;
   return <main className="page-wrap">
     <Link href={roleHome[user.role]} className="back-link">← Volver a mi panel</Link>
@@ -63,6 +65,7 @@ function Leads({ user }: { user: SessionUser }) {
       {(user.role === 'AGENCY' || user.role === 'DEVELOPER') && <select value={scope} onChange={e => setScope(e.target.value)}><option value="team">Míos y de mi equipo</option><option value="mine">Solo míos</option></select>}
       {user.role === 'ADMIN' && <select value={scope} onChange={e => setScope(e.target.value)}><option value="all">Todos</option><option value="mine">Solo míos</option></select>}
       <select value={status} onChange={e => setStatus(e.target.value)}><option value="">Todos los estados ({items?.length ?? 0})</option>{Object.entries(LEAD_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label} ({count(k)})</option>)}</select>
+      <select value={source} onChange={e => setSource(e.target.value)} aria-label="Origen"><option value="">Todos los orígenes</option>{sources.map(x => <option key={x} value={x}>{sourceLabel(x)} ({(items || []).filter(l => (l.source || 'ficha') === x).length})</option>)}</select>
       <button className="button button-outline" onClick={load}>Actualizar</button>
     </div>
     {error && <div className="notice" role="alert">{error}</div>}

@@ -9,8 +9,9 @@ export type ApiProperty = {
   category?: string | null; availability?: 'AVAILABLE' | 'RESERVED' | 'RENTED' | 'SOLD'; availableFrom?: string | null;
   municipality: string; neighborhood?: string | null; propertyType: string; bedrooms?: number | null; bathrooms?: number | null;
   landArea?: string | number | null; builtArea?: string | number | null; images?: ApiImage[];
+  latitude?: number | null; longitude?: number | null; showExactLocation?: boolean;
   custom?: Record<string, string>; customFields?: { key: string; label: string; type: string }[];
-  owner?: { fullName: string; role: string; phone?: string | null; agency?: { name: string; slug: string } | null } | null;
+  owner?: { fullName: string; role: string; phone?: string | null; agency?: { name: string; slug: string } | null; agent?: { slug: string; photoUrl?: string | null } | null } | null;
 };
 export type PropertyPage = { items: ApiProperty[]; total: number; page: number; take: number; pages: number };
 

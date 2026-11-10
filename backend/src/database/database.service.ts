@@ -27,7 +27,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
   /** Cambios en tablas existentes (idempotentes). */
   private async migrate() {
-    const cols = await this.query<any>("SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('Users','Leads','Properties','PropertyImages')");
+    const cols = await this.query<any>("SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('Users','Leads','Properties','PropertyImages','AgentProfiles','AgencyProfiles')");
     const has = (t: string, c: string) => cols.some((r) => r.t === t && r.c === c);
     const tables = new Set(cols.map((r) => r.t));
     const changes: [string, string, string][] = [
@@ -43,6 +43,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       ['Properties', 'Availability', "ALTER TABLE Properties ADD COLUMN Availability VARCHAR(12) NOT NULL DEFAULT 'AVAILABLE'"],
       ['Properties', 'AvailableFrom', 'ALTER TABLE Properties ADD COLUMN AvailableFrom DATE NULL'],
       ['PropertyImages', 'Label', 'ALTER TABLE PropertyImages ADD COLUMN Label VARCHAR(40) NULL'],
+      ['AgentProfiles', 'Slug', 'ALTER TABLE AgentProfiles ADD COLUMN Slug VARCHAR(180) NULL, ADD CONSTRAINT UQ_AgentProfiles_Slug UNIQUE (Slug)'],
+      ['AgentProfiles', 'PhotoUrl', 'ALTER TABLE AgentProfiles ADD COLUMN PhotoUrl VARCHAR(500) NULL'],
+      ['AgentProfiles', 'Views', 'ALTER TABLE AgentProfiles ADD COLUMN Views INT NOT NULL DEFAULT 0'],
+      ['AgencyProfiles', 'Views', 'ALTER TABLE AgencyProfiles ADD COLUMN Views INT NOT NULL DEFAULT 0'],
+      ['Properties', 'Latitude', 'ALTER TABLE Properties ADD COLUMN Latitude DECIMAL(9,6) NULL, ADD COLUMN Longitude DECIMAL(9,6) NULL'],
+      ['Properties', 'ShowExactLocation', 'ALTER TABLE Properties ADD COLUMN ShowExactLocation TINYINT(1) NOT NULL DEFAULT 0'],
+      ['Leads', 'Source', 'ALTER TABLE Leads ADD COLUMN Source VARCHAR(40) NULL, ADD COLUMN Campaign VARCHAR(80) NULL'],
     ];
     for (const [t, c, sql] of changes) {
       if (tables.has(t) && !has(t, c)) { await this.getPool().query(sql); console.error(`[Agencia EH] Migración: columna ${t}.${c} agregada`); }
@@ -84,7 +91,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
    * Así no hace falta importar el esquema a mano en phpMyAdmin.
    */
   private async ensureSchema() {
-    const required = ['Users', 'AgencyProfiles', 'AgentProfiles', 'Properties', 'PropertyImages', 'Leads', 'Favorites', 'Payments', 'SavedSearches', 'CustomFields', 'PropertyCustomValues'];
+    const required = ['Users', 'AgencyProfiles', 'AgentProfiles', 'Properties', 'PropertyImages', 'Leads', 'Favorites', 'Payments', 'SavedSearches', 'CustomFields', 'PropertyCustomValues', 'RentalSettings', 'Reservations', 'ReservationMessages', 'ReservationDocuments', 'BlockedDates', 'Fanpages', 'FanpageVersions', 'FanpageTemplates', 'FanpageEvents', 'SiteSettings'];
     try {
       const before = await this.tableNames();
       const missingBefore = required.filter((t) => !before.includes(t));

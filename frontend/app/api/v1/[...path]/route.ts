@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const FORWARD_REQUEST_HEADERS = ['authorization', 'content-type', 'cookie', 'accept', 'accept-language', 'user-agent', 'x-forwarded-for'];
-const FORWARD_RESPONSE_HEADERS = ['content-type', 'cache-control', 'location'];
+const FORWARD_RESPONSE_HEADERS = ['content-type', 'cache-control', 'location', 'content-disposition'];
 
 function unavailable(status?: ApiStatus, detail?: string) {
   return Response.json(

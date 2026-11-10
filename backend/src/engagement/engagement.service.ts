@@ -38,16 +38,19 @@ export class EngagementService {
     }
     if (kind === 'MESSAGE' && !d.message?.trim()) throw new BadRequestException('Escribe tu mensaje.');
     const id = randomUUID();
-    await this.db.execute(`INSERT INTO Leads(Id,PropertyId,Name,Email,Phone,Message,Status,AssignedToId,UserId,Kind,VisitAt,UpdatedAt)
-      VALUES(?,?,?,?,?,?, 'NEW', ?,?,?,?, UTC_TIMESTAMP())`,
-      [id, p.Id, d.name.trim(), d.email.trim().toLowerCase(), d.phone?.trim() || null, d.message?.trim() || null, p.OwnerId, userId || null, kind, visitAt ? toMysqlDate(visitAt.toISOString()) : null]);
+    const source = d.source?.toLowerCase() || 'ficha', campaign = d.campaign?.trim().slice(0, 80) || null;
+    await this.db.execute(`INSERT INTO Leads(Id,PropertyId,Name,Email,Phone,Message,Status,AssignedToId,UserId,Kind,VisitAt,Source,Campaign,UpdatedAt)
+      VALUES(?,?,?,?,?,?, 'NEW', ?,?,?,?,?,?, UTC_TIMESTAMP())`,
+      [id, p.Id, d.name.trim(), d.email.trim().toLowerCase(), d.phone?.trim() || null, d.message?.trim() || null, p.OwnerId, userId || null, kind, visitAt ? toMysqlDate(visitAt.toISOString()) : null, source, campaign]);
+    // Estadística de la fanpage: prospecto generado desde ella.
+    if (source === 'fanpage') await this.db.execute("INSERT INTO FanpageEvents(PropertyId,Kind,Channel,Campaign) VALUES(?,'LEAD',NULL,?)", [p.Id, campaign]).catch(() => undefined);
     this.mail.sendLeadNotice(p.OwnerEmail, kind, p.Title, d.name.trim(), visitAt ? fmtWhen(visitAt) : undefined);
     return { success: true, message: kind === 'VISIT' ? 'Solicitud de visita enviada. El asesor te contactará para confirmarla.' : 'Mensaje enviado. El asesor te contactará pronto.' };
   }
 
   private leadRow(r: any) {
     return { id: r.Id, kind: r.Kind, status: r.Status, name: r.Name, email: r.Email, phone: r.Phone, message: r.Message, notes: r.Notes,
-      visitAt: r.VisitAt, createdAt: r.CreatedAt, property: r.PropertyId ? { id: r.PropertyId, title: r.Title, slug: r.Slug } : null,
+      visitAt: r.VisitAt, createdAt: r.CreatedAt, source: r.Source || 'ficha', campaign: r.Campaign || null, property: r.PropertyId ? { id: r.PropertyId, title: r.Title, slug: r.Slug } : null,
       assignedTo: r.AssignedName ? { id: r.AssignedToId, fullName: r.AssignedName } : null };
   }
 
@@ -175,12 +178,13 @@ export class EngagementService {
     const [a] = await this.db.query<any>(`SELECT ag.Id, ag.UserId, ag.Name, ag.Slug, ag.Description, COALESCE(ag.Phone, u.Phone) AS Phone, u.Role FROM AgencyProfiles ag
       JOIN Users u ON u.Id = ag.UserId WHERE ag.Slug=? AND u.IsActive=1 AND u.ApprovalStatus='APPROVED' LIMIT 1`, [slug]);
     if (!a) throw new NotFoundException('Agencia no encontrada.');
-    const agents = await this.db.query<any>(`SELECT u.Id, u.FullName FROM AgentProfiles ap JOIN Users u ON u.Id = ap.UserId WHERE ap.AgencyId=? AND u.IsActive=1 ORDER BY u.FullName`, [a.Id]);
+    await this.db.execute('UPDATE AgencyProfiles SET Views=Views+1 WHERE Id=?', [a.Id]);
+    const agents = await this.db.query<any>(`SELECT u.Id, u.FullName, ap.Slug, ap.PhotoUrl FROM AgentProfiles ap JOIN Users u ON u.Id = ap.UserId WHERE ap.AgencyId=? AND u.IsActive=1 ORDER BY u.FullName`, [a.Id]);
     const owners = [a.UserId, ...agents.map((x: any) => x.Id)];
     const rows = await this.db.query<any>(`SELECT p.*, (SELECT i.Url FROM PropertyImages i WHERE i.PropertyId=p.Id ORDER BY i.Position LIMIT 1) AS Cover
       FROM Properties p WHERE p.Status='PUBLISHED' AND p.Availability IN ('AVAILABLE','RESERVED') AND p.OwnerId IN (${owners.map(() => '?').join(',')}) ORDER BY p.CreatedAt DESC LIMIT 60`, owners);
     return {
-      name: a.Name, slug: a.Slug, description: a.Description, phone: a.Phone, kind: a.Role === 'DEVELOPER' ? 'DEVELOPER' : 'AGENCY', agents: agents.map((x: any) => ({ id: x.Id, fullName: x.FullName })),
+      name: a.Name, slug: a.Slug, description: a.Description, phone: a.Phone, kind: a.Role === 'DEVELOPER' ? 'DEVELOPER' : 'AGENCY', agents: agents.map((x: any) => ({ id: x.Id, fullName: x.FullName, slug: x.Slug, photoUrl: x.PhotoUrl })),
       properties: rows.map((r: any) => ({ id: r.Id, slug: r.Slug, title: r.Title, operation: r.Operation, price: r.Price, rentPrice: r.RentPrice, availability: r.Availability, municipality: r.Municipality, neighborhood: r.Neighborhood,
         propertyType: r.PropertyType, bedrooms: r.Bedrooms, bathrooms: r.Bathrooms, builtArea: r.BuiltArea, landArea: r.LandArea, images: r.Cover ? [{ url: r.Cover, position: 0 }] : [] })),
     };

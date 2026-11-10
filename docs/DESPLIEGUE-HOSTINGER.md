@@ -46,6 +46,7 @@ Hostinger no convierte un sitio PHP en Node.js; hay que crear uno nuevo con el m
 
    | `ADMIN_EMAILS` | (Opcional) Correos de administradores separados por comas. Esas personas se registran normalmente y pasan a ADMIN al registrarse o iniciar sesión. Quitar un correo de la lista **no** le retira el rol (eso se hace en phpMyAdmin). |
    | `UPLOADS_DIR` | (Opcional) Carpeta de las fotos. Por defecto `~/agencia-eh-uploads`, fuera de la app, para que subir un ZIP nuevo no las borre. |
+   | `UPLOADS_PRIVATE_DIR` | (Opcional) Carpeta de los documentos privados de las reservas (INE, comprobantes). Por defecto `~/agencia-eh-privado`; nunca se publica. Respáldala junto con la base. |
 
    | `SMTP_HOST` | `smtp.hostinger.com` (para enviar correos de recuperación y verificación) |
    | `SMTP_PORT` | `465` |

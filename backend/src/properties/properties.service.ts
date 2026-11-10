@@ -41,6 +41,12 @@ export class PropertiesService {
     if (operation === 'BOTH' && !(Number(rentPrice) > 0)) throw new BadRequestException('Indica también el precio de renta mensual.');
   }
 
+  /** Ubicación pública: si el anunciante no quiere mostrar la exacta, se redondea (~1 km) y se marca como aproximada. */
+  private publicLocation<T extends { latitude: number | null; longitude: number | null; showExactLocation: boolean }>(p: T): T {
+    if (p.latitude == null || p.longitude == null || p.showExactLocation) return p;
+    return { ...p, latitude: Math.round(p.latitude * 100) / 100, longitude: Math.round(p.longitude * 100) / 100 };
+  }
+
   private group(rows: any[]) {
     const map = new Map<string, any>();
     for (const row of rows) {
@@ -52,6 +58,7 @@ export class PropertiesService {
           availability: row.Availability || 'AVAILABLE', availableFrom: dateOnly(row.AvailableFrom),
           municipality: row.Municipality, neighborhood: row.Neighborhood, propertyType: row.PropertyType, bedrooms: row.Bedrooms, bathrooms: row.Bathrooms,
           landArea: row.LandArea, builtArea: row.BuiltArea, ownerId: row.OwnerId, createdAt: row.CreatedAt, updatedAt: row.UpdatedAt, images: [],
+          latitude: row.Latitude != null ? Number(row.Latitude) : null, longitude: row.Longitude != null ? Number(row.Longitude) : null, showExactLocation: !!row.ShowExactLocation,
         };
         map.set(row.Id, p);
       }
@@ -72,11 +79,11 @@ export class PropertiesService {
     const custom = await this.fields.clean(d.custom);
     const id = randomUUID();
     await this.db.transaction(async (tx) => {
-      await this.db.execute(`INSERT INTO Properties(Id,Slug,Title,Description,Operation,Status,Price,RentPrice,Currency,Category,Availability,AvailableFrom,Municipality,Neighborhood,PropertyType,Bedrooms,Bathrooms,LandArea,BuiltArea,OwnerId)
-        VALUES(?,?,?,?,?,'DRAFT',?,?,'MXN',?,'AVAILABLE',?,?,?,?,?,?,?,?,?)`,
+      await this.db.execute(`INSERT INTO Properties(Id,Slug,Title,Description,Operation,Status,Price,RentPrice,Currency,Category,Availability,AvailableFrom,Municipality,Neighborhood,PropertyType,Bedrooms,Bathrooms,LandArea,BuiltArea,Latitude,Longitude,ShowExactLocation,OwnerId)
+        VALUES(?,?,?,?,?,'DRAFT',?,?,'MXN',?,'AVAILABLE',?,?,?,?,?,?,?,?,?,?,?,?)`,
         [id, this.slug(d.title), d.title, d.description, d.operation, d.price, d.operation === 'BOTH' ? d.rentPrice : null, d.category || categoryFor(d.propertyType),
           d.availableFrom ? d.availableFrom.slice(0, 10) : null, d.municipality, d.neighborhood ?? null, d.propertyType, d.bedrooms ?? null, d.bathrooms ?? null,
-          d.landArea ?? null, d.builtArea ?? null, userId], tx);
+          d.landArea ?? null, d.builtArea ?? null, d.latitude ?? null, d.latitude != null ? d.longitude ?? null : null, d.showExactLocation ? 1 : 0, userId], tx);
       await this.insertImages(tx, id, d.images || [], d.imageLabels);
       await this.fields.save(tx, id, custom);
     });
@@ -89,8 +96,10 @@ export class PropertiesService {
   }
 
   async publicList(q: any) {
-    const page = Math.max(1, Number(q.page) || 1), take = Math.min(30, Math.max(1, Number(q.take) || 12));
+    const map = q.view === 'map';
+    const page = map ? 1 : Math.max(1, Number(q.page) || 1), take = map ? 500 : Math.min(30, Math.max(1, Number(q.take) || 12));
     const where: string[] = [`p.Status='PUBLISHED'`, PUBLIC_AVAILABILITY], params: any[] = [];
+    if (map) where.push('p.Latitude IS NOT NULL AND p.Longitude IS NOT NULL');
     const like = (col: string, v: any, max: number) => { where.push(`${col} LIKE CONCAT('%',?,'%')`); params.push(String(v).slice(0, max)); };
     if (q.municipality) like('p.Municipality', q.municipality, 80);
     if (q.neighborhood) like('p.Neighborhood', q.neighborhood, 80);
@@ -117,7 +126,7 @@ export class PropertiesService {
     const [count] = await this.db.query(`SELECT COUNT(*) AS Total FROM Properties p WHERE ${clause}`, params);
     // Se pagina sobre propiedades (subconsulta) y después se unen las imágenes.
     const rows = await this.db.query(`${WITH_IMAGES} FROM (SELECT p.* FROM Properties p WHERE ${clause} ORDER BY ${sort},p.Id LIMIT ? OFFSET ?) p LEFT JOIN PropertyImages i ON i.PropertyId=p.Id ORDER BY ${sort},p.Id,i.Position`, [...params, take, (page - 1) * take]);
-    const items = this.group(rows); const total = Number(count.Total);
+    const items = this.group(rows).map((p) => this.publicLocation(p)); const total = Number(count.Total);
     return { items, total, page, take, pages: Math.ceil(total / take) };
   }
 
@@ -135,13 +144,13 @@ export class PropertiesService {
     const items = await this.withCustom(this.group(rows));
     if (!items.length) throw new NotFoundException('Propiedad no encontrada.');
     // Contacto público del anunciante (nombre, teléfono para WhatsApp y agencia). El correo no se publica: los mensajes llegan por el formulario.
-    const [o] = await this.db.query<any>(`SELECT u.FullName,u.Role,COALESCE(u.Phone,ap.Phone,own.Phone,ag.Phone) AS Phone,COALESCE(own.Name,ag.Name) AS AgencyName,COALESCE(own.Slug,ag.Slug) AS AgencySlug
+    const [o] = await this.db.query<any>(`SELECT u.FullName,u.Role,ap.Slug AS AgentSlug,ap.PhotoUrl AS AgentPhoto,COALESCE(u.Phone,ap.Phone,own.Phone,ag.Phone) AS Phone,COALESCE(own.Name,ag.Name) AS AgencyName,COALESCE(own.Slug,ag.Slug) AS AgencySlug
       FROM Users u LEFT JOIN AgentProfiles ap ON ap.UserId=u.Id LEFT JOIN AgencyProfiles ag ON ag.Id=ap.AgencyId LEFT JOIN AgencyProfiles own ON own.UserId=u.Id WHERE u.Id=? LIMIT 1`, [items[0].ownerId]);
-    const { ownerId, ...pub } = items[0];
+    const { ownerId, ...pub } = this.publicLocation(items[0]);
     const fields = (await this.fields.list()).map((f) => ({ key: f.key, label: f.label, type: f.type }));
     return {
       ...pub, customFields: fields,
-      owner: o ? { fullName: o.AgencyName && (o.Role === 'AGENCY' || o.Role === 'DEVELOPER') ? o.AgencyName : o.FullName, role: o.Role, phone: o.Phone || process.env.CONTACT_PHONE?.trim() || null, agency: o.AgencySlug ? { name: o.AgencyName, slug: o.AgencySlug } : null } : null,
+      owner: o ? { fullName: o.AgencyName && (o.Role === 'AGENCY' || o.Role === 'DEVELOPER') ? o.AgencyName : o.FullName, role: o.Role, phone: o.Phone || process.env.CONTACT_PHONE?.trim() || null, agency: o.AgencySlug ? { name: o.AgencyName, slug: o.AgencySlug } : null, agent: o.Role === 'AGENT' && o.AgentSlug ? { slug: o.AgentSlug, photoUrl: o.AgentPhoto || null } : null } : null,
     };
   }
 
@@ -164,6 +173,8 @@ export class PropertiesService {
     for (const [key, col] of Object.entries(cols)) if ((d as any)[key] !== undefined) { sets.push(`${col}=?`); params.push((d as any)[key] ?? null); }
     if (d.rentPrice !== undefined || d.operation !== undefined) { sets.push('RentPrice=?'); params.push(operation === 'BOTH' ? (d.rentPrice ?? p.RentPrice) : null); }
     if (d.availableFrom !== undefined) { sets.push('AvailableFrom=?'); params.push(d.availableFrom ? d.availableFrom.slice(0, 10) : null); }
+    if (d.latitude !== undefined || d.longitude !== undefined) { const has = d.latitude != null && d.longitude != null; sets.push('Latitude=?', 'Longitude=?'); params.push(has ? d.latitude : null, has ? d.longitude : null); }
+    if (d.showExactLocation !== undefined) { sets.push('ShowExactLocation=?'); params.push(d.showExactLocation ? 1 : 0); }
     if (d.images && d.images.length > 20) throw new BadRequestException('Puedes agregar hasta 20 fotografías.');
     if (role !== 'ADMIN') sets.push("Status='DRAFT'");
     sets.push('UpdatedAt=UTC_TIMESTAMP()'); params.push(id);

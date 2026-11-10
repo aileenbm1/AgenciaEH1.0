@@ -40,3 +40,18 @@ export function removeMedia(urls: string[]) {
     try { unlinkSync(file); } catch { /* ya no existe */ }
   }
 }
+
+let cachedPrivate: string | undefined;
+/**
+ * Carpeta PRIVADA para documentos de reservas (INE, comprobantes). No se sirve
+ * públicamente: solo se descarga con sesión y permiso. Por defecto
+ * ~/agencia-eh-privado (configurable con UPLOADS_PRIVATE_DIR).
+ */
+export function privateRoot(): string {
+  if (cachedPrivate) return cachedPrivate;
+  const candidates = [process.env.UPLOADS_PRIVATE_DIR?.trim(), join(homedir(), 'agencia-eh-privado'), join(process.cwd(), 'privado')].filter(Boolean) as string[];
+  for (const dir of candidates) {
+    try { mkdirSync(dir, { recursive: true, mode: 0o700 }); accessSync(dir, constants.W_OK); cachedPrivate = resolve(dir); return cachedPrivate; } catch { /* siguiente */ }
+  }
+  throw new Error('No hay una carpeta con permiso de escritura para documentos privados (configura UPLOADS_PRIVATE_DIR).');
+}

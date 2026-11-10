@@ -3,14 +3,17 @@ import { PropertyGrid } from '@/components/property-grid';
 import { getCustomFields, getPublicProperties, toCard } from '@/lib/properties';
 import { CATEGORIES } from '@/lib/roles';
 import { SaveSearchButton } from '@/components/property-tools';
+import CatalogMap from '@/components/catalog-map';
+import { mxn } from '@/lib/data';
 export const dynamic='force-dynamic';
 export default async function Listings({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
  const sp=await searchParams;const pick=(key:string)=>{const v=sp[key];return Array.isArray(v)?v[0]:v;};
  const fields=(await getCustomFields()).filter(f=>f.filterable);
  const cfParams=Object.fromEntries(fields.map(f=>[`cf_${f.key}`,pick(`cf_${f.key}`)]));
  const params={...cfParams,category:pick('category'),operation:pick('operation'),municipality:pick('municipality'),propertyType:pick('propertyType'),minPrice:pick('minPrice'),maxPrice:pick('maxPrice'),bedrooms:pick('bedrooms'),bathrooms:pick('bathrooms'),search:pick('search'),sort:pick('sort'),page:pick('page')};
- const view=pick('vista')==='lista'?'list':'grid';
+ const view=pick('vista')==='lista'?'list':pick('vista')==='mapa'?'map':'grid';
  const result=await getPublicProperties(params,12);const cards=result.items.map(toCard);
+ const mapItems=view==='map'?(await getPublicProperties({...params,page:undefined,view:'map'},500)).items:[];
  return <main className="page-wrap"><div className="page-heading"><span className="eyebrow">CATÁLOGO INMOBILIARIO</span><h1>Propiedades en Guanajuato</h1><p>Explora opciones de renta y venta en el Bajío.</p></div>
  <form className="filterbar" action="/propiedades" method="get">
  <input aria-label="Buscar" name="search" placeholder="Buscar por zona o palabra" defaultValue={pick('search')||''}/>
@@ -24,15 +27,16 @@ export default async function Listings({searchParams}:{searchParams:Promise<Reco
  {fields.map(f=>f.type==='SELECT'?<select key={f.id} name={`cf_${f.key}`} defaultValue={pick(`cf_${f.key}`)||''}><option value="">{f.label}: todos</option>{f.options.map(o=><option key={o}>{o}</option>)}</select>
    :f.type==='BOOLEAN'?<select key={f.id} name={`cf_${f.key}`} defaultValue={pick(`cf_${f.key}`)||''}><option value="">{f.label}: indistinto</option><option value="1">{f.label}: sí</option></select>
    :<input key={f.id} name={`cf_${f.key}`} type={f.type==='NUMBER'?'number':'text'} placeholder={f.type==='NUMBER'?`${f.label} (mínimo)`:f.label} defaultValue={pick(`cf_${f.key}`)||''}/>)}
- {view==='list'&&<input type="hidden" name="vista" value="lista"/>}
+ {view!=='grid'&&<input type="hidden" name="vista" value={view==='list'?'lista':'mapa'}/>}
  <select name="sort" defaultValue={pick('sort')||'recent'}><option value="recent">Más recientes</option><option value="price_asc">Precio menor</option><option value="price_desc">Precio mayor</option></select>
  <button className="button button-navy" type="submit">Aplicar filtros</button><Link className="button button-outline" href="/propiedades">Limpiar</Link>
  </form>
  {(()=>{const q=Object.fromEntries(['operation','category','municipality','propertyType','minPrice','maxPrice','bedrooms','bathrooms','search',...fields.map(f=>`cf_${f.key}`)].map(k=>[k,pick(k)]).filter(([,v])=>v&&String(v).trim()!=='')) as Record<string,string>;return Object.keys(q).length?<div className="save-search-row"><SaveSearchButton query={q}/></div>:null;})()}
- {(()=>{const base=Object.fromEntries(Object.entries(params).filter(([k,v])=>v!==undefined&&k!=='page') as [string,string][]);const href=(v:string)=>`/propiedades?${new URLSearchParams(v==='lista'?{...base,vista:'lista'}:base)}`;
-  return <div className="view-toggle" role="group" aria-label="Vista de resultados"><Link className={view==='grid'?'is-on':''} href={href('cuadricula')}>▦ Cuadrícula</Link><Link className={view==='list'?'is-on':''} href={href('lista')}>☰ Lista</Link></div>;})()}
+ {(()=>{const base=Object.fromEntries(Object.entries(params).filter(([k,v])=>v!==undefined&&k!=='page') as [string,string][]);const href=(v:string)=>`/propiedades?${new URLSearchParams(v==='cuadricula'?base:{...base,vista:v})}`;
+  return <div className="view-toggle" role="group" aria-label="Vista de resultados"><Link className={view==='grid'?'is-on':''} href={href('cuadricula')}>▦ Cuadrícula</Link><Link className={view==='list'?'is-on':''} href={href('lista')}>☰ Lista</Link><Link className={view==='map'?'is-on':''} href={href('mapa')}>🗺 Mapa</Link></div>;})()}
  <p className="results-count">{result.total} {result.total===1?'propiedad encontrada':'propiedades encontradas'} · Página {result.page} de {Math.max(1,result.pages)}</p>
- {cards.length?<PropertyGrid items={cards} view={view}/>:<div className="notice">{result.total===0?'No encontramos propiedades publicadas con esos criterios. Intenta cambiar los filtros.':'No fue posible consultar el catálogo en este momento. Intenta de nuevo en unos minutos.'}</div>}
- {result.pages>1&&<div className="center" style={{display:'flex',gap:12,justifyContent:'center'}}>{result.page>1&&<Link className="button button-outline" href={`/propiedades?${new URLSearchParams({...Object.fromEntries(Object.entries(params).filter(([,v])=>v!==undefined) as [string,string][]),...(view==='list'?{vista:'lista'}:{}),page:String(result.page-1)})}`}>← Anterior</Link>}{result.page<result.pages&&<Link className="button button-outline" href={`/propiedades?${new URLSearchParams({...Object.fromEntries(Object.entries(params).filter(([,v])=>v!==undefined) as [string,string][]),...(view==='list'?{vista:'lista'}:{}),page:String(result.page+1)})}`}>Siguiente →</Link>}</div>}
+ {view==='map'&&<CatalogMap points={mapItems.map(p=>({lat:Number(p.latitude),lng:Number(p.longitude),title:p.title,href:`/propiedades/${p.slug}`,label:`${mxn(Number(p.price))}${p.operation==='RENT'?' / mes':''} · ${p.neighborhood||p.municipality}`,approx:!p.showExactLocation}))} total={result.total}/>}
+ {view==='map'?null:cards.length?<PropertyGrid items={cards} view={view}/>:<div className="notice">{result.total===0?'No encontramos propiedades publicadas con esos criterios. Intenta cambiar los filtros.':'No fue posible consultar el catálogo en este momento. Intenta de nuevo en unos minutos.'}</div>}
+ {view!=='map'&&result.pages>1&&<div className="center" style={{display:'flex',gap:12,justifyContent:'center'}}>{result.page>1&&<Link className="button button-outline" href={`/propiedades?${new URLSearchParams({...Object.fromEntries(Object.entries(params).filter(([,v])=>v!==undefined) as [string,string][]),...(view==='list'?{vista:'lista'}:{}),page:String(result.page-1)})}`}>← Anterior</Link>}{result.page<result.pages&&<Link className="button button-outline" href={`/propiedades?${new URLSearchParams({...Object.fromEntries(Object.entries(params).filter(([,v])=>v!==undefined) as [string,string][]),...(view==='list'?{vista:'lista'}:{}),page:String(result.page+1)})}`}>Siguiente →</Link>}</div>}
  </main>
 }

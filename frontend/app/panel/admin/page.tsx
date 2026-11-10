@@ -5,6 +5,7 @@ import AdminUsers from '@/components/admin/admin-users';
 import AdminPayments from '@/components/admin/admin-payments';
 import TeamManager from '@/components/team-manager';
 import CustomFieldsManager from '@/components/admin/custom-fields-manager';
+import FanpageAdmin from '@/components/admin/fanpage-admin';
 import ProtectedPanel from '@/components/protected-panel';
 import { PanelShell, PublishFlow } from '@/components/panel-shell';
 import { authJson, SessionUser } from '@/lib/auth';
@@ -82,9 +83,11 @@ function AdminPanel({ user }: { user: SessionUser }) {
       { title: 'Cuentas por aprobar', text: 'Agentes, agencias y desarrolladores registrados que esperan tu aprobación.', href: '#usuarios' },
       { title: 'Crear cuentas', text: 'Agencias, desarrolladoras, vendedores, compradores y administradores.', href: '#cuentas' },
       { title: 'Campos personalizados', text: 'Datos extra para las propiedades y filtros de búsqueda.', href: '#campos' },
+      { title: 'Fanpages', text: 'Quién las diseña, aprobación y plantillas.', href: '#fanpages' },
       { title: 'Cómo funciona', text: 'Guía interna de roles y flujos (solo administradores).', href: '/como-funciona' },
       { title: 'Usuarios y membresías', text: 'Roles, cuentas activas y registro de pagos.', href: '#usuarios' },
       { title: 'Pagos del mes', text: 'Ingresos por efectivo y transferencia.', href: '#pagos' },
+      { title: 'Reservas', text: 'Todas las reservas y apartados; puedes intervenir en cualquiera.', href: '/panel/reservas' },
       { title: 'Prospectos y visitas', text: 'Todos los mensajes y visitas del sitio.', href: '/panel/prospectos' },
       { title: 'Ver catálogo público', text: 'Comprueba cómo se ven las propiedades publicadas.', href: '/propiedades' },
     ]}>
@@ -94,6 +97,7 @@ function AdminPanel({ user }: { user: SessionUser }) {
     <AdminUsers me={user} onChanged={changed} />
     <AdminPayments refreshKey={refreshKey} />
     <CustomFieldsManager />
+    <FanpageAdmin />
     <PublishFlow />
   </PanelShell>;
 }

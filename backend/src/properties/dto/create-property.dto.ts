@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsDateString, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
 import { DEMO_PATH_RE, MEDIA_PATH_RE } from '../../uploads/media';
 
 /** Foto: enlace http(s), foto subida o foto de ejemplo del sitio. */
@@ -25,6 +25,10 @@ export class CreatePropertyDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) landArea?: number;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) builtArea?: number;
   @IsOptional() @IsDateString() availableFrom?: string;
+  /** Ubicación en el mapa (OpenStreetMap). Sin ShowExactLocation se muestra aproximada (~1 km). */
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(-90) @Max(90) latitude?: number | null;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(-180) @Max(180) longitude?: number | null;
+  @IsOptional() @IsBoolean() showExactLocation?: boolean;
   @IsOptional() @IsArray() @ArrayMaxSize(20) @Matches(IMAGE_REF, { each: true, message: 'Cada foto debe ser un enlace http(s) o una foto subida.' }) images?: string[];
   /** Etiqueta de cada foto, en el mismo orden que images (Fachada, Sala, Plano…). */
   @IsOptional() @IsArray() @ArrayMaxSize(20) @IsString({ each: true }) @MaxLength(40, { each: true }) imageLabels?: string[];

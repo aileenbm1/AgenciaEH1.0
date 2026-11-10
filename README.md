@@ -1,4 +1,4 @@
-# Agencia EH — V0.17.0
+# Agencia EH — V0.19.0
 
 Plataforma inmobiliaria desarrollada con Next.js, NestJS y **MySQL** (compatible con Hostinger). El backend usa `mysql2` con consultas SQL parametrizadas; no se utiliza ORM.
 
@@ -81,7 +81,29 @@ Genera, ya compilados, `deploy/agencia-eh-sitio-unico.zip` (sitio y API en un so
 - **Campos personalizados** (RF-03) que define el admin (`/api/v1/admin/custom-fields`): texto, número, sí/no o lista; opcionalmente obligatorios y filtrables (`cf_<clave>` en la búsqueda).
 - Para enviar a revisión: superficie, al menos una foto y los campos obligatorios.
 
+## Reservas en línea (RF-21 a RF-27)
+- Todo el trato es en línea; **solo el pago es en persona** y se registra en la plataforma.
+- Por propiedad (Mis propiedades → "Reservas y calendario"): renta **mensual** o **por noche** (precio, temporadas, estadía mínima/máxima, huéspedes, depósito, impuestos, política de cancelación), apartado de compra y **fechas bloqueadas**.
+- Ficha: calendario con días ocupados, cotización al momento y solicitud (requiere cuenta). Sin dobles reservas: al aprobar se rechazan las solicitudes que se cruzan.
+- `/panel/reservas`: aprobar (con anticipo opcional), agendar cita de pago, el interesado la confirma, **anticipo → "Apartada"**, pago → cerrada (rentada/vendida). Chat y documentos privados (PDF/JPG/PNG) por reserva; correos en cada paso y recordatorios. El admin puede intervenir en cualquiera.
+- API: `/api/v1/reservations` (calendar, quote, settings, blocks, mensajes, documentos).
+
+## Perfiles y estadísticas (Fase 4)
+- Perfil público del asesor `/asesores/[slug]` (foto, bio, WhatsApp, agencia y propiedades activas); se edita en el panel del agente. Las agencias enlazan a sus asesores.
+- Estadísticas del perfil en el panel: visitas al perfil, propiedades, prospectos, reservas y fanpages (las agencias ven las de su equipo). `GET /api/v1/agents/stats/me`.
+
+## Fanpage por propiedad (Fase 5)
+- `/propiedades/[slug]/fanpage`: página promocional con estadísticas (visitas, compartidas, clics, prospectos) y origen por campaña UTM.
+- Editor **por bloques**, sin HTML/CSS para nadie (tampoco el admin): portada, texto, galería, características, precio, video (YouTube/Vimeo), llamado a la acción, contacto, compartir y mapa; colores #RRGGBB y fuentes de una lista fija. El servidor valida y descarta todo lo demás.
+- Plantillas que administra el admin, historial de versiones con "Restaurar", generador de enlaces UTM y "kit para redes" (texto listo y descarga de fotos).
+- El admin decide qué roles pueden diseñarlas y si requieren su aprobación (`/panel/admin#fanpages`).
+
+## Mapa, PWA y origen de prospectos (Fase 6)
+- Mapa con **OpenStreetMap** (gratis, sin clave): ubicación en el formulario (búsqueda por dirección o clic), mapa en ficha y fanpage, y vista "Mapa" en el catálogo. Si no se marca "ubicación exacta", el público ve una zona aproximada (~1 km).
+- PWA: se puede instalar en el celular; página "Sin conexión". La API nunca se guarda en caché.
+- Cada prospecto guarda su **origen** (ficha, fanpage, facebook…) y campaña; filtro por origen en Prospectos.
+
 ## Pendientes conocidos
-- Las fotos se suben desde el panel (se reducen en el navegador) y se guardan en `UPLOADS_DIR` (por defecto `~/agencia-eh-uploads`). Respáldala junto con la base de datos.
+- Las fotos se suben desde el panel (se reducen en el navegador) y se guardan en `UPLOADS_DIR` (por defecto `~/agencia-eh-uploads`); los documentos de reservas en `UPLOADS_PRIVATE_DIR` (por defecto `~/agencia-eh-privado`). Respalda ambas junto con la base de datos.
 - Correos de verificación y recuperación por SMTP (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`); sin SMTP, fuera de producción el enlace se imprime en la consola.
 - No hay pruebas automatizadas todavía. Respalda la base antes de aplicar cambios de esquema en producción.
