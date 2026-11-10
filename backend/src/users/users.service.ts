@@ -9,9 +9,10 @@ type Role = 'BUYER' | 'AGENT' | 'AGENCY' | 'DEVELOPER' | 'ADMIN';
 /** Quién puede crear qué tipo de cuenta. */
 export const CAN_CREATE: Record<Role, Role[]> = {
   ADMIN: ['BUYER', 'AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN'],
-  AGENCY: ['AGENT', 'BUYER'],
-  DEVELOPER: ['AGENT', 'BUYER'],
-  AGENT: ['BUYER'],
+  // Solo el administrador crea cuentas; los compradores se registran solos.
+  AGENCY: [],
+  DEVELOPER: [],
+  AGENT: [],
   BUYER: [],
 };
 const INVITE_HOURS = 24 * 7;
@@ -49,9 +50,11 @@ export class UsersService {
     // Contraseña aleatoria imposible de adivinar: la persona elige la suya con el enlace de activación.
     const unusable = await bcrypt.hash(randomBytes(32).toString('hex'), 10);
     let agencyId: string | null = null;
-    if ((c.Role === 'AGENCY' || c.Role === 'DEVELOPER') && d.role === 'AGENT') {
-      const [a] = await this.db.query<any>('SELECT Id FROM AgencyProfiles WHERE UserId=? LIMIT 1', [c.Id]);
-      agencyId = a?.Id ?? null;
+    // El admin puede ligar al agente con una agencia o desarrolladora.
+    if (d.role === 'AGENT' && d.agencyId) {
+      const [a] = await this.db.query<any>('SELECT Id FROM AgencyProfiles WHERE Id=? LIMIT 1', [d.agencyId]);
+      if (!a) throw new BadRequestException('La agencia elegida no existe.');
+      agencyId = a.Id;
     }
     try {
       await this.db.transaction(async (tx) => {
@@ -64,6 +67,12 @@ export class UsersService {
     } catch (e: any) { if (e?.errno === 1062) throw new ConflictException('Ya existe una cuenta con ese correo.'); throw e; }
     const inv = await this.invite({ Id: id, Email: email, FullName: d.fullName.trim() }, c.FullName);
     return { user: (await this.mine(creatorId)).find((u) => u.id === id), ...inv };
+  }
+
+  /** Agencias y desarrolladoras para ligar agentes (solo admin). */
+  async agencies() {
+    const rows = await this.db.query<any>("SELECT ag.Id, ag.Name, u.Role FROM AgencyProfiles ag JOIN Users u ON u.Id=ag.UserId WHERE u.IsActive=1 ORDER BY ag.Name");
+    return rows.map((r: any) => ({ id: r.Id, name: r.Name, kind: r.Role }));
   }
 
   /** Cuentas creadas por el usuario (el admin ve las que él creó; el resto, en su panel). */

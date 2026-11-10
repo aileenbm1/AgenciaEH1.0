@@ -6,9 +6,10 @@ import { ROLES } from '@/lib/roles';
 type Created = { id: string; fullName: string; email: string; phone?: string | null; role: UserRole; isActive: boolean; activated: boolean; invitePending: boolean; createdAt: string };
 type Invite = { activationLink: string; emailSent: boolean; expiresInDays: number };
 
-/** Crear cuentas según el rol (admin: todas; agencia: agentes y compradores; agente: compradores) y ver las creadas. */
+/** El administrador crea las cuentas (agentes, agencias, desarrolladoras, compradores y admins) y ve las que creó. */
 export default function TeamManager({ roles, title, intro }: { roles: UserRole[]; title: string; intro: string }) {
-  const empty = { fullName: '', email: '', phone: '', role: roles[0], agencyName: '' };
+  const empty = { fullName: '', email: '', phone: '', role: roles[0], agencyName: '', agencyId: '' };
+  const [agencies, setAgencies] = useState<{ id: string; name: string; kind: string }[]>([]);
   const [form, setForm] = useState(empty);
   const [items, setItems] = useState<Created[] | null>(null);
   const [error, setError] = useState(''); const [busy, setBusy] = useState('');
@@ -16,14 +17,14 @@ export default function TeamManager({ roles, title, intro }: { roles: UserRole[]
   const [copied, setCopied] = useState(false);
 
   const load = useCallback(() => authJson<Created[]>('/users/mine').then(setItems).catch(e => setError(e.message)), []);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); authJson<{ id: string; name: string; kind: string }[]>('/users/agencies').then(setAgencies).catch(() => {}); }, [load]);
 
   async function create(e: FormEvent) {
     e.preventDefault(); setBusy('create'); setError(''); setInvite(null); setCopied(false);
     try {
-      const r = await authJson<Invite>('/users', { method: 'POST', body: JSON.stringify({ ...form, phone: form.phone || undefined, agencyName: form.role === 'AGENCY' || form.role === 'DEVELOPER' ? form.agencyName : undefined }) });
+      const r = await authJson<Invite>('/users', { method: 'POST', body: JSON.stringify({ ...form, phone: form.phone || undefined, agencyName: form.role === 'AGENCY' || form.role === 'DEVELOPER' ? form.agencyName : undefined, agencyId: form.role === 'AGENT' && form.agencyId ? form.agencyId : undefined }) });
       setInvite({ ...r, name: form.fullName, email: form.email });
-      setForm({ ...empty, role: form.role }); await load();
+      setForm({ ...empty, role: form.role }); await load(); if (form.role === 'AGENCY' || form.role === 'DEVELOPER') authJson<{ id: string; name: string; kind: string }[]>('/users/agencies').then(setAgencies).catch(() => {});
     } catch (err) { setError(err instanceof Error ? err.message : 'No se pudo crear la cuenta.'); }
     finally { setBusy(''); }
   }
@@ -48,6 +49,7 @@ export default function TeamManager({ roles, title, intro }: { roles: UserRole[]
         {roles.length > 1 && <label>Tipo de cuenta<select value={form.role} onChange={e => setForm({ ...form, role: e.target.value as UserRole })}>{roles.map(r => <option key={r} value={r}>{ROLES[r].label}</option>)}</select></label>}
         <label>Nombre completo<input required minLength={2} maxLength={100} value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} /></label>
         {(form.role === 'AGENCY' || form.role === 'DEVELOPER') && <label>{form.role === 'DEVELOPER' ? 'Nombre de la desarrolladora' : 'Nombre de la agencia'}<input required minLength={2} maxLength={140} value={form.agencyName} onChange={e => setForm({ ...form, agencyName: e.target.value })} /></label>}
+        {form.role === 'AGENT' && <label>Agencia o desarrolladora (opcional)<select value={form.agencyId} onChange={e => setForm({ ...form, agencyId: e.target.value })}><option value="">Independiente</option>{agencies.map(a => <option key={a.id} value={a.id}>{a.name}{a.kind === 'DEVELOPER' ? ' (desarrolladora)' : ''}</option>)}</select></label>}
         <label>Correo<input required type="email" maxLength={190} value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="nombre@correo.com" /></label>
         <label>Teléfono (opcional)<input type="tel" maxLength={25} value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></label>
       </div>

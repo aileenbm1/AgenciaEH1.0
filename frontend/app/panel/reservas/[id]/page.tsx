@@ -110,7 +110,7 @@ function ReservationDetail({ user }: { user: SessionUser }) {
           {r.guestNote && <p><b>Mensaje del interesado:</b> {r.guestNote}</p>}
           {r.ownerNote && !closed && <p><b>Nota del anunciante:</b> {r.ownerNote}</p>}
           {r.paymentNotes && <p className="muted">Notas de pago: {r.paymentNotes}</p>}
-          <p className="muted">El pago no se cobra en línea: se entrega en persona en la cita y aquí queda registrado.</p>
+          <p className="muted">El pago no se cobra en la plataforma: se hace por transferencia o en persona y el anunciante lo registra aquí.</p>
         </section>
 
         <section className="dashboard-card"><h3>Cita de pago</h3>

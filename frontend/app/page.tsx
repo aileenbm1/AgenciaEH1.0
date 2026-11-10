@@ -41,20 +41,20 @@ export default async function Home() {
         <Link href="/propiedades" className="path-card">
           <span className="role-badge">Busco propiedad</span>
           <h3>Comprar o rentar</h3>
-          <p>Explora el catálogo, compara y contacta al asesor directamente. No necesitas cuenta.</p>
+          <p>Explora el catálogo y contacta al asesor sin cuenta. Crea tu cuenta gratis para rentar o apartar en línea.</p>
           <span className="path-cta">Explorar catálogo →</span>
         </Link>
-        <Link href="/acceso?registro=1&rol=AGENT" className="path-card">
+        <Link href="/anunciar" className="path-card">
           <span className="role-badge">Agente / Asesor</span>
           <h3>Anunciar mis propiedades</h3>
           <p>Registra tus inmuebles; Agencia EH los revisa y, al aprobarlos, aparecen en el catálogo.</p>
-          <span className="path-cta">Crear cuenta de agente →</span>
+          <span className="path-cta">Solicitar cuenta de agente →</span>
         </Link>
-        <Link href="/acceso?registro=1&rol=AGENCY" className="path-card">
+        <Link href="/anunciar" className="path-card">
           <span className="role-badge">Agencia</span>
           <h3>Publicar como inmobiliaria</h3>
-          <p>Publica a nombre de tu agencia y crea las cuentas de tus vendedores y compradores.</p>
-          <span className="path-cta">Crear cuenta de agencia →</span>
+          <p>Publica a nombre de tu agencia con tu equipo de asesores; el administrador crea las cuentas.</p>
+          <span className="path-cta">Solicitar cuenta de agencia →</span>
         </Link>
       </div>
     </section>
@@ -75,9 +75,9 @@ export default async function Home() {
       <div>
         <span className="eyebrow light">¿TIENES UNA PROPIEDAD?</span>
         <h2>Tu inmueble merece<br /><em>la mejor vitrina.</em></h2>
-        <p>Crea tu cuenta de agente, agencia o desarrollador. Al aprobarla el equipo de Agencia EH, registra tus propiedades y envíalas a revisión.</p>
+        <p>Solicita tu cuenta de agente, agencia o desarrollador: el equipo de Agencia EH la crea y te envía tu enlace de activación. Después registra tus propiedades y envíalas a revisión.</p>
       </div>
-      <Link className="button button-gold" href="/acceso?registro=1&rol=AGENT">Anunciar mi propiedad ↗</Link>
+      <Link className="button button-gold" href="/anunciar">Anunciar mi propiedad ↗</Link>
     </section>
   </main>;
 }

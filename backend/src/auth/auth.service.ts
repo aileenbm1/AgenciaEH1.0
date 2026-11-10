@@ -35,18 +35,18 @@ const fmtDay=(d:any)=>new Date(String(d instanceof Date?d.toISOString():d).slice
   return {accessToken,refreshToken,user:safeUser(user)};
  }
  async register(dto:RegisterDto){
-  if(!publicSignupOpen())throw new ForbiddenException('El registro público está cerrado. Tu cuenta la crea Agencia EH, tu agencia o tu asesor.');
-  const email=dto.email.trim().toLowerCase(); if((dto.role==='AGENCY'||dto.role==='DEVELOPER')&&!dto.agencyName?.trim())throw new BadRequestException(dto.role==='DEVELOPER'?'Indica el nombre de la desarrolladora.':'Indica el nombre de la agencia.');
+  if(!publicSignupOpen())throw new ForbiddenException('El registro público está cerrado. Tu cuenta la crea el administrador de Agencia EH.');
+  // Solo los compradores se registran solos; agentes, agencias y desarrolladoras los crea el admin.
+  dto.role='BUYER';
+  const email=dto.email.trim().toLowerCase();
   // RF-10: agentes, agencias y desarrolladores quedan en revisión hasta que el administrador los apruebe.
-  const approval=dto.role==='BUYER'?'APPROVED':'PENDING';
+  const approval='APPROVED';
   const exists=await this.db.query('SELECT Id FROM Users WHERE Email=? LIMIT 1',[email]); if(exists.length)throw new ConflictException('Ya existe una cuenta con ese correo electrónico.');
   const id=randomUUID(), raw=randomBytes(32).toString('hex'), expires=new Date(Date.now()+86400000), hash=await bcrypt.hash(dto.password,12);
   try { await this.db.transaction(async tx=>{
    await this.db.execute('INSERT INTO Users(Id,Email,FullName,PasswordHash,Role,EmailVerificationTokenHash,EmailVerificationExpiresAt,ApprovalStatus) VALUES(?,?,?,?,?,?,?,?)',[id,email,dto.fullName.trim(),hash,dto.role,hashToken(raw),expires,approval],tx);
-   if(dto.role==='AGENT') await this.db.execute('INSERT INTO AgentProfiles(Id,UserId) VALUES(?,?)',[randomUUID(),id],tx);
-   if(dto.role==='AGENCY'||dto.role==='DEVELOPER'){const slug=dto.agencyName!.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')+'-'+randomUUID().slice(0,6);await this.db.execute('INSERT INTO AgencyProfiles(Id,UserId,Name,Slug) VALUES(?,?,?,?)',[randomUUID(),id,dto.agencyName!.trim(),slug],tx);}
   }); } catch(e:any){if(e?.errno===1062)throw new ConflictException('Ya existe una cuenta con ese correo.');throw e;}
-  const user=await this.ensureAdmin({Id:id,Email:email,FullName:dto.fullName.trim(),Role:dto.role,Phone:null,EmailVerifiedAt:null,ApprovalStatus:approval});if(approval==='PENDING')this.notifyAdminsPending(dto.fullName.trim(),dto.role); this.mail.sendEmailVerification(email,raw);return this.issueTokens(user);
+  const user=await this.ensureAdmin({Id:id,Email:email,FullName:dto.fullName.trim(),Role:dto.role,Phone:null,EmailVerifiedAt:null,ApprovalStatus:approval});this.mail.sendEmailVerification(email,raw);return this.issueTokens(user);
  }
  async login(dto:LoginDto){const [u]=await this.db.query('SELECT * FROM Users WHERE Email=? LIMIT 1',[dto.email.trim().toLowerCase()]);if(!u||!u.IsActive||!(await bcrypt.compare(dto.password,u.PasswordHash)))throw new UnauthorizedException('Correo o contraseña incorrectos.');const user=await this.ensureAdmin(u);await this.assertMembership(user);return this.issueTokens(user);}
  async refresh(token?:string){if(!token)throw new UnauthorizedException('No hay una sesión para renovar.');let p:any;try{p=await this.jwt.verifyAsync(token,{secret:process.env.JWT_REFRESH_SECRET});}catch{throw new UnauthorizedException('La sesión expiró. Inicia sesión nuevamente.');}if(p.type!=='refresh'||!p.sub)throw new UnauthorizedException('Token inválido.');const [u]=await this.db.query('SELECT * FROM Users WHERE Id=? LIMIT 1',[p.sub]);if(!u||!u.IsActive||!u.RefreshTokenHash||hashToken(token)!==u.RefreshTokenHash)throw new UnauthorizedException('La sesión ya no es válida.');const user=await this.ensureAdmin(u);await this.assertMembership(user);return this.issueTokens(user);}

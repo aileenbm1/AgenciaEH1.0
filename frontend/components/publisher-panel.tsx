@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react';
 import { authJson, SessionUser } from '@/lib/auth';
 import { PanelShell, PublishFlow, PanelAction } from './panel-shell';
-import TeamManager from './team-manager';
 import AgencyProfileEditor from './agency-profile-editor';
 import AgentProfileEditor from './agent-profile-editor';
 import ProfileStats from './profile-stats';
@@ -24,9 +23,8 @@ export function PublisherPanel({ user }: { user: SessionUser }) {
   const actions: PanelAction[] = [
     { title: 'Nueva propiedad', text: 'Captura un inmueble. Se guarda como borrador hasta que lo envíes a revisión.', href: '/panel/agente/propiedades#nueva', primary: true },
     { title: 'Mis propiedades', text: total ? `${total} registrada(s). Revisa su estado, envíalas a revisión o elimínalas.` : 'Aquí verás el estado de cada publicación.', href: '/panel/agente/propiedades' },
-    { title: 'Reservas y apartados', text: 'Solicitudes de renta y compra: aprueba, agenda la cita de pago y registra el anticipo.', href: '/panel/reservas' },
+    { title: 'Reservas y apartados', text: 'Solicitudes de renta y compra en línea: acéptalas, acuerda el pago (transferencia o en persona) y regístralo.', href: '/panel/reservas' },
     { title: 'Prospectos y visitas', text: isAgency ? 'Mensajes y visitas tuyos y de tus vendedores.' : 'Mensajes y solicitudes de visita de tus propiedades.', href: '/panel/prospectos' },
-    { title: isAgency ? 'Mi equipo y clientes' : 'Mis clientes', text: isAgency ? 'Crea cuentas para tus vendedores y compradores.' : 'Crea cuentas para tus compradores.', href: '#cuentas' },
     { title: 'Ver catálogo público', text: 'Así ven los compradores tus propiedades ya publicadas.', href: '/propiedades' },
   ];
 
@@ -41,8 +39,6 @@ export function PublisherPanel({ user }: { user: SessionUser }) {
     <PublishFlow counts={counts} />
     {user.approvalStatus !== 'PENDING' && <ProfileStats team={isAgency} />}
     {isAgency ? <AgencyProfileEditor /> : <AgentProfileEditor />}
-    {isAgency
-      ? <TeamManager roles={['AGENT', 'BUYER']} title="Mi equipo y clientes" intro="Crea las cuentas de los vendedores de tu agencia y de tus compradores. Los vendedores quedan ligados a tu agencia." />
-      : <TeamManager roles={['BUYER']} title="Mis clientes" intro="Crea cuentas para tus compradores o inquilinos." />}
+    <p className="muted">¿Necesitas una cuenta nueva (un asesor para tu equipo, por ejemplo)? Las cuentas las crea el administrador de Agencia EH.</p>
   </PanelShell>;
 }

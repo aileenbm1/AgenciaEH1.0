@@ -7,9 +7,10 @@ import { UsersService } from './users.service';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'AGENCY', 'DEVELOPER', 'AGENT')
+@Roles('ADMIN')
 export class UsersController {
   constructor(private readonly users: UsersService) {}
+  @Get('agencies') agencies() { return this.users.agencies(); }
   @Get('mine') mine(@Req() r: any) { return this.users.mine(r.user.sub); }
   @Post() create(@Req() r: any, @Body() d: CreateUserDto) { return this.users.create(r.user.sub, d); }
   @Post(':id/invite') invite(@Req() r: any, @Param('id', ParseUUIDPipe) id: string) { return this.users.resendInvite(r.user.sub, id); }

@@ -36,9 +36,11 @@ export default function HowItWorksContent() {
 
     <section className="faq">
       <h2 className="panel-subtitle">Preguntas frecuentes</h2>
-      <details><summary>¿Cuál es la diferencia entre agente y agencia?</summary><p>Ambos publican con el mismo flujo. La agencia (y la desarrolladora) representa a una empresa: crea las cuentas de sus vendedores y ve los prospectos de todo el equipo. Si trabajas solo o eres dueño de la propiedad, elige agente.</p></details>
+      <details><summary>¿Cuál es la diferencia entre agente y agencia?</summary><p>Ambos publican con el mismo flujo. La agencia (y la desarrolladora) representa a una empresa: ve los prospectos y acepta las reservas de todo su equipo. El administrador crea todas estas cuentas y liga a cada agente con su agencia.</p></details>
       <details><summary>¿Por qué mi propiedad no aparece en el catálogo?</summary><p>Solo se muestran las propiedades aprobadas. Revisa su estado en “Mis propiedades”: si está en borrador, envíala a revisión; si fue rechazada, corrígela y reenvíala.</p></details>
       <details><summary>¿Necesito cuenta para buscar propiedades?</summary><p>No. El catálogo, compartir y escribir al asesor son públicos. Para guardar favoritos, búsquedas y reservar sí se necesita cuenta.</p></details>
+      <details><summary>¿Quién crea las cuentas?</summary><p>Solo los compradores/inquilinos se registran solos. Las cuentas de agentes, agencias, desarrolladoras y administradores las crea únicamente el administrador.</p></details>
+      <details><summary>¿Cómo funciona rentar o apartar?</summary><p>Todo es en línea: solicitud, aprobación, chat, documentos y cita. Solo el pago es fuera de la plataforma, por transferencia o en persona; el agente, la agencia o el administrador acepta la solicitud y registra el pago.</p></details>
       <details><summary>¿Cómo se pagan las membresías?</summary><p>No hay cobro en línea: se pagan en efectivo o por transferencia y el administrador las registra.</p></details>
     </section>
   </main>;

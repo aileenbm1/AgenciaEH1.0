@@ -115,14 +115,14 @@ export default function ReservationWidget({ propertyId, slug, operation }: { pro
     {quote && <div className="quote">
       {quote.lines.map(l => <div key={l.label}><span>{l.label}</span><b>{mxn(l.amount)}</b></div>)}
       <div className="quote-total"><span>Total</span><b>{mxn(quote.total)}</b></div>
-      {kind === 'MONTHLY' && quote.checkOut && <small className="muted">Contrato hasta el {fmt(quote.checkOut)}. Se paga en persona: se acuerda la cita en el chat.</small>}
-      {kind !== 'MONTHLY' && <small className="muted">No se cobra en línea: el pago (y el anticipo para apartar) se hace en persona.</small>}
+      {kind === 'MONTHLY' && quote.checkOut && <small className="muted">Contrato hasta el {fmt(quote.checkOut)}. El pago es por transferencia o en persona; se acuerda en el chat.</small>}
+      {kind !== 'MONTHLY' && <small className="muted">No se cobra en línea: el pago (y el anticipo para apartar) se hace por transferencia o en persona.</small>}
     </div>}
     {(ready || tab === 'SALE') && <label>Mensaje para el anunciante (opcional)<textarea rows={2} maxLength={1000} value={note} onChange={e => setNote(e.target.value)} /></label>}
     {s?.cancellationPolicy && tab === 'RENT' && <details><summary>Política de cancelación</summary><p>{s.cancellationPolicy}</p></details>}
     {error && <div className="notice" role="alert">{error}</div>}
     {logged ? <button type="button" className="button button-navy full" disabled={busy || !quote || quote.available === false} onClick={submit}>{busy ? 'Enviando…' : tab === 'SALE' ? 'Solicitar apartado' : 'Solicitar reserva'}</button>
       : <Link className="button button-navy full" href={`/acceso?next=${encodeURIComponent(`/propiedades/${slug}#reservar`)}`}>Inicia sesión o crea tu cuenta para reservar</Link>}
-    <small className="muted">El anunciante revisa tu solicitud y la aprueba. Después acuerdan la cita de pago desde el chat.</small>
+    <small className="muted">El agente, la agencia o el administrador revisa tu solicitud y la aprueba. Después acuerdan el pago (transferencia o en persona) desde el chat.</small>
   </section>;
 }

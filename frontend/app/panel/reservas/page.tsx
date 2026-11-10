@@ -23,7 +23,7 @@ function Reservations({ user }: { user: SessionUser }) {
     <Link href={roleHome[user.role]} className="back-link">← Volver a mi panel</Link>
     <div className="page-heading panel-heading"><div><span className="eyebrow">RENTAS Y APARTADOS EN LÍNEA</span>
       <h1>{as === 'guest' ? 'Mis reservas' : user.role === 'ADMIN' ? 'Todas las reservas' : 'Reservas de mis propiedades'}</h1>
-      <p>{as === 'guest' ? 'Tus solicitudes de renta y de apartado. Todo el trato es en línea; solo el pago se hace en persona.' : 'Aprueba o rechaza solicitudes, agenda la cita de pago, registra el anticipo (queda apartada) y cierra la operación.'}</p></div></div>
+      <p>{as === 'guest' ? 'Tus solicitudes de renta y de apartado. Todo el trato es en línea; solo el pago se hace por transferencia o en persona.' : 'Aprueba o rechaza solicitudes, agenda la cita de pago, registra el anticipo (queda apartada) y cierra la operación.'}</p></div></div>
     <ol className="flow-steps res-flow">{['Solicitud', 'Aprobación', 'Cita de pago', 'Anticipo → apartada', 'Pago → cerrada'].map((t, i) => <li key={t}><span className="step-num">{i + 1}</span><div><b>{t}</b></div></li>)}</ol>
     <div className="filters-row">
       {publisher && user.role !== 'ADMIN' && <div className="auth-tabs" role="tablist">

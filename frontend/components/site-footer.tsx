@@ -26,9 +26,9 @@ export function SiteFooter() {
       </div>
       <div className="footer-col">
         <h4>Anunciantes</h4>
-        <Link href="/acceso?registro=1&rol=AGENT">Soy agente</Link>
-        <Link href="/acceso?registro=1&rol=AGENCY">Soy agencia</Link>
-        <Link href="/acceso?registro=1&rol=DEVELOPER">Soy desarrollador</Link>
+        <Link href="/anunciar">Soy agente</Link>
+        <Link href="/anunciar">Soy agencia</Link>
+        <Link href="/anunciar">Soy desarrollador</Link>
         <Link href="/acceso">Ingresar</Link>
         <a href="mailto:contacto@agenciaeh.mx">contacto@agenciaeh.mx</a>
       </div>

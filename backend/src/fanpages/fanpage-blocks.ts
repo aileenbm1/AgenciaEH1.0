@@ -108,7 +108,7 @@ export const SEED_TEMPLATES: { name: string; description: string; theme: Theme; 
       { id: 'galeria', type: 'gallery', bg: 'light', title: 'Conoce el lugar', images: [], useProperty: true, layout: 'mosaic' },
       { id: 'texto', type: 'text', bg: 'light', title: 'Sobre el lugar', body: '{descripcion}', align: 'left' },
       { id: 'amenidades', type: 'features', bg: 'light', title: 'Amenidades', items: ['Wi-Fi', 'Estacionamiento', 'Cocina equipada'], auto: true },
-      { id: 'cta', type: 'cta', bg: 'accent', title: 'Aparta tus fechas', text: 'Reserva en línea; el pago se hace en persona.', buttonText: 'Reservar', target: 'reserve' },
+      { id: 'cta', type: 'cta', bg: 'accent', title: 'Aparta tus fechas', text: 'Reserva en línea; el pago es por transferencia o en persona.', buttonText: 'Reservar', target: 'reserve' },
       { id: 'mapa', type: 'map', bg: 'light', title: 'Ubicación' },
       { id: 'compartir', type: 'share', bg: 'light', title: 'Compártelo con quien viaja contigo' },
     ],

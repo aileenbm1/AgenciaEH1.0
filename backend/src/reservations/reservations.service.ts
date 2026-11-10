@@ -37,7 +37,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       WHERE r.Status IN ('APPROVED','DEPOSIT_PAID') AND r.ReminderSentAt IS NULL AND r.AppointmentAt BETWEEN UTC_TIMESTAMP() AND UTC_TIMESTAMP() + INTERVAL 24 HOUR`);
     for (const a of appts) {
       const when = fmtWhen(new Date(a.AppointmentAt));
-      for (const to of [a.GuestEmail, a.OwnerEmail]) this.mail.notify(to, `Recordatorio de cita · ${a.Title}`, 'Recordatorio de tu cita', `Tienes una cita para "${a.Title}" el ${when}${a.AppointmentPlace ? ` en ${a.AppointmentPlace}` : ''}. El pago se realiza en persona.`, 'Ver reserva', `/panel/reservas/${a.Id}`);
+      for (const to of [a.GuestEmail, a.OwnerEmail]) this.mail.notify(to, `Recordatorio de cita · ${a.Title}`, 'Recordatorio de tu cita', `Tienes una cita para "${a.Title}" el ${when}${a.AppointmentPlace ? ` en ${a.AppointmentPlace}` : ''}. El pago se realiza por transferencia o en persona.`, 'Ver reserva', `/panel/reservas/${a.Id}`);
       await this.db.execute('UPDATE Reservations SET ReminderSentAt=UTC_TIMESTAMP() WHERE Id=?', [a.Id]);
     }
     const checkins = await this.db.query<any>(`SELECT r.Id, r.CheckIn, p.Title, g.Email FROM Reservations r JOIN Properties p ON p.Id=r.PropertyId JOIN Users g ON g.Id=r.GuestId
@@ -307,7 +307,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
             this.mail.notify(o.Email, `Solicitud no disponible · ${title}`, 'Esas fechas ya no están disponibles', `Las fechas que pediste para "${title}" se reservaron para otra solicitud. Puedes elegir otras fechas.`, 'Ver propiedad', `/propiedades/${r.Slug}`);
           }
         }
-        this.mail.notify(guestEmail, `Solicitud aprobada · ${title}`, '¡Tu solicitud fue aprobada!', `El anunciante aprobó tu ${KIND_LABEL[r.Kind as Kind]} de "${title}".${adv ? ` Para apartar se requiere un anticipo de ${fmtMoney(adv)}, que se paga en persona.` : ''} Acuerden la cita de pago desde el chat de la reserva.`, 'Ver reserva', path);
+        this.mail.notify(guestEmail, `Solicitud aprobada · ${title}`, '¡Tu solicitud fue aprobada!', `El anunciante aprobó tu ${KIND_LABEL[r.Kind as Kind]} de "${title}".${adv ? ` Para apartar se requiere un anticipo de ${fmtMoney(adv)}, que se paga por transferencia o en persona.` : ''} Acuerden la cita de pago desde el chat de la reserva.`, 'Ver reserva', path);
         break;
       }
       case 'reject': {
@@ -330,7 +330,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         need(!isNaN(at.getTime()) && at.getTime() > Date.now() - 3600000, 'Elige una fecha y hora futura para la cita.');
         const place = String(d.place || '').trim().slice(0, 250); need(place.length >= 3, 'Indica el lugar de la cita.');
         await this.db.execute('UPDATE Reservations SET AppointmentAt=?, AppointmentPlace=?, GuestConfirmedAt=NULL, ReminderSentAt=NULL, UpdatedAt=UTC_TIMESTAMP() WHERE Id=?', [at.toISOString().slice(0, 19).replace('T', ' '), place, id]);
-        this.mail.notify(guestEmail, `Cita de pago · ${title}`, 'Se agendó tu cita', `Cita para "${title}" el ${fmtWhen(at)} en ${place}. El pago se realiza en persona. Confirma tu asistencia desde la reserva.`, 'Confirmar cita', path);
+        this.mail.notify(guestEmail, `Cita de pago · ${title}`, 'Se agendó tu cita', `Cita para "${title}" el ${fmtWhen(at)} en ${place}. El pago se realiza por transferencia o en persona. Confirma tu asistencia desde la reserva.`, 'Confirmar cita', path);
         break;
       }
       case 'confirm': {

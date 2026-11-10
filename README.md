@@ -59,7 +59,9 @@ Genera, ya compilados, `deploy/agencia-eh-sitio-unico.zip` (sitio y API en un so
 - `GET /api/v1/properties/review`: cola de propiedades en revisión.
 
 ## Cuentas y acceso
-- Registro público con tipo de cuenta (RF-08): Usuario/comprador (activo al instante), Agente, Agencia o Desarrollador (quedan **por aprobar** hasta que el admin los aprueba, RF-10; mientras tanto no pueden publicar ni crear cuentas). `PUBLIC_SIGNUP=false` lo cierra. Además, el admin crea cualquier rol, las agencias/desarrolladoras crean agentes y compradores y los agentes crean compradores (`POST /api/v1/users`), con enlace de activación de 7 días.
+- Registro público **solo para compradores/inquilinos** (activos al instante). `PUBLIC_SIGNUP=false` lo cierra.
+- **Solo el administrador crea las demás cuentas** (agentes, agencias, desarrolladoras y administradores) con `POST /api/v1/users` y enlace de activación de 7 días; al crear un agente puede ligarlo a su agencia. Quien quiera anunciar lo solicita en `/anunciar`.
+- Reservas: todo en línea salvo el pago, que es **por transferencia o en persona**. Las aceptan y registran el pago el agente dueño, su agencia/desarrolladora o el administrador.
 - "Cómo funciona" es una guía interna visible solo para administradores.
 - Membresía vencida (último periodo pagado < hoy) = sin acceso. Sin pagos registrados no se bloquea. Los administradores nunca se bloquean.
 

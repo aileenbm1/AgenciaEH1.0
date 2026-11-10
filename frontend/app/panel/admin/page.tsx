@@ -93,7 +93,7 @@ function AdminPanel({ user }: { user: SessionUser }) {
     ]}>
     <AdminMetrics refreshKey={refreshKey} />
     <ModerationQueue />
-    <TeamManager roles={['AGENCY', 'DEVELOPER', 'AGENT', 'BUYER', 'ADMIN']} title="Crear cuentas" intro="Además del registro público, tú puedes crear agencias, desarrolladoras, vendedores, compradores y otros administradores. Las cuentas que creas tú quedan aprobadas de inmediato." />
+    <TeamManager roles={['AGENCY', 'DEVELOPER', 'AGENT', 'BUYER', 'ADMIN']} title="Crear cuentas" intro="Solo tú creas las cuentas de agencias, desarrolladoras, agentes y administradores (los compradores también pueden registrarse solos). Al crear un agente puedes ligarlo a su agencia. Las cuentas que creas quedan aprobadas de inmediato." />
     <AdminUsers me={user} onChanged={changed} />
     <AdminPayments refreshKey={refreshKey} />
     <CustomFieldsManager />
