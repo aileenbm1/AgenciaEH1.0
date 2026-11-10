@@ -69,6 +69,10 @@ Genera, ya compilados, `deploy/agencia-eh-sitio-unico.zip` (sitio y API en un so
 - Perfil público de agencia: `/agencias/[slug]` (`GET /api/v1/agencies/:slug`, la agencia lo edita con `PATCH /api/v1/agencies/me`).
 - Comparar usa propiedades reales elegidas con "+ Comparar" (se guardan en el navegador).
 
+## Datos de prueba
+- `backend/database/datos-prueba.sql`: cuentas `*.demo@example.com` (contraseña `PruebaEH2026`) para cada rol, 14 propiedades en renta y venta (publicadas, en revisión, borrador y rechazada) con ilustraciones de `frontend/public/demo/`, prospectos, visitas, favoritos, búsqueda guardada y membresías (una vencida).
+- `backend/database/datos-prueba-borrar.sql`: quita todo lo anterior sin tocar datos reales.
+
 ## Pendientes conocidos
 - Las fotos se suben desde el panel (se reducen en el navegador) y se guardan en `UPLOADS_DIR` (por defecto `~/agencia-eh-uploads`). Respáldala junto con la base de datos.
 - Correos de verificación y recuperación por SMTP (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`); sin SMTP, fuera de producción el enlace se imprime en la consola.
