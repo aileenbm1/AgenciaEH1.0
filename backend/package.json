@@ -1,6 +1,6 @@
 {
   "name": "agencia-eh-api",
-  "version": "0.15.0",
+  "version": "0.15.1",
   "private": true,
   "scripts": {
     "start:dev": "nest start --watch",
