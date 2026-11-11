@@ -97,7 +97,7 @@ export default function ReservationWidget({ propertyId, slug, operation }: { pro
     finally { setBusy(false); }
   }
 
-  return <section className="reserve-box" id="reservar">
+  return <section className={`reserve-box${tab === 'RENT' ? ' has-cal' : ''}`} id="reservar">
     <h3>{rentOn && saleOn ? 'Reservar o apartar en línea' : rentOn ? 'Reserva en línea' : 'Apartar en línea'}</h3>
     {rentOn && saleOn && <div className="auth-tabs" role="tablist">
       <button type="button" role="tab" aria-selected={tab === 'RENT'} className={tab === 'RENT' ? 'selected' : ''} onClick={() => setTab('RENT')}>Rentar</button>

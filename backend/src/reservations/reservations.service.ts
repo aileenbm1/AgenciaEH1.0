@@ -69,12 +69,15 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     let seasons: Season[] = [];
     try { seasons = r?.Seasons ? JSON.parse(r.Seasons) : []; } catch { seasons = []; }
     const rent = p ? Number(p.Operation === 'BOTH' ? p.RentPrice : p.Operation === 'RENT' ? p.Price : 0) || null : null;
-    const modes = String(r?.Modes || r?.Mode || 'MONTHLY').split(',').filter((m): m is RentKind => RENT_KINDS.includes(m as RentKind));
+    // Sin configuración guardada, toda propiedad en renta se reserva en línea por noche (desde 1 noche), por semana y por mes.
+    // Los precios por noche y semana se calculan de la renta mensual hasta que el anunciante ponga los suyos.
+    const modes = r ? String(r.Modes || r.Mode || 'MONTHLY').split(',').filter((m): m is RentKind => RENT_KINDS.includes(m as RentKind)) : [...RENT_KINDS];
+    const up = (n: number, step: number) => Math.ceil(n / step) * step;
     return {
-      // Sin configuración guardada, toda propiedad en renta acepta reservas en línea por mes (con su renta mensual).
       enabled: r ? !!r.Enabled : !!rent, modes: modes.length ? modes : ['MONTHLY'] as RentKind[],
-      nightPrice: r?.NightPrice != null ? Number(r.NightPrice) : null,
-      weekPrice: r?.WeekPrice != null ? Number(r.WeekPrice) : null,
+      nightPrice: r ? (r.NightPrice != null ? Number(r.NightPrice) : null) : rent ? up(rent / 30, 10) : null,
+      weekPrice: r ? (r.WeekPrice != null ? Number(r.WeekPrice) : null) : rent ? up(rent / 4, 50) : null,
+      suggestedPrices: !r,
       // Precio mensual: el propio de la reserva o, si no se indicó, la renta mensual de la propiedad.
       monthPrice: r?.MonthPrice != null ? Number(r.MonthPrice) : rent,
       minStay: r?.MinStay ?? 1, maxStay: r?.MaxStay ?? null,

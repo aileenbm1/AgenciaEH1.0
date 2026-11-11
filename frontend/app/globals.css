@@ -610,7 +610,7 @@ h1,h2{font-family:var(--font-title);color:var(--navy);font-weight:600;letter-spa
 @media(max-width:600px){.fp-two{grid-template-columns:1fr}}
 
 /* ───────── PWA ───────── */
-.pwa-banner{position:fixed;left:16px;right:16px;bottom:16px;z-index:80;max-width:560px;margin:0 auto;background:var(--navy);color:#fff;border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;box-shadow:var(--shadow-float)}
+.pwa-banner{position:fixed;left:16px;bottom:16px;z-index:80;max-width:min(420px,calc(100vw - 32px));background:var(--navy);color:#fff;border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;box-shadow:var(--shadow-float)}
 .pwa-banner span{flex:1 1 220px;font-size:14px}.pwa-banner .inline-link{color:#fff}
 .offline-page{text-align:center;padding-top:80px;padding-bottom:80px}
 .fp-editor>*,.fp-controls *{min-width:0}
@@ -627,3 +627,17 @@ h1,h2{font-family:var(--font-title);color:var(--navy);font-weight:600;letter-spa
 .unit-config{display:grid;gap:8px}
 .unit-row{border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px;display:grid;gap:10px;background:#fff}.unit-row.on{border-color:var(--gold)}
 .unit-row .check{flex-wrap:wrap}
+
+/* ───────── Ficha: encabezado a la izquierda y reserva ancha (sin huecos) ───────── */
+.detail-head{margin-top:24px}.detail-head h1{font-size:clamp(28px,3vw,42px);line-height:1.12;margin:10px 0 6px}
+.detail-text{font-size:16px;line-height:1.8;white-space:pre-line;margin:0}
+.detail-aside{display:grid;gap:16px}.detail-aside .detail-price{margin:0}
+.detail-grid .reserve-box{margin:32px 0 0;padding:28px;border-radius:var(--r-xl);box-shadow:var(--shadow-card);scroll-margin-top:100px}
+.detail-grid .reserve-box h3{font:600 26px var(--font-title);color:var(--navy)}
+@media(min-width:760px){
+  .reserve-box.has-cal{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);column-gap:28px;align-items:start}
+  .reserve-box.has-cal>*{grid-column:2}
+  .reserve-box.has-cal>h3,.reserve-box.has-cal>.auth-tabs,.reserve-box.has-cal>.unit-tabs,.reserve-box.has-cal>p.muted{grid-column:1/-1}
+  .reserve-box.has-cal>.cal{grid-column:1;grid-row:span 12}
+  .reserve-box.has-cal .cal-day{min-height:44px}
+}
