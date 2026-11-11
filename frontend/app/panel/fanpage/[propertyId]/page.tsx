@@ -201,7 +201,7 @@ function FanpageEditor({ user }: { user: SessionUser }) {
               onClick={() => insert(k)}><span aria-hidden>{v.icon}</span>{v.label}</button>)}</div>
         </section>
         <section className="dashboard-card"><h3>Bloques de la página</h3><p className="muted small">Arrastra desde ⋮⋮ para cambiar el orden. {TOKENS_HELP}</p>
-          <ol className="fp-blocks">{blocks.map((b, i) => <li key={b.id} className={`${b.hidden ? 'is-hidden' : ''}${over === i ? ' drop-here' : ''}`}
+          <ol className="fp-blocks">{blocks.map((b, i) => <li key={b.id} id={`fpb-${b.id}`} className={`${b.hidden ? 'is-hidden' : ''}${over === i ? ' drop-here' : ''}`}
             onDragOver={e => { if (drag.current) { e.preventDefault(); if (over !== i) setOver(i); } }} onDrop={e => { e.preventDefault(); drop(i); }}>
             <div className="fp-block-head">
               <span className="fp-grip" draggable title="Arrastrar para mover" aria-label="Arrastrar para mover"
@@ -229,7 +229,15 @@ function FanpageEditor({ user }: { user: SessionUser }) {
       <div className="fp-preview" aria-label="Vista previa">
         <div className="fp-preview-bar"><span>Vista previa</span>
           <span className="fp-devices" role="group" aria-label="Tamaño de la vista previa">{([['desk', '🖥 Computadora'], ['tablet', '📱 Tableta'], ['phone', '📱 Celular']] as const).map(([k, l]) => <button key={k} type="button" className={device === k ? 'on' : ''} aria-pressed={device === k} onClick={() => setDevice(k)}>{l}</button>)}</span></div>
-        <div className={`fp-device fp-device-${device}`}><FanpageView property={d.property} theme={theme} blocks={blocks} preview /></div>
+        <div className={`fp-device fp-device-${device}`}><FanpageView property={d.property} theme={theme} blocks={blocks} preview editor={{
+          selected: open, over,
+          onSelect: id => { setOpen(id); setTimeout(() => document.getElementById(`fpb-${id}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 30); },
+          onMove: move, onDuplicate: duplicate, onRemove: remove,
+          onToggle: i => { touch(); setBlocks(bs => bs.map((x, j) => j === i ? { ...x, hidden: !x.hidden } : x)); },
+          onDragStart: i => { drag.current = { kind: 'move', index: i }; }, onDragEnd: () => { drag.current = null; setOver(null); },
+          onDragOver: at => { if (over !== at) setOver(at); }, onDrop: drop, dragging: () => !!drag.current,
+        }} /></div>
+        <p className="muted small fp-preview-help">Haz clic en un bloque para editarlo. Pasa el ratón para moverlo (arrastra “⋮⋮ Mover” o usa ▲▼), duplicarlo, ocultarlo o quitarlo.</p>
       </div>
     </div>}
 

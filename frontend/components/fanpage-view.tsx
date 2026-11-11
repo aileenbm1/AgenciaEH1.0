@@ -1,5 +1,5 @@
 "use client";
-import { CSSProperties, useEffect } from 'react';
+import React, { CSSProperties, useEffect } from 'react';
 import Link from 'next/link';
 import { ApiProperty, OPERATION_LABEL } from '@/lib/properties';
 import { mxn } from '@/lib/data';
@@ -17,7 +17,14 @@ const waNumber = (phone: string) => { const d = phone.replace(/\D/g, ''); return
  * (React lo escapa); no existe ningún bloque que inserte HTML o CSS.
  * preview = vista previa del editor: sin estadísticas ni envíos.
  */
-export default function FanpageView({ property: p, theme, blocks, preview = false, campaign, source }: { property: ApiProperty; theme: Theme; blocks: Block[]; preview?: boolean; campaign?: string; source?: string }) {
+/** Controles del editor sobre la vista previa: seleccionar, mover (arrastrando o con flechas), duplicar, ocultar y quitar. */
+export type FanpageEditorHooks = {
+  selected: string; over: number | null;
+  onSelect: (id: string) => void; onMove: (i: number, dir: -1 | 1) => void; onDuplicate: (i: number) => void; onToggle: (i: number) => void; onRemove: (i: number) => void;
+  onDragStart: (i: number) => void; onDragEnd: () => void; onDragOver: (at: number) => void; onDrop: (at: number) => void; dragging: () => boolean;
+};
+
+export default function FanpageView({ property: p, theme, blocks, preview = false, campaign, source, editor }: { property: ApiProperty; theme: Theme; blocks: Block[]; preview?: boolean; campaign?: string; source?: string; editor?: FanpageEditorHooks }) {
   const track: Track = (kind, channel) => {
     if (preview) return;
     fetch(`/api/v1/fanpages/public/${encodeURIComponent(p.slug)}/events`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, channel: channel || source, campaign }), keepalive: true }).catch(() => {});
@@ -114,7 +121,28 @@ export default function FanpageView({ property: p, theme, blocks, preview = fals
   }
 
   return <div className="fanpage" style={style}>
-    {blocks.filter(b => !b.hidden).map(b => { const el = render(b); return el ? <section key={b.id} className={`fp-block fp-${b.type} bg-${b.bg || 'light'}`}>{el}</section> : null; })}
+    {blocks.map((b, i) => {
+      if (b.hidden) return null;
+      const el = render(b) || (editor ? <div className="fp-inner"><p className="muted">Este bloque no tiene contenido que mostrar todavía.</p></div> : null);
+      if (!el) return null;
+      const cls = `fp-block fp-${b.type} bg-${b.bg || 'light'}`;
+      if (!editor) return <section key={b.id} className={cls}>{el}</section>;
+      // Posición donde caería el bloque arrastrado: antes o después, según la mitad en la que esté el cursor.
+      const at = (e: React.DragEvent) => { const r = e.currentTarget.getBoundingClientRect(); return e.clientY < r.top + r.height / 2 ? i : i + 1; };
+      return <section key={b.id} className={`${cls} fp-editable${editor.selected === b.id ? ' is-selected' : ''}${editor.over === i ? ' drop-before' : ''}${editor.over === i + 1 && i === blocks.length - 1 ? ' drop-after' : ''}`}
+        onClickCapture={e => { const t = e.target as HTMLElement; if (t.closest('.fp-tools')) return; if (t.closest('a')) e.preventDefault(); editor.onSelect(b.id); }}
+        onDragOver={e => { if (editor.dragging()) { e.preventDefault(); editor.onDragOver(at(e)); } }} onDrop={e => { e.preventDefault(); editor.onDrop(at(e)); }}>
+        <div className="fp-tools" role="toolbar" aria-label="Acciones del bloque">
+          <span className="fp-tool-grip" draggable title="Arrastrar para mover" onDragStart={e => { editor.onDragStart(i); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', b.id); const sec = (e.currentTarget as HTMLElement).closest('section'); if (sec) e.dataTransfer.setDragImage(sec, 40, 20); }} onDragEnd={editor.onDragEnd}>⋮⋮ Mover</span>
+          <button type="button" onClick={() => editor.onMove(i, -1)} disabled={i === 0} title="Subir" aria-label="Subir">▲</button>
+          <button type="button" onClick={() => editor.onMove(i, 1)} disabled={i === blocks.length - 1} title="Bajar" aria-label="Bajar">▼</button>
+          <button type="button" onClick={() => editor.onDuplicate(i)} title="Duplicar" aria-label="Duplicar">⧉</button>
+          <button type="button" onClick={() => editor.onToggle(i)} title="Ocultar" aria-label="Ocultar">👁</button>
+          <button type="button" onClick={() => editor.onRemove(i)} title="Quitar" aria-label="Quitar">✕</button>
+        </div>
+        {el}
+      </section>;
+    })}
     <footer className="fp-footer"><Link href={`/propiedades/${p.slug}`}>Ver ficha completa</Link> · <Link href="/">Agencia EH</Link></footer>
   </div>;
 }
