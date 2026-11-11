@@ -19,7 +19,7 @@ const range = (a: number, b: number) => Array.from({ length: Math.max(0, b - a +
 const fmt = (d: string) => new Date(d + 'T12:00:00Z').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
 /** Calendario mensual: marca días ocupados y permite elegir entrada/salida. */
-function Calendar({ busy, from, to, onPick, single }: { busy: Busy[]; from: string; to: string; onPick: (d: string) => void; single: boolean }) {
+function Calendar({ busy, from, to, onPick, single, pickingOut }: { busy: Busy[]; from: string; to: string; onPick: (d: string) => void; single: boolean; pickingOut: boolean }) {
   const [cursor, setCursor] = useState(() => { const t = new Date(); return new Date(Date.UTC(t.getFullYear(), t.getMonth(), 1)); });
   const isBusy = (d: string) => busy.some(b => d >= b.from && d < b.to);
   const days = useMemo(() => {
@@ -37,9 +37,12 @@ function Calendar({ busy, from, to, onPick, single }: { busy: Busy[]; from: stri
     </div>
     <div className="cal-grid">{['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => <span key={i} className="cal-dow">{d}</span>)}
       {days.map((d, i) => d === null ? <span key={i} /> : (() => {
-        const past = d < t, taken = isBusy(d), inRange = !single && from && to && d >= from && d < to;
+        const taken = isBusy(d), inRange = from && to && d >= from && d < to;
+        // Al elegir la salida sí se puede tocar el día en que empieza otra reserva (uno sale y otro entra).
+        const outOk = pickingOut && d > from && busy.some(b => b.from === d);
+        const past = d < t;
         const sel = d === from || (!single && d === to);
-        return <button type="button" key={d} disabled={past || taken} onClick={() => onPick(d)}
+        return <button type="button" key={d} disabled={past || (taken && !outOk)} onClick={() => onPick(d)}
           className={`cal-day${taken ? ' busy' : ''}${inRange ? ' range' : ''}${sel ? ' sel' : ''}`} aria-label={`${d}${taken ? ' (ocupado)' : ''}`}>{Number(d.slice(8))}</button>;
       })())}
     </div>
@@ -58,6 +61,7 @@ export default function ReservationWidget({ propertyId, slug, operation }: { pro
   const [paymentType, setPaymentType] = useState('CONTADO'); const [note, setNote] = useState('');
   const [quote, setQuote] = useState<Quote | null>(null); const [qErr, setQErr] = useState('');
   const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  const [clash, setClash] = useState('');
   const [logged, setLogged] = useState(false);
   // La sesión puede venir solo de la cookie de renovación: se confirma con el servidor.
   useEffect(() => { if (currentToken()) setLogged(true); else getCurrentUser().then(u => setLogged(!!u)).catch(() => {}); }, []);
@@ -83,9 +87,13 @@ export default function ReservationWidget({ propertyId, slug, operation }: { pro
 
   if (!data || (!rentOn && !saleOn)) return null;
   const pick = (d: string) => {
+    setClash('');
     if (kind !== 'NIGHTLY') { setFrom(d); return; }
-    if (!from || (from && to) || d <= from) { setFrom(d); setTo(''); }
-    else setTo(d);
+    if (!from || (from && to) || d <= from) { setFrom(d); setTo(''); return; }
+    // No se puede elegir un rango que pase por encima de días ocupados.
+    const hit = data!.busy.find(b => from < b.to && b.from < d);
+    if (hit) { setClash(`Entre esas fechas hay días ocupados (del ${fmt(hit.from)} al ${fmt(hit.to)}). Elige una salida anterior u otras fechas.`); return; }
+    setTo(d);
   };
 
   async function submit() {
@@ -110,7 +118,7 @@ export default function ReservationWidget({ propertyId, slug, operation }: { pro
       <p className="muted">{unit === 'NIGHTLY' ? <>Desde <b>{mxn(Number(s.nightPrice))}</b> por noche · mínimo {s.minStay} noche(s){s.maxGuests ? ` · hasta ${s.maxGuests} huéspedes` : ''}</>
         : unit === 'WEEKLY' ? <><b>{mxn(Number(s.weekPrice))}</b> por semana · mínimo {s.minWeeks} semana(s)</>
         : <><b>{mxn(Number(s.monthPrice))}</b> al mes · plazo mínimo {s.minMonths} mes(es)</>}</p>
-      <Calendar busy={data.busy} from={from} to={to} onPick={pick} single={kind !== 'NIGHTLY'} />
+      <Calendar busy={data.busy} from={from} to={kind === 'NIGHTLY' ? to : quote?.checkOut || ''} onPick={pick} single={kind !== 'NIGHTLY'} pickingOut={kind === 'NIGHTLY' && !!from && !to} />
       <div className="reserve-fields">
         <div><small>{kind === 'NIGHTLY' ? 'Entrada' : 'Inicio'}</small><b>{from ? fmt(from) : 'Elige en el calendario'}</b></div>
         {kind === 'NIGHTLY' && <div><small>Salida</small><b>{to ? fmt(to) : from ? 'Elige la salida' : '—'}</b></div>}
@@ -122,7 +130,12 @@ export default function ReservationWidget({ propertyId, slug, operation }: { pro
     {tab === 'SALE' && <div className="reserve-fields">
       <label>Forma de pago<select value={paymentType} onChange={e => setPaymentType(e.target.value)}><option value="CONTADO">Contado</option><option value="CREDITO">Crédito bancario</option><option value="INFONAVIT">Infonavit</option><option value="FOVISSSTE">Fovissste</option><option value="OTRO">Otro</option></select></label>
     </div>}
+    {clash && <p className="auth-error" role="alert">{clash}</p>}
     {qErr && <p className="auth-error">{qErr}</p>}
+    {quote?.available === false && (() => {
+      const hit = quote.checkOut ? data.busy.find(b => from < b.to && b.from < quote.checkOut!) : null;
+      return <p className="auth-error" role="alert">Esas fechas chocan con días ya ocupados{hit ? ` (del ${fmt(hit.from)} al ${fmt(hit.to)})` : ''}. Elige otro inicio{kind !== 'NIGHTLY' ? ' o un plazo más corto' : ''}.</p>;
+    })()}
     {quote && <div className="quote">
       {quote.lines.map(l => <div key={l.label}><span>{l.label}</span><b>{mxn(l.amount)}</b></div>)}
       <div className="quote-total"><span>Total</span><b>{mxn(quote.total)}</b></div>
