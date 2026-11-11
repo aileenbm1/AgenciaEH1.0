@@ -92,7 +92,7 @@ export class FanpagesService implements OnModuleInit {
     const settings = await this.settings();
     const images = (await this.db.query<any>('SELECT Url, Label, Position FROM PropertyImages WHERE PropertyId=? ORDER BY Position', [propertyId])).map((i: any) => ({ url: i.Url, label: i.Label, position: i.Position }));
     const [x] = await this.db.query<any>('SELECT * FROM Properties WHERE Id=?', [propertyId]);
-    const [o] = await this.db.query<any>('SELECT u.FullName, u.Role, COALESCE(u.Phone, ap.Phone) AS Phone FROM Users u LEFT JOIN AgentProfiles ap ON ap.UserId=u.Id WHERE u.Id=?', [x.OwnerId]);
+    const [o] = await this.db.query<any>('SELECT u.FullName, u.Role, COALESCE(u.Phone, ap.Phone) AS Phone, ap.Slug AS AgentSlug, ap.PhotoUrl AS AgentPhoto FROM Users u LEFT JOIN AgentProfiles ap ON ap.UserId=u.Id WHERE u.Id=?', [x.OwnerId]);
     return {
       // Datos para la vista previa del editor (aunque la propiedad aún no esté publicada).
       property: {
@@ -100,7 +100,7 @@ export class FanpagesService implements OnModuleInit {
         category: x.Category, availability: x.Availability, municipality: x.Municipality, neighborhood: x.Neighborhood, propertyType: x.PropertyType,
         bedrooms: x.Bedrooms, bathrooms: x.Bathrooms, builtArea: x.BuiltArea, landArea: x.LandArea,
         latitude: x.Latitude != null ? Number(x.Latitude) : null, longitude: x.Longitude != null ? Number(x.Longitude) : null, showExactLocation: !!x.ShowExactLocation,
-        images, owner: o ? { fullName: o.FullName, role: o.Role, phone: o.Phone } : null,
+        images, owner: o ? { fullName: o.FullName, role: o.Role, phone: o.Phone, agent: o.Role === 'AGENT' && o.AgentSlug ? { slug: o.AgentSlug, photoUrl: o.AgentPhoto || null } : null } : null,
       },
       images,
       status: f?.Status || 'NEW', reviewNote: f?.ReviewNote || null, publishedAt: f?.PublishedAt || null, updatedAt: f?.UpdatedAt || null,
@@ -126,8 +126,21 @@ export class FanpagesService implements OnModuleInit {
     await this.db.execute(`INSERT INTO Fanpages(PropertyId,Status,DraftTheme,DraftBlocks,UpdatedById,UpdatedAt) VALUES(?,'DRAFT',?,?,?,UTC_TIMESTAMP())
       ON DUPLICATE KEY UPDATE DraftTheme=VALUES(DraftTheme), DraftBlocks=VALUES(DraftBlocks), UpdatedById=VALUES(UpdatedById), UpdatedAt=UTC_TIMESTAMP(), Status=IF(Status='PENDING','DRAFT',Status)`,
       [propertyId, JSON.stringify(theme), JSON.stringify(blocks), userId]);
-    await this.snapshot(propertyId, theme, blocks, String(d?.note || 'Guardado'), userId);
+    // Guardado automático: como mucho una versión cada 10 minutos para no llenar el historial.
+    let snap = true;
+    if (d?.auto) { const [last] = await this.db.query<any>('SELECT CreatedAt > UTC_TIMESTAMP() - INTERVAL 10 MINUTE AS recent FROM FanpageVersions WHERE PropertyId=? ORDER BY CreatedAt DESC LIMIT 1', [propertyId]); snap = !Number(last?.recent); }
+    if (snap) await this.snapshot(propertyId, theme, blocks, String(d?.note || (d?.auto ? 'Guardado automático' : 'Guardado')), userId);
     return this.get(userId, role, propertyId);
+  }
+
+  /** Ubicación de la propiedad desde el bloque de mapa (no cambia el estado de la publicación). */
+  async setLocation(userId: string, role: string, propertyId: string, d: any) {
+    await this.editable(userId, role, propertyId);
+    const has = d?.latitude != null && d?.longitude != null;
+    const lat = Number(d?.latitude), lng = Number(d?.longitude);
+    if (has && !(lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180)) throw new BadRequestException('Ubicación no válida.');
+    await this.db.execute('UPDATE Properties SET Latitude=?, Longitude=?, ShowExactLocation=? WHERE Id=?', [has ? lat : null, has ? lng : null, d?.showExactLocation ? 1 : 0, propertyId]);
+    return { latitude: has ? lat : null, longitude: has ? lng : null, showExactLocation: !!d?.showExactLocation };
   }
 
   /** Publica el borrador; si el admin exige aprobación, queda pendiente. */

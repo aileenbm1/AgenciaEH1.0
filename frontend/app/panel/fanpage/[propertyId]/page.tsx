@@ -1,9 +1,10 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import ProtectedPanel from '@/components/protected-panel';
 import FanpageView from '@/components/fanpage-view';
+import LocationPicker from '@/components/location-picker';
 import { authJson, SessionUser } from '@/lib/auth';
 import { ApiProperty } from '@/lib/properties';
 import { mxn } from '@/lib/data';
@@ -22,7 +23,8 @@ const when = (d: string) => new Date(d).toLocaleString('es-MX', { dateStyle: 'me
 const KIND_LABEL: Record<string, string> = { VIEW: 'Visitas', SHARE: 'Compartidas', CTA: 'Clics en botones', LEAD: 'Prospectos' };
 
 /** Campos de cada bloque: solo texto, listas, fotos del sitio, enlaces de video y opciones fijas. */
-function BlockFields({ b, set, images }: { b: Block; set: (patch: Partial<Block>) => void; images: { url: string; label?: string | null }[] }) {
+type Loc = { latitude: number | null; longitude: number | null; showExactLocation: boolean };
+function BlockFields({ b, set, images, loc, onLoc, hint }: { b: Block; set: (patch: Partial<Block>) => void; images: { url: string; label?: string | null }[]; loc: Loc; onLoc: (v: Loc) => void; hint: string }) {
   const text = (k: string, label: string, max: number, area = false) => <label>{label}{area
     ? <textarea rows={4} maxLength={max} value={b[k] || ''} onChange={e => set({ [k]: e.target.value })} />
     : <input maxLength={max} value={b[k] || ''} onChange={e => set({ [k]: e.target.value })} />}</label>;
@@ -46,7 +48,15 @@ function BlockFields({ b, set, images }: { b: Block; set: (patch: Partial<Block>
     case 'cta': return <>{text('title', 'Título', 140)}{text('text', 'Texto', 400)}{btn}</>;
     case 'contact': return <>{text('title', 'Título', 140)}{text('text', 'Texto', 400)}
       <label className="check"><input type="checkbox" checked={b.showWhatsapp !== false} onChange={e => set({ showWhatsapp: e.target.checked })} /> Mostrar botón de WhatsApp</label></>;
-    case 'share': case 'map': return text('title', 'Título', 140);
+    case 'share': return text('title', 'Título', 140);
+    case 'map': return <>{text('title', 'Título', 140)}
+      <p className="muted small">La ubicación es la de la propiedad. Búscala o haz clic en el mapa: se guarda al momento y también aparece en la ficha y en el catálogo.</p>
+      <LocationPicker value={loc} onChange={onLoc} hint={hint} />
+      {text('note', 'Texto bajo el mapa (opcional, ej. “A 5 min del centro”)', 200)}</>;
+    case 'reserve': return <>{text('title', 'Título', 140)}{text('text', 'Texto', 400)}<p className="muted small">Muestra el calendario, la cotización y el botón de solicitud (noche, semana, mes o apartado, según la propiedad).</p></>;
+    case 'agent': return <>{text('title', 'Título', 140)}{text('text', 'Texto de presentación (opcional)', 400)}
+      <label className="check"><input type="checkbox" checked={b.showWhatsapp !== false} onChange={e => set({ showWhatsapp: e.target.checked })} /> Mostrar botón de WhatsApp</label>
+      <p className="muted small">La foto y el nombre salen del perfil del asesor.</p></>;
   }
   return null;
 }
@@ -61,11 +71,18 @@ function FanpageEditor({ user }: { user: SessionUser }) {
   const [tab, setTab] = useState<'design' | 'templates' | 'versions' | 'stats' | 'share'>('design');
   const [error, setError] = useState(''); const [ok, setOk] = useState(''); const [busy, setBusy] = useState(false);
   const [templates, setTemplates] = useState<Template[]>([]); const [versions, setVersions] = useState<Version[]>([]); const [stats, setStats] = useState<Stats | null>(null);
-  const [addType, setAddType] = useState<BlockType>('text');
+  const [device, setDevice] = useState<'desk' | 'tablet' | 'phone'>('desk');
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [over, setOver] = useState<number | null>(null);
+  const [, setHv] = useState(0);
+  // Historial para deshacer/rehacer y control del guardado automático.
+  const hist = useRef<{ past: { theme: Theme; blocks: Block[] }[]; future: { theme: Theme; blocks: Block[] }[]; last: number }>({ past: [], future: [], last: 0 });
+  const rev = useRef(0);
+  const drag = useRef<{ kind: 'move'; index: number } | { kind: 'new'; type: BlockType } | null>(null);
   const [utm, setUtm] = useState({ source: 'facebook', medium: 'social', campaign: '' });
   const [tplName, setTplName] = useState('');
 
-  const apply = (x: Editor) => { setD(x); setTheme(x.theme); setBlocks(x.blocks.map(b => ({ ...b, id: b.id || newId() }))); setDirty(false); };
+  const apply = (x: Editor) => { setD(x); setTheme(x.theme); setBlocks(x.blocks.map(b => ({ ...b, id: b.id || newId() }))); setDirty(false); setSaveState('idle'); hist.current = { past: [], future: [], last: 0 }; };
   const load = useCallback(async () => { try { apply(await authJson<Editor>(`/fanpages/${propertyId}`)); } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo abrir el editor.'); } }, [propertyId]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
@@ -79,17 +96,58 @@ function FanpageEditor({ user }: { user: SessionUser }) {
     setBusy(true); setError(''); setOk('');
     try { apply(await fn()); setOk(done); } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo completar.'); } finally { setBusy(false); }
   }
-  const save = () => call(() => authJson<Editor>(`/fanpages/${propertyId}`, { method: 'PUT', body: JSON.stringify({ theme, blocks }) }), 'Diseño guardado (borrador).');
+  // Guardado manual: no reemplaza lo que estás escribiendo, solo actualiza el estado.
+  const saveNow = async (auto = false) => {
+    const mine = rev.current; setSaveState('saving'); if (!auto) { setError(''); setOk(''); }
+    try {
+      const x = await authJson<Editor>(`/fanpages/${propertyId}`, { method: 'PUT', body: JSON.stringify({ theme, blocks, auto }) });
+      setD(x); setSaveState('saved'); if (mine === rev.current) setDirty(false); if (auto) setError('');
+      return true;
+    } catch (e) { setSaveState('error'); setError(`No se pudo guardar: ${e instanceof Error ? e.message : 'revisa los bloques.'}`); return false; }
+  };
+  const save = () => saveNow(false);
+  // Guardado automático del borrador unos segundos después del último cambio.
+  useEffect(() => {
+    if (!dirty || !theme) return;
+    const t = setTimeout(() => { saveNow(true); }, 2500);
+    return () => clearTimeout(t);
+  }, [dirty, blocks, theme]); // eslint-disable-line react-hooks/exhaustive-deps
   const publish = async () => {
-    if (dirty) { setBusy(true); try { await authJson(`/fanpages/${propertyId}`, { method: 'PUT', body: JSON.stringify({ theme, blocks }) }); } catch (e) { setBusy(false); setError(e instanceof Error ? e.message : 'No se pudo guardar.'); return; } }
+    if ((dirty || d?.status === 'NEW') && !(await saveNow(false))) return;
     await call(() => authJson<Editor>(`/fanpages/${propertyId}/publish`, { method: 'POST' }), d?.requireApproval ? 'Enviada a aprobación del administrador.' : '¡Fanpage publicada!');
   };
 
-  const edit = (i: number, patch: Partial<Block>) => { setBlocks(bs => bs.map((b, j) => j === i ? { ...b, ...patch } : b)); setDirty(true); };
-  const move = (i: number, dir: -1 | 1) => { setBlocks(bs => { const n = [...bs]; const j = i + dir; if (j < 0 || j >= n.length) return bs; [n[i], n[j]] = [n[j], n[i]]; return n; }); setDirty(true); };
-  const remove = (i: number) => { if (confirm('¿Quitar este bloque?')) { setBlocks(bs => bs.filter((_, j) => j !== i)); setDirty(true); } };
-  const add = () => { const b = { ...BLOCKS[addType].make(), id: newId() } as Block; setBlocks(bs => [...bs, b]); setOpen(b.id); setDirty(true); };
-  const setT = (patch: Partial<Theme>) => { setTheme(t => ({ ...t!, ...patch })); setDirty(true); };
+  // Cada cambio se anota para poder deshacerlo (los tecleos seguidos cuentan como uno).
+  const touch = (force = true) => {
+    const h = hist.current, now = Date.now();
+    if (theme && (force || now - h.last > 900)) { h.past.push({ theme, blocks }); if (h.past.length > 60) h.past.shift(); h.future = []; }
+    h.last = now; rev.current++; setDirty(true); setHv(v => v + 1);
+  };
+  const undo = () => { const h = hist.current, x = h.past.pop(); if (!x || !theme) return; h.future.push({ theme, blocks }); setTheme(x.theme); setBlocks(x.blocks); h.last = 0; rev.current++; setDirty(true); setHv(v => v + 1); };
+  const redo = () => { const h = hist.current, x = h.future.pop(); if (!x || !theme) return; h.past.push({ theme, blocks }); setTheme(x.theme); setBlocks(x.blocks); h.last = 0; rev.current++; setDirty(true); setHv(v => v + 1); };
+  const edit = (i: number, patch: Partial<Block>) => { touch(false); setBlocks(bs => bs.map((b, j) => j === i ? { ...b, ...patch } : b)); };
+  const move = (i: number, dir: -1 | 1) => { const j = i + dir; if (j < 0 || j >= blocks.length) return; touch(); setBlocks(bs => { const n = [...bs]; [n[i], n[j]] = [n[j], n[i]]; return n; }); };
+  const remove = (i: number) => { if (confirm('¿Quitar este bloque? (puedes deshacerlo)')) { touch(); setBlocks(bs => bs.filter((_, j) => j !== i)); } };
+  const insert = (type: BlockType, at?: number) => { if (blocks.length >= 30) return; touch(); const b = { ...BLOCKS[type].make(), id: newId() } as Block; setBlocks(bs => { const n = [...bs]; n.splice(at ?? n.length, 0, b); return n; }); setOpen(b.id); };
+  const duplicate = (i: number) => { if (blocks.length >= 30) return; touch(); const c = { ...blocks[i], id: newId() }; setBlocks(bs => { const n = [...bs]; n.splice(i + 1, 0, c); return n; }); setOpen(c.id); };
+  const setT = (patch: Partial<Theme>) => { touch(false); setTheme(t => ({ ...t!, ...patch })); };
+  // Arrastrar: mover un bloque o soltar uno nuevo desde la paleta en la posición "at".
+  const drop = (at: number) => {
+    const g = drag.current; drag.current = null; setOver(null); if (!g) return;
+    if (g.kind === 'new') { insert(g.type, at); return; }
+    if (g.index === at || g.index + 1 === at) return;
+    touch(); setBlocks(bs => { const n = [...bs]; const [x] = n.splice(g.index, 1); n.splice(at > g.index ? at - 1 : at, 0, x); return n; });
+  };
+  // Ubicación desde el bloque de mapa: se guarda en la propiedad al momento.
+  const setLoc = async (v: Loc) => {
+    setD(x => x ? { ...x, property: { ...x.property, ...v } } : x);
+    try { await authJson(`/fanpages/${propertyId}/location`, { method: 'PUT', body: JSON.stringify(v) }); setOk('Ubicación guardada en la propiedad.'); }
+    catch (e) { setError(e instanceof Error ? e.message : 'No se pudo guardar la ubicación.'); }
+  };
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => { if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z') return; const t = e.target as HTMLElement; if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) return; e.preventDefault(); e.shiftKey ? redo() : undo(); };
+    window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k);
+  });
 
   const publicPath = d ? `/propiedades/${d.property.slug}/fanpage` : '';
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -114,17 +172,12 @@ function FanpageEditor({ user }: { user: SessionUser }) {
     <Link href={user.role === 'ADMIN' ? '/panel/admin#fanpages' : '/panel/agente/propiedades'} className="back-link">← Volver</Link>
     <div className="page-heading panel-heading"><div>
       <span className="eyebrow">FANPAGE DE LA PROPIEDAD</span><h1>{d.property.title}</h1>
-      <p><i className={`status-pill ${stTone}`}>{stLabel}</i> {d.publishedAt && <small className="muted">Publicada el {when(d.publishedAt)}</small>} {dirty ? <i className="status-pill warn">Cambios sin guardar</i> : d.unpublishedChanges && d.status !== 'PENDING' ? <i className="status-pill warn">Borrador con cambios sin publicar</i> : null}</p>
+      <p><i className={`status-pill ${stTone}`}>{stLabel}</i> {d.publishedAt && <small className="muted">Publicada el {when(d.publishedAt)}</small>} {!dirty && d.unpublishedChanges && d.status !== 'PENDING' ? <i className="status-pill warn">Borrador con cambios sin publicar</i> : null}</p>
       {d.property.status !== 'PUBLISHED' && <p className="muted">La propiedad aún no está publicada: su fanpage será pública cuando el administrador apruebe la propiedad.</p>}
       {d.status === 'REJECTED' && d.reviewNote && <div className="notice">Nota del administrador: {d.reviewNote}</div>}
     </div>
-      <div className="property-actions">
-        <button className="button button-outline" disabled={busy || !dirty} onClick={save}>Guardar borrador</button>
-        <button className="button button-navy" disabled={busy || d.status === 'PENDING' && !dirty} onClick={publish}>{d.requireApproval ? 'Enviar a aprobación' : 'Publicar'}</button>
-        {d.property.status === 'PUBLISHED' && <a className="button button-outline" href={publicPath} target="_blank" rel="noopener noreferrer">Ver pública ↗</a>}
-      </div>
     </div>
-    <p className="muted">Editor seguro por bloques: cambias textos, fotos, colores, fuente y el orden. No se puede escribir código (HTML/CSS) — así nadie puede romper ni insertar contenido peligroso.</p>
+    <p className="muted">Editor seguro por bloques: cambias textos, fotos, colores, fuente y el orden (arrastra los bloques). El borrador se guarda solo; “Publicar” lo hace visible al público. No se puede escribir código (HTML/CSS) — así nadie puede romper ni insertar contenido peligroso.</p>
     {error && <div className="notice" role="alert">{error}</div>}
     {ok && <div className="notice ok" role="status">{ok}</div>}
 
@@ -140,26 +193,44 @@ function FanpageEditor({ user }: { user: SessionUser }) {
             <label>Fuente<select value={theme.font} onChange={e => setT({ font: e.target.value as Theme['font'] })}>{Object.entries(FONTS).map(([k, f]) => <option key={k} value={k}>{f.label}</option>)}</select></label>
           </div>
         </section>
-        <section className="dashboard-card"><h3>Bloques</h3><p className="muted small">{TOKENS_HELP}</p>
-          <ol className="fp-blocks">{blocks.map((b, i) => <li key={b.id} className={b.hidden ? 'is-hidden' : ''}>
+        <section className="dashboard-card"><h3>Agregar bloque</h3>
+          <p className="muted small">Haz clic para agregarlo al final o arrástralo al lugar donde lo quieres.</p>
+          <div className="fp-palette-grid">{(Object.entries(BLOCKS) as [BlockType, typeof BLOCKS[BlockType]][]).map(([k, v]) =>
+            <button key={k} type="button" className="fp-new" title={v.help} draggable disabled={blocks.length >= 30}
+              onDragStart={e => { drag.current = { kind: 'new', type: k }; e.dataTransfer.effectAllowed = 'copy'; e.dataTransfer.setData('text/plain', k); }} onDragEnd={() => { drag.current = null; setOver(null); }}
+              onClick={() => insert(k)}><span aria-hidden>{v.icon}</span>{v.label}</button>)}</div>
+        </section>
+        <section className="dashboard-card"><h3>Bloques de la página</h3><p className="muted small">Arrastra desde ⋮⋮ para cambiar el orden. {TOKENS_HELP}</p>
+          <ol className="fp-blocks">{blocks.map((b, i) => <li key={b.id} className={`${b.hidden ? 'is-hidden' : ''}${over === i ? ' drop-here' : ''}`}
+            onDragOver={e => { if (drag.current) { e.preventDefault(); if (over !== i) setOver(i); } }} onDrop={e => { e.preventDefault(); drop(i); }}>
             <div className="fp-block-head">
-              <button type="button" className="fp-block-name" onClick={() => setOpen(open === b.id ? '' : b.id)} aria-expanded={open === b.id}>{BLOCKS[b.type]?.label || b.type}{b.title ? ` · ${fill(String(b.title), d.property).slice(0, 30)}` : ''}</button>
+              <span className="fp-grip" draggable title="Arrastrar para mover" aria-label="Arrastrar para mover"
+                onDragStart={e => { drag.current = { kind: 'move', index: i }; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', b.id); const li = (e.currentTarget as HTMLElement).closest('li'); if (li) e.dataTransfer.setDragImage(li, 16, 16); }}
+                onDragEnd={() => { drag.current = null; setOver(null); }}>⋮⋮</span>
+              <button type="button" className="fp-block-name" onClick={() => setOpen(open === b.id ? '' : b.id)} aria-expanded={open === b.id}><span aria-hidden>{BLOCKS[b.type]?.icon} </span>{BLOCKS[b.type]?.label || b.type}{b.title ? ` · ${fill(String(b.title), d.property).slice(0, 26)}` : ''}</button>
               <span className="fp-block-tools">
-                <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Subir">▲</button>
-                <button type="button" onClick={() => move(i, 1)} disabled={i === blocks.length - 1} aria-label="Bajar">▼</button>
-                <button type="button" onClick={() => edit(i, { hidden: !b.hidden })} aria-label={b.hidden ? 'Mostrar' : 'Ocultar'} title={b.hidden ? 'Mostrar' : 'Ocultar'}>{b.hidden ? '🙈' : '👁'}</button>
-                <button type="button" onClick={() => remove(i)} aria-label="Quitar">✕</button>
+                <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Subir" title="Subir">▲</button>
+                <button type="button" onClick={() => move(i, 1)} disabled={i === blocks.length - 1} aria-label="Bajar" title="Bajar">▼</button>
+                <button type="button" onClick={() => duplicate(i)} disabled={blocks.length >= 30} aria-label="Duplicar" title="Duplicar">⧉</button>
+                <button type="button" onClick={() => { touch(); setBlocks(bs => bs.map((x, j) => j === i ? { ...x, hidden: !x.hidden } : x)); }} aria-label={b.hidden ? 'Mostrar' : 'Ocultar'} title={b.hidden ? 'Mostrar' : 'Ocultar'}>{b.hidden ? '🙈' : '👁'}</button>
+                <button type="button" onClick={() => remove(i)} aria-label="Quitar" title="Quitar">✕</button>
               </span>
             </div>
             {open === b.id && <div className="fp-block-form">
-              <BlockFields b={b} set={patch => edit(i, patch)} images={d.images} />
+              <BlockFields b={b} set={patch => edit(i, patch)} images={d.images} hint={[d.property.neighborhood, d.property.municipality, 'Guanajuato'].filter(Boolean).join(', ')}
+                loc={{ latitude: d.property.latitude ?? null, longitude: d.property.longitude ?? null, showExactLocation: !!d.property.showExactLocation }} onLoc={setLoc} />
               <label>Fondo de la sección<select value={b.bg || 'light'} onChange={e => edit(i, { bg: e.target.value as Block['bg'] })}><option value="light">Claro (fondo)</option><option value="dark">Oscuro (color principal)</option><option value="accent">Acento</option></select></label>
             </div>}
-          </li>)}</ol>
-          {blocks.length < 30 && <div className="fp-add"><select value={addType} onChange={e => setAddType(e.target.value as BlockType)} aria-label="Tipo de bloque">{Object.entries(BLOCKS).map(([k, v]) => <option key={k} value={k}>{v.label} — {v.help}</option>)}</select><button type="button" className="button button-outline" onClick={add}>+ Agregar bloque</button></div>}
+          </li>)}
+            <li className={`fp-drop-end${over === blocks.length ? ' drop-here' : ''}`} onDragOver={e => { if (drag.current) { e.preventDefault(); if (over !== blocks.length) setOver(blocks.length); } }} onDrop={e => { e.preventDefault(); drop(blocks.length); }}>Suelta aquí para dejarlo al final</li>
+          </ol>
         </section>
       </div>
-      <div className="fp-preview" aria-label="Vista previa"><div className="fp-preview-bar">Vista previa</div><FanpageView property={d.property} theme={theme} blocks={blocks} preview /></div>
+      <div className="fp-preview" aria-label="Vista previa">
+        <div className="fp-preview-bar"><span>Vista previa</span>
+          <span className="fp-devices" role="group" aria-label="Tamaño de la vista previa">{([['desk', '🖥 Computadora'], ['tablet', '📱 Tableta'], ['phone', '📱 Celular']] as const).map(([k, l]) => <button key={k} type="button" className={device === k ? 'on' : ''} aria-pressed={device === k} onClick={() => setDevice(k)}>{l}</button>)}</span></div>
+        <div className={`fp-device fp-device-${device}`}><FanpageView property={d.property} theme={theme} blocks={blocks} preview /></div>
+      </div>
     </div>}
 
     {tab === 'templates' && <section className="dashboard-card">
@@ -209,6 +280,14 @@ function FanpageEditor({ user }: { user: SessionUser }) {
         {d.images.length > 1 && <button className="button button-outline" onClick={async () => { for (let n = 0; n < d.images.length; n++) { await download(d.images[n].url, n); await new Promise(r => setTimeout(r, 400)); } }}>Descargar todas</button>}
       </section>
     </div>}
+    <div className="fp-bar" role="toolbar" aria-label="Guardar y publicar">
+      <span className={`fp-save-state ${saveState}`} role="status">{dirty ? (saveState === 'saving' ? 'Guardando…' : saveState === 'error' ? '⚠ No se pudo guardar' : 'Cambios sin guardar…') : saveState === 'saved' ? '✓ Borrador guardado' : d.unpublishedChanges && d.status !== 'PENDING' ? 'Borrador sin publicar' : 'Todo al día'}</span>
+      <button type="button" className="button button-ghost" onClick={undo} disabled={!hist.current.past.length} title="Deshacer (Ctrl+Z)">↶ Deshacer</button>
+      <button type="button" className="button button-ghost" onClick={redo} disabled={!hist.current.future.length} title="Rehacer (Ctrl+Mayús+Z)">↷ Rehacer</button>
+      <button type="button" className="button button-outline" disabled={busy || !dirty} onClick={save}>Guardar ahora</button>
+      <button type="button" className="button button-gold" disabled={busy || (d.status === 'PENDING' && !dirty) || (!dirty && !d.unpublishedChanges && d.hasPublished)} onClick={publish}>{d.requireApproval ? 'Enviar a aprobación' : 'Publicar'}</button>
+      {d.property.status === 'PUBLISHED' && <a className="button button-outline light" href={publicPath} target="_blank" rel="noopener noreferrer">Ver pública ↗</a>}
+    </div>
   </main>;
 }
 

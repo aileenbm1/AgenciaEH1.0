@@ -7,6 +7,7 @@ import { Block, fill, FONTS, Theme, videoEmbed } from '@/lib/fanpage';
 import PropertyContact from './property-contact';
 import ShareButtons from './share-buttons';
 import PropertyMap from './property-map';
+import ReservationWidget from './reservation-widget';
 
 type Track = (kind: 'VIEW' | 'SHARE' | 'CTA', channel?: string) => void;
 const waNumber = (phone: string) => { const d = phone.replace(/\D/g, ''); return d.length === 10 ? `52${d}` : d; };
@@ -87,7 +88,26 @@ export default function FanpageView({ property: p, theme, blocks, preview = fals
       case 'share': return <div className="fp-inner">{b.title && <h2>{fill(b.title, p)}</h2>}<ShareButtons path={`/propiedades/${p.slug}/fanpage`} title={p.title} onShare={ch => track('SHARE', ch)} /></div>;
       case 'map': {
         if (p.latitude == null || p.longitude == null) return preview ? <div className="fp-inner"><p className="muted">La propiedad aún no tiene ubicación en el mapa (agrégala en “Editar propiedad”).</p></div> : null;
-        return <div className="fp-inner">{b.title && <h2>{fill(b.title, p)}</h2>}<PropertyMap lat={Number(p.latitude)} lng={Number(p.longitude)} title={p.title} exact={!!p.showExactLocation} /></div>;
+        return <div className="fp-inner">{b.title && <h2>{fill(b.title, p)}</h2>}<PropertyMap lat={Number(p.latitude)} lng={Number(p.longitude)} title={p.title} exact={!!p.showExactLocation} />{b.note && <p className="fp-note">{fill(b.note, p)}</p>}</div>;
+      }
+      case 'reserve': {
+        if (closed) return null;
+        return <div className="fp-inner fp-reserve">{b.title && <h2>{fill(b.title, p)}</h2>}{b.text && <p>{fill(b.text, p)}</p>}
+          {preview ? <div className="fp-form-placeholder">Aquí aparece el calendario con la cotización y el botón para solicitar la reserva o el apartado.</div>
+            : <ReservationWidget propertyId={p.id} slug={p.slug} operation={p.operation} />}</div>;
+      }
+      case 'agent': {
+        const o = p.owner; if (!o) return null;
+        return <div className="fp-inner fp-agent">{b.title && <h2>{fill(b.title, p)}</h2>}
+          <div className="fp-agent-card">
+            {o.agent?.photoUrl ? <img src={o.agent.photoUrl} alt={o.fullName} /> : <span className="fp-agent-initials" aria-hidden>{o.fullName.split(' ').map(w => w[0]).slice(0, 2).join('')}</span>}
+            <div><b>{o.fullName}</b><small>{o.role === 'AGENCY' ? 'Agencia inmobiliaria' : o.role === 'DEVELOPER' ? 'Desarrolladora' : 'Asesor inmobiliario'}</small>
+              {b.text && <p>{fill(b.text, p)}</p>}
+              <div className="fp-agent-actions">
+                {b.showWhatsapp && wa && <a className="fp-button" href={preview ? undefined : wa} target="_blank" rel="noopener noreferrer" onClick={() => track('CTA', 'whatsapp')}>WhatsApp</a>}
+                {o.agent?.slug && <Link href={`/asesores/${o.agent.slug}`}>Ver perfil →</Link>}
+              </div></div>
+          </div></div>;
       }
     }
     return null;

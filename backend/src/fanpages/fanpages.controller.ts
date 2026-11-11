@@ -16,6 +16,7 @@ export class FanpagesController {
   @Get('templates') @UseGuards(JwtAuthGuard) templates() { return this.svc.templates(); }
   @Get(':propertyId') @UseGuards(JwtAuthGuard) get(@Req() r: any, @Param('propertyId', ParseUUIDPipe) id: string) { return this.svc.get(r.user.sub, r.user.role, id); }
   @Put(':propertyId') @UseGuards(JwtAuthGuard) save(@Req() r: any, @Param('propertyId', ParseUUIDPipe) id: string, @Body() d: any) { return this.svc.save(r.user.sub, r.user.role, id, d); }
+  @Put(':propertyId/location') @UseGuards(JwtAuthGuard) location(@Req() r: any, @Param('propertyId', ParseUUIDPipe) id: string, @Body() d: any) { return this.svc.setLocation(r.user.sub, r.user.role, id, d); }
   @Post(':propertyId/publish') @UseGuards(JwtAuthGuard) publish(@Req() r: any, @Param('propertyId', ParseUUIDPipe) id: string) { return this.svc.publish(r.user.sub, r.user.role, id); }
   @Post(':propertyId/unpublish') @UseGuards(JwtAuthGuard) unpublish(@Req() r: any, @Param('propertyId', ParseUUIDPipe) id: string) { return this.svc.unpublish(r.user.sub, r.user.role, id); }
   @Get(':propertyId/versions') @UseGuards(JwtAuthGuard) versions(@Req() r: any, @Param('propertyId', ParseUUIDPipe) id: string) { return this.svc.versions(r.user.sub, r.user.role, id); }

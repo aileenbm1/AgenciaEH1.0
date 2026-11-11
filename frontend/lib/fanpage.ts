@@ -4,7 +4,7 @@ import { ApiProperty } from './properties';
 import { mxn } from './data';
 
 export type Theme = { primary: string; accent: string; background: string; text: string; font: 'clasica' | 'moderna' | 'elegante' | 'redonda' };
-export type BlockType = 'hero' | 'text' | 'gallery' | 'features' | 'price' | 'video' | 'cta' | 'contact' | 'share' | 'map';
+export type BlockType = 'hero' | 'text' | 'gallery' | 'features' | 'price' | 'video' | 'cta' | 'contact' | 'share' | 'map' | 'reserve' | 'agent';
 export type Block = { id: string; type: BlockType; hidden?: boolean; bg?: 'light' | 'dark' | 'accent'; [k: string]: any };
 export type FanpageData = { custom: boolean; theme: Theme; blocks: Block[] };
 
@@ -23,17 +23,19 @@ export const PALETTES: { name: string; theme: Omit<Theme, 'font'> }[] = [
   { name: 'Terracota', theme: { primary: '#5B2E1F', accent: '#D98E5F', background: '#FBF6F1', text: '#3A2C26' } },
 ];
 
-export const BLOCKS: Record<BlockType, { label: string; help: string; make: () => Omit<Block, 'id'> }> = {
-  hero: { label: 'Portada', help: 'Foto grande con título y botón.', make: () => ({ type: 'hero', bg: 'dark', title: '{titulo}', subtitle: '{colonia}, {ciudad}', imageUrl: '', buttonText: 'Quiero informes', target: 'contact' }) },
-  text: { label: 'Texto', help: 'Título y párrafos.', make: () => ({ type: 'text', bg: 'light', title: 'Título', body: 'Escribe aquí.', align: 'left' }) },
-  gallery: { label: 'Galería', help: 'Fotos de la propiedad.', make: () => ({ type: 'gallery', bg: 'light', title: 'Galería', images: [], useProperty: true, layout: 'grid' }) },
-  features: { label: 'Características', help: 'Lista de ventajas y datos.', make: () => ({ type: 'features', bg: 'light', title: 'Características', items: [], auto: true }) },
-  price: { label: 'Precio', help: 'Precio de venta y/o renta.', make: () => ({ type: 'price', bg: 'light', title: 'Precio', note: '', showRent: true }) },
-  video: { label: 'Video', help: 'Enlace de YouTube o Vimeo.', make: () => ({ type: 'video', bg: 'light', title: 'Recorrido en video', url: '' }) },
-  cta: { label: 'Llamado a la acción', help: 'Texto destacado con botón.', make: () => ({ type: 'cta', bg: 'accent', title: '¿Te gustó?', text: 'Agenda una visita hoy.', buttonText: 'Agendar visita', target: 'contact' }) },
-  contact: { label: 'Formulario de contacto', help: 'Mensaje o visita; llega como prospecto.', make: () => ({ type: 'contact', bg: 'light', title: '¿Te interesa?', text: 'Déjanos tus datos.', showWhatsapp: true }) },
-  share: { label: 'Compartir', help: 'Botones para redes sociales.', make: () => ({ type: 'share', bg: 'light', title: 'Compártela' }) },
-  map: { label: 'Mapa', help: 'Ubicación (si la propiedad la tiene).', make: () => ({ type: 'map', bg: 'light', title: 'Ubicación' }) },
+export const BLOCKS: Record<BlockType, { label: string; icon: string; help: string; make: () => Omit<Block, 'id'> }> = {
+  hero: { icon: '🖼', label: 'Portada', help: 'Foto grande con título y botón.', make: () => ({ type: 'hero', bg: 'dark', title: '{titulo}', subtitle: '{colonia}, {ciudad}', imageUrl: '', buttonText: 'Quiero informes', target: 'contact' }) },
+  text: { icon: '📝', label: 'Texto', help: 'Título y párrafos.', make: () => ({ type: 'text', bg: 'light', title: 'Título', body: 'Escribe aquí.', align: 'left' }) },
+  gallery: { icon: '📷', label: 'Galería', help: 'Fotos de la propiedad.', make: () => ({ type: 'gallery', bg: 'light', title: 'Galería', images: [], useProperty: true, layout: 'grid' }) },
+  features: { icon: '✅', label: 'Características', help: 'Lista de ventajas y datos.', make: () => ({ type: 'features', bg: 'light', title: 'Características', items: [], auto: true }) },
+  price: { icon: '💰', label: 'Precio', help: 'Precio de venta y/o renta.', make: () => ({ type: 'price', bg: 'light', title: 'Precio', note: '', showRent: true }) },
+  video: { icon: '▶️', label: 'Video', help: 'Enlace de YouTube o Vimeo.', make: () => ({ type: 'video', bg: 'light', title: 'Recorrido en video', url: '' }) },
+  cta: { icon: '📣', label: 'Llamado a la acción', help: 'Texto destacado con botón.', make: () => ({ type: 'cta', bg: 'accent', title: '¿Te gustó?', text: 'Agenda una visita hoy.', buttonText: 'Agendar visita', target: 'contact' }) },
+  contact: { icon: '✉️', label: 'Formulario de contacto', help: 'Mensaje o visita; llega como prospecto.', make: () => ({ type: 'contact', bg: 'light', title: '¿Te interesa?', text: 'Déjanos tus datos.', showWhatsapp: true }) },
+  share: { icon: '🔗', label: 'Compartir', help: 'Botones para redes sociales.', make: () => ({ type: 'share', bg: 'light', title: 'Compártela' }) },
+  map: { icon: '📍', label: 'Mapa', help: 'Ubicación de la propiedad; se elige aquí mismo.', make: () => ({ type: 'map', bg: 'light', title: 'Ubicación', note: '' }) },
+  reserve: { icon: '📅', label: 'Reserva en línea', help: 'Calendario y cotización para rentar o apartar.', make: () => ({ type: 'reserve', bg: 'light', title: 'Reserva en línea', text: 'Elige tus fechas; el pago es por transferencia o en efectivo.' }) },
+  agent: { icon: '👤', label: 'Asesor', help: 'Foto, nombre y WhatsApp del asesor.', make: () => ({ type: 'agent', bg: 'light', title: 'Tu asesor', text: '', showWhatsapp: true }) },
 };
 export const TARGETS: Record<string, string> = { contact: 'Ir al formulario de contacto', whatsapp: 'Abrir WhatsApp del asesor', reserve: 'Reservar / apartar en línea', property: 'Ver ficha completa' };
 

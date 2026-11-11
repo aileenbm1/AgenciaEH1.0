@@ -7,7 +7,7 @@ import { DEMO_PATH_RE, MEDIA_PATH_RE } from '../uploads/media';
  * formato #RRGGBB, fuentes de una lista fija, fotos del propio sitio y videos de
  * YouTube/Vimeo (se guarda solo el ID). Todo lo demás se descarta al guardar.
  */
-export const BLOCK_TYPES = ['hero', 'text', 'gallery', 'features', 'price', 'video', 'cta', 'contact', 'share', 'map'] as const;
+export const BLOCK_TYPES = ['hero', 'text', 'gallery', 'features', 'price', 'video', 'cta', 'contact', 'share', 'map', 'reserve', 'agent'] as const;
 export type BlockType = typeof BLOCK_TYPES[number];
 export const FONTS = ['clasica', 'moderna', 'elegante', 'redonda'] as const;
 export const TARGETS = ['contact', 'whatsapp', 'reserve', 'property'] as const;
@@ -79,7 +79,9 @@ export function cleanBlocks(list: any): Block[] {
       case 'cta': return { ...base, title: str(b.title, 140), text: str(b.text, 400), ...button() };
       case 'contact': return { ...base, title: str(b.title, 140), text: str(b.text, 400), showWhatsapp: b.showWhatsapp !== false };
       case 'share': return { ...base, title: str(b.title, 140) };
-      case 'map': return { ...base, title: str(b.title, 140) };
+      case 'map': return { ...base, title: str(b.title, 140), note: str(b.note, 200) };
+      case 'reserve': return { ...base, title: str(b.title, 140), text: str(b.text, 400) };
+      case 'agent': return { ...base, title: str(b.title, 140), text: str(b.text, 400), showWhatsapp: b.showWhatsapp !== false };
     }
   });
 }
