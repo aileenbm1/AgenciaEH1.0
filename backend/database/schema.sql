@@ -222,6 +222,8 @@ CREATE TABLE IF NOT EXISTS RentalSettings (
   Deposit DECIMAL(12,2) NOT NULL DEFAULT 0,
   TaxRate DECIMAL(5,2) NOT NULL DEFAULT 0,
   CancellationPolicy VARCHAR(1000) NULL,
+  -- Reglas de la casa que el interesado ve antes de reservar.
+  Rules VARCHAR(2000) NULL,
   Seasons VARCHAR(4000) NULL,
   SaleRequests TINYINT(1) NOT NULL DEFAULT 1,
   -- Modalidades que acepta (una o varias): NIGHTLY (por noche), WEEKLY (por semana), MONTHLY (por mes).

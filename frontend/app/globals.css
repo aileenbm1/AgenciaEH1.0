@@ -684,3 +684,7 @@ h1,h2{font-family:var(--font-title);color:var(--navy);font-weight:600;letter-spa
 .fp-tools button:hover:not(:disabled),.fp-tool-grip:hover{background:rgba(255,255,255,.18)}.fp-tools button:disabled{opacity:.35;cursor:default}
 .fp-preview-help{padding:8px 12px;margin:0;background:var(--surface)}
 .fp-blocks li:target,.fp-blocks li[id]:has(.fp-block-form){border-color:var(--gold)}
+
+/* Reglas de la casa */
+.house-rules ul{margin:8px 0 0;padding-left:20px;display:grid;gap:4px;font-size:14px;line-height:1.5}
+.reserve-box .house-rules{background:var(--surface);border-radius:var(--r-md);padding:12px 14px}

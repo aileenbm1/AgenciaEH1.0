@@ -4,7 +4,7 @@ import { authJson } from '@/lib/auth';
 
 type Season = { name?: string; from: string; to: string; price: number | string };
 type Unit = 'NIGHTLY' | 'WEEKLY' | 'MONTHLY';
-type Settings = { enabled: boolean; modes: Unit[]; nightPrice: number | null; weekPrice: number | string | null; monthPrice: number | string | null; minStay: number; maxStay: number | null; minWeeks: number; maxWeeks: number | null; minMonths: number; maxMonths: number | null; maxGuests: number | null; deposit: number; taxRate: number; cancellationPolicy: string | null; seasons: Season[]; saleRequests: boolean; monthlyRent: number | null };
+type Settings = { enabled: boolean; modes: Unit[]; nightPrice: number | null; weekPrice: number | string | null; monthPrice: number | string | null; minStay: number; maxStay: number | null; minWeeks: number; maxWeeks: number | null; minMonths: number; maxMonths: number | null; maxGuests: number | null; deposit: number; taxRate: number; cancellationPolicy: string | null; rules: string | null; seasons: Season[]; saleRequests: boolean; monthlyRent: number | null };
 type Range = { id?: string; from: string; to: string; type: 'RESERVED' | 'BLOCKED'; reason?: string | null };
 
 const fmt = (d: string) => new Date(d + 'T12:00:00Z').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
@@ -73,6 +73,7 @@ export default function RentalSettings({ propertyId, operation }: { propertyId: 
           {(s.modes.includes('NIGHTLY') || s.modes.includes('WEEKLY')) && <label>Huéspedes máximos (opcional)<input type="number" min="1" max="100" value={s.maxGuests ?? ''} onChange={e => set('maxGuests', e.target.value)} /></label>}
           <label>Depósito de garantía (MXN)<input type="number" min="0" value={s.deposit} onChange={e => set('deposit', e.target.value)} /></label>
           <label>Impuestos (%)<input type="number" min="0" max="50" step="0.01" value={s.taxRate} onChange={e => set('taxRate', e.target.value)} /></label>
+          <label className="wide">Reglas de la casa (el interesado las ve antes de reservar)<textarea rows={4} maxLength={2000} value={s.rules || ''} onChange={e => set('rules', e.target.value)} placeholder={"Una regla por línea. Ej.:\nNo fiestas ni reuniones\nNo fumar dentro del inmueble\nNo mascotas\nMáximo 4 personas\nEntrada a partir de las 3 pm, salida a las 12 pm\nLos daños al inmueble o al mobiliario corren por cuenta del huésped"} /></label>
           <label className="wide">Política de cancelación<textarea rows={2} maxLength={1000} value={s.cancellationPolicy || ''} onChange={e => set('cancellationPolicy', e.target.value)} placeholder="Ej.: Cancelación gratuita hasta 7 días antes; después se retiene el anticipo." /></label>
           {s.modes.includes('NIGHTLY') && <div className="wide">
             <b>Temporadas (precio por noche distinto)</b>

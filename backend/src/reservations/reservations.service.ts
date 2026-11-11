@@ -82,7 +82,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       monthPrice: r?.MonthPrice != null ? Number(r.MonthPrice) : rent,
       minStay: r?.MinStay ?? 1, maxStay: r?.MaxStay ?? null,
       minWeeks: r?.MinWeeks ?? 1, maxWeeks: r?.MaxWeeks ?? null, minMonths: r?.MinMonths ?? 1, maxMonths: r?.MaxMonths ?? null, maxGuests: r?.MaxGuests ?? null, deposit: Number(r?.Deposit || 0), taxRate: Number(r?.TaxRate || 0),
-      cancellationPolicy: r?.CancellationPolicy || null, seasons, saleRequests: r ? !!r.SaleRequests : true,
+      cancellationPolicy: r?.CancellationPolicy || null, rules: r?.Rules || null, seasons, saleRequests: r ? !!r.SaleRequests : true,
       monthlyRent: rent,
       salePrice: p && (p.Operation === 'SALE' || p.Operation === 'BOTH') ? Number(p.Price) : null,
       operation: p?.Operation, availability: p?.Availability || 'AVAILABLE',
@@ -123,12 +123,12 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     const seasons: Season[] = Array.isArray(d.seasons) ? d.seasons.slice(0, 20).map((s: any) => ({ name: String(s.name || '').slice(0, 40), from: String(s.from || ''), to: String(s.to || ''), price: Number(s.price) })) : [];
     for (const s of seasons) if (!ISO.test(s.from) || !ISO.test(s.to) || s.to < s.from || !(s.price > 0)) throw new BadRequestException('Revisa las temporadas: fechas (inicio ≤ fin) y precio por noche.');
     const list = modes.length ? modes : ['MONTHLY'];
-    await this.db.execute(`INSERT INTO RentalSettings(PropertyId,Enabled,Mode,Modes,NightPrice,WeekPrice,MonthPrice,MinStay,MaxStay,MinWeeks,MaxWeeks,MinMonths,MaxMonths,MaxGuests,Deposit,TaxRate,CancellationPolicy,Seasons,SaleRequests,UpdatedAt)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE Enabled=VALUES(Enabled),Mode=VALUES(Mode),Modes=VALUES(Modes),NightPrice=VALUES(NightPrice),WeekPrice=VALUES(WeekPrice),MonthPrice=VALUES(MonthPrice),
+    await this.db.execute(`INSERT INTO RentalSettings(PropertyId,Enabled,Mode,Modes,NightPrice,WeekPrice,MonthPrice,MinStay,MaxStay,MinWeeks,MaxWeeks,MinMonths,MaxMonths,MaxGuests,Deposit,TaxRate,CancellationPolicy,Rules,Seasons,SaleRequests,UpdatedAt)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE Enabled=VALUES(Enabled),Mode=VALUES(Mode),Modes=VALUES(Modes),NightPrice=VALUES(NightPrice),WeekPrice=VALUES(WeekPrice),MonthPrice=VALUES(MonthPrice),
       MinStay=VALUES(MinStay),MaxStay=VALUES(MaxStay),MinWeeks=VALUES(MinWeeks),MaxWeeks=VALUES(MaxWeeks),MinMonths=VALUES(MinMonths),MaxMonths=VALUES(MaxMonths),
-      MaxGuests=VALUES(MaxGuests),Deposit=VALUES(Deposit),TaxRate=VALUES(TaxRate),CancellationPolicy=VALUES(CancellationPolicy),Seasons=VALUES(Seasons),SaleRequests=VALUES(SaleRequests),UpdatedAt=UTC_TIMESTAMP()`,
+      MaxGuests=VALUES(MaxGuests),Deposit=VALUES(Deposit),TaxRate=VALUES(TaxRate),CancellationPolicy=VALUES(CancellationPolicy),Rules=VALUES(Rules),Seasons=VALUES(Seasons),SaleRequests=VALUES(SaleRequests),UpdatedAt=UTC_TIMESTAMP()`,
       [propertyId, enabled ? 1 : 0, list.includes('NIGHTLY') && list.length === 1 ? 'NIGHTLY' : 'MONTHLY', list.join(','), nightPrice, weekPrice, monthPrice, minStay, maxStay, minWeeks, maxWeeks, minMonths, maxMonths,
-        maxGuests, deposit, taxRate, String(d.cancellationPolicy || '').slice(0, 1000) || null, JSON.stringify(seasons), d.saleRequests === false ? 0 : 1]);
+        maxGuests, deposit, taxRate, String(d.cancellationPolicy || '').slice(0, 1000) || null, String(d.rules || '').trim().slice(0, 2000) || null, JSON.stringify(seasons), d.saleRequests === false ? 0 : 1]);
     return this.getSettings(propertyId);
   }
 
@@ -302,12 +302,12 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     const messages = await this.db.query<any>('SELECT m.Id, m.UserId, m.Body, m.CreatedAt, u.FullName FROM ReservationMessages m JOIN Users u ON u.Id=m.UserId WHERE m.ReservationId=? ORDER BY m.Seq, m.CreatedAt', [id]);
     const docs = await this.db.query<any>('SELECT d.Id, d.UserId, d.Kind, d.FileName, d.Mime, d.Size, d.CreatedAt, u.FullName FROM ReservationDocuments d JOIN Users u ON u.Id=d.UserId WHERE d.ReservationId=? ORDER BY d.CreatedAt', [id]);
     const [contact] = await this.db.query<any>(`SELECT g.Email AS GuestEmail, g.Phone AS GuestPhone, o.Phone AS OwnerPhone, o.Email AS OwnerEmail FROM Users g JOIN Users o ON o.Id=? WHERE g.Id=?`, [r.OwnerId, r.GuestId]);
-    const [s] = await this.db.query<any>('SELECT CancellationPolicy FROM RentalSettings WHERE PropertyId=?', [r.PropertyId]);
+    const [s] = await this.db.query<any>('SELECT CancellationPolicy, Rules FROM RentalSettings WHERE PropertyId=?', [r.PropertyId]);
     const base = this.row(r);
     // Trato directo: el anunciante ve los datos del interesado; el interesado ve los del anunciante al aprobarse.
     const approved = ['APPROVED', 'DEPOSIT_PAID', 'COMPLETED'].includes(r.Status);
     return {
-      ...base, viewer: { isGuest, isManager }, cancellationPolicy: s?.CancellationPolicy || null,
+      ...base, viewer: { isGuest, isManager }, cancellationPolicy: s?.CancellationPolicy || null, rules: s?.Rules || null,
       guest: { ...base.guest, ...(isManager ? { email: contact?.GuestEmail, phone: contact?.GuestPhone } : {}) },
       owner: { ...base.owner, ...(isGuest && approved ? { phone: contact?.OwnerPhone, email: contact?.OwnerEmail } : {}) },
       messages: messages.map((m: any) => ({ id: m.Id, userId: m.UserId, fullName: m.FullName, body: m.Body, createdAt: m.CreatedAt, mine: m.UserId === userId })),

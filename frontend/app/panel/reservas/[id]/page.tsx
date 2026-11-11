@@ -8,7 +8,7 @@ import { mxn } from '@/lib/data';
 import { fmtDay, fmtWhen, PAY_METHOD, PAY_TYPE, RES_KIND, RES_STATUS, ResRow } from '@/lib/reservations';
 
 type Detail = ResRow & {
-  viewer: { isGuest: boolean; isManager: boolean }; cancellationPolicy: string | null;
+  viewer: { isGuest: boolean; isManager: boolean }; cancellationPolicy: string | null; rules: string | null;
   messages: { id: string; fullName: string; body: string; createdAt: string; mine: boolean }[];
   documents: { id: string; kind: string | null; fileName: string; mime: string; size: number; createdAt: string; uploadedBy: string; mine: boolean }[];
 };
@@ -116,6 +116,7 @@ function ReservationDetail({ user }: { user: SessionUser }) {
           <p className="muted">El pago no se cobra en la plataforma: se hace por transferencia o en persona y el anunciante lo registra aquí.</p>
         </section>
 
+        {r.rules && r.kind !== 'SALE' && <section className="dashboard-card house-rules"><h3>Reglas de la casa</h3><ul>{r.rules.split(/\n+/).map(x => x.trim()).filter(Boolean).map((x, i) => <li key={i}>{x}</li>)}</ul></section>}
         <section className="dashboard-card"><h3>Cita de pago</h3>
           {r.appointmentAt ? <p><b>{fmtWhen(r.appointmentAt)}</b><br />{r.appointmentPlace}<br />
             {r.guestConfirmedAt ? <i className="status-pill ok">Confirmada por el interesado</i> : <i className="status-pill warn">Falta confirmar</i>}</p>

@@ -7,7 +7,7 @@ import { mxn } from '@/lib/data';
 
 type Unit = 'NIGHTLY' | 'WEEKLY' | 'MONTHLY';
 type Settings = { enabled: boolean; modes: Unit[]; nightPrice: number | null; weekPrice: number | null; monthPrice: number | null; minStay: number; maxStay: number | null; minWeeks: number; maxWeeks: number | null; minMonths: number; maxMonths: number | null; maxGuests: number | null; deposit: number; taxRate: number;
-  cancellationPolicy: string | null; seasons: { name?: string; from: string; to: string; price: number }[]; saleRequests: boolean; monthlyRent: number | null; salePrice: number | null; operation: string; availability: string };
+  cancellationPolicy: string | null; rules: string | null; seasons: { name?: string; from: string; to: string; price: number }[]; saleRequests: boolean; monthlyRent: number | null; salePrice: number | null; operation: string; availability: string };
 type Busy = { from: string; to: string; type: string };
 type Quote = { lines: { label: string; amount: number }[]; total: number; checkOut?: string; available?: boolean };
 
@@ -130,6 +130,7 @@ export default function ReservationWidget({ propertyId, slug, operation }: { pro
       {(kind === 'NIGHTLY' || kind === 'SALE') && <small className="muted">No se cobra en línea: el pago (y el anticipo para apartar) se hace por transferencia o en persona.</small>}
     </div>}
     {(ready || tab === 'SALE') && <label>Mensaje para el anunciante (opcional)<textarea rows={2} maxLength={1000} value={note} onChange={e => setNote(e.target.value)} /></label>}
+    {s?.rules && tab === 'RENT' && <div className="house-rules"><b>Reglas de la casa</b><ul>{s.rules.split(/\n+/).map(x => x.trim()).filter(Boolean).map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
     {s?.cancellationPolicy && tab === 'RENT' && <details><summary>Política de cancelación</summary><p>{s.cancellationPolicy}</p></details>}
     {error && <div className="notice" role="alert">{error}</div>}
     {logged ? <button type="button" className="button button-navy full" disabled={busy || !quote || quote.available === false} onClick={submit}>{busy ? 'Enviando…' : tab === 'SALE' ? 'Solicitar apartado' : 'Solicitar reserva'}</button>
