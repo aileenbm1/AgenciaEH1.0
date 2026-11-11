@@ -106,6 +106,8 @@ function ReservationDetail({ user }: { user: SessionUser }) {
             <div><dt>Total</dt><dd><b>{mxn(r.total)}</b></dd></div>
             {r.advanceRequired != null && <div><dt>Anticipo para apartar</dt><dd>{mxn(r.advanceRequired)}</dd></div>}
             {r.advanceAmount != null && <div><dt>Anticipo recibido</dt><dd>{mxn(r.advanceAmount)} · {PAY_METHOD[r.advanceMethod || '']}</dd></div>}
+            {open && <div><dt>Saldo pendiente</dt><dd><b>{mxn(Math.max(0, r.total - (r.advanceAmount || 0)))}</b></dd></div>}
+            {r.status === 'COMPLETED' && <div><dt>Total pagado</dt><dd><b>{mxn((r.advanceAmount || 0) + (r.paidAmount || 0))}</b> ✓</dd></div>}
             {r.paidAmount != null && <div><dt>Pago registrado</dt><dd>{mxn(r.paidAmount)} · {PAY_METHOD[r.paidMethod || '']}</dd></div>}
           </dl>
           {r.guestNote && <p><b>Mensaje del interesado:</b> {r.guestNote}</p>}
@@ -142,8 +144,9 @@ function ReservationDetail({ user }: { user: SessionUser }) {
             {(form === 'reject' || form === 'cancel') && <label className="wide">Motivo (opcional)<textarea rows={2} value={f.note || ''} onChange={e => setF({ ...f, note: e.target.value })} /></label>}
             {form === 'schedule' && <><label>Fecha y hora<input type="datetime-local" required value={f.at || ''} onChange={e => setF({ ...f, at: e.target.value })} /></label>
               <label>Lugar<input required minLength={3} maxLength={250} value={f.place || ''} onChange={e => setF({ ...f, place: e.target.value })} placeholder="Oficina, la propiedad, notaría…" /></label></>}
-            {(form === 'deposit' || form === 'complete') && <><label>Monto recibido (MXN)<input type="number" min="1" step="0.01" required value={f.amount || ''} onChange={e => setF({ ...f, amount: e.target.value })} /></label>
+            {(form === 'deposit' || form === 'complete') && <><label>Monto recibido (MXN)<input type="number" min={form === 'complete' ? 0 : 1} step="0.01" required max={form === 'deposit' ? r.total : undefined} readOnly={form === 'complete'} value={f.amount || ''} onChange={e => setF({ ...f, amount: e.target.value })} /></label>
               <label>Forma de pago<select value={f.method || 'CASH'} onChange={e => setF({ ...f, method: e.target.value })}><option value="CASH">Efectivo</option><option value="TRANSFER">Transferencia</option></select></label>
+              <p className="wide muted">{form === 'deposit' ? `El anticipo no puede pasar del total (${mxn(r.total)}).` : `El pago final debe ser exactamente el saldo: ${mxn(r.total)} de total menos ${mxn(r.advanceAmount || 0)} de anticipo = ${mxn(Math.max(0, r.total - (r.advanceAmount || 0)))}.`}</p>
               <label className="wide">Notas (folio, recibo…)<input maxLength={500} value={f.notes || ''} onChange={e => setF({ ...f, notes: e.target.value })} /></label></>}
             <div className="wide property-actions"><button className="button button-navy" disabled={busy}>{busy ? 'Guardando…' : 'Confirmar'}</button><button type="button" className="inline-link" onClick={() => setForm('')}>Cerrar</button></div>
           </form>}

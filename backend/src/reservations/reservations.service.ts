@@ -377,6 +377,9 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       case 'deposit': {
         manager(); need(r.Status === 'APPROVED', 'El anticipo se registra en reservas aprobadas.');
         const amount = money2(d.amount), m = method(d.method);
+        // El anticipo nunca puede ser mayor al total de la reserva.
+        need(amount <= Number(r.Total) + 0.005, `El anticipo no puede ser mayor al total (${fmtMoney(Number(r.Total))}).`);
+        if (r.AdvanceRequired != null) need(amount >= Number(r.AdvanceRequired) - 0.005, `El anticipo acordado es de ${fmtMoney(Number(r.AdvanceRequired))}.`);
         await this.db.execute("UPDATE Reservations SET Status='DEPOSIT_PAID', AdvanceAmount=?, AdvanceMethod=?, AdvancePaidAt=UTC_TIMESTAMP(), PaymentNotes=COALESCE(?,PaymentNotes), UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [amount, m, String(d.notes || '').slice(0, 500) || null, id]);
         // El anticipo deja la propiedad "Apartada" (renta mensual y compra); las estancias cortas solo ocupan sus fechas.
         if (r.Kind === 'MONTHLY' || r.Kind === 'SALE') await this.db.execute("UPDATE Properties SET Availability='RESERVED', UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [r.PropertyId]);
@@ -385,7 +388,10 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       }
       case 'complete': {
         manager(); need(['APPROVED', 'DEPOSIT_PAID'].includes(r.Status), 'Esta reserva no está lista para cerrarse.');
-        const amount = money2(d.amount), m = method(d.method);
+        // Anticipo + pago final deben sumar exactamente el total de la reserva.
+        const remaining = money(Number(r.Total) - Number(r.AdvanceAmount || 0));
+        const amount = remaining <= 0 ? 0 : money2(d.amount), m = remaining <= 0 ? (r.AdvanceMethod || 'CASH') : method(d.method);
+        need(Math.abs(amount - Math.max(0, remaining)) < 0.01, `El pago final debe ser de ${fmtMoney(Math.max(0, remaining))}: total ${fmtMoney(Number(r.Total))} menos anticipo de ${fmtMoney(Number(r.AdvanceAmount || 0))}.`);
         await this.db.execute("UPDATE Reservations SET Status='COMPLETED', PaidAmount=?, PaidMethod=?, PaidAt=UTC_TIMESTAMP(), PaymentNotes=COALESCE(?,PaymentNotes), UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [amount, m, String(d.notes || '').slice(0, 500) || null, id]);
         if (r.Kind === 'MONTHLY') await this.db.execute("UPDATE Properties SET Availability='RENTED', UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [r.PropertyId]);
         if (r.Kind === 'SALE') await this.db.execute("UPDATE Properties SET Availability='SOLD', UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [r.PropertyId]);
