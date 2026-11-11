@@ -11,7 +11,7 @@ import { CustomFieldInput, CustomFieldsService } from './custom-fields.service';
 export class PropertiesController {
   constructor(private service: PropertiesService) {}
   @Get() list(@Query() q: any) { return this.service.publicList(q); }
-  @Get('mine') @UseGuards(JwtAuthGuard) mine(@Req() r: any) { return this.service.mine(r.user.sub); }
+  @Get('mine') @UseGuards(JwtAuthGuard) mine(@Req() r: any) { return this.service.mine(r.user.sub, r.user.role); }
   @Get('review') @UseGuards(JwtAuthGuard, RolesGuard) @Roles('ADMIN') review() { return this.service.reviewQueue(); }
   @Get(':slug') detail(@Param('slug') slug: string) { return this.service.bySlug(slug); }
   @Post() @UseGuards(JwtAuthGuard, RolesGuard) @Roles('AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN') create(@Req() r: any, @Body() d: CreatePropertyDto) { return this.service.create(r.user.sub, r.user.role, d); }
@@ -19,7 +19,7 @@ export class PropertiesController {
   @Patch(':id/availability') @UseGuards(JwtAuthGuard) availability(@Req() r: any, @Param('id') id: string, @Body() b: { availability: string; availableFrom?: string | null }) {
     return this.service.setAvailability(id, r.user.sub, r.user.role, String(b?.availability || ''), b?.availableFrom);
   }
-  @Post(':id/submit') @UseGuards(JwtAuthGuard) submit(@Req() r: any, @Param('id') id: string) { return this.service.submit(id, r.user.sub); }
+  @Post(':id/submit') @UseGuards(JwtAuthGuard) submit(@Req() r: any, @Param('id') id: string) { return this.service.submit(id, r.user.sub, r.user.role); }
   @Patch(':id/moderate') @UseGuards(JwtAuthGuard, RolesGuard) @Roles('ADMIN') moderate(@Param('id') id: string, @Body('status') status: string) { return this.service.moderate(id, status); }
   @Delete(':id') @UseGuards(JwtAuthGuard) remove(@Req() r: any, @Param('id') id: string) { return this.service.remove(id, r.user.sub, r.user.role); }
 }

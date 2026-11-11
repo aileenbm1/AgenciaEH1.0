@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
 import { DEMO_PATH_RE, MEDIA_PATH_RE } from '../../uploads/media';
 
 /** Foto: enlace http(s), foto subida o foto de ejemplo del sitio. */
@@ -33,5 +33,7 @@ export class CreatePropertyDto {
   /** Etiqueta de cada foto, en el mismo orden que images (Fachada, Sala, Plano…). */
   @IsOptional() @IsArray() @ArrayMaxSize(20) @IsString({ each: true }) @MaxLength(40, { each: true }) imageLabels?: string[];
   /** Campos personalizados: { claveDelCampo: valor }. */
+  /** Solo administrador: cuenta (agente, agencia o desarrolladora) a cuyo nombre queda la propiedad. */
+  @IsOptional() @IsUUID() ownerId?: string;
   @IsOptional() @IsObject() custom?: Record<string, string | number | boolean | null>;
 }

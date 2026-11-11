@@ -9,9 +9,10 @@ import { OPERATION_LABEL } from '@/lib/properties';
 import PropertyForm, { EditableProperty } from '@/components/property-form';
 import RentalSettings from '@/components/rental-settings';
 
-type Property = EditableProperty & { slug: string; availability: keyof typeof AVAILABILITY };
+type Property = EditableProperty & { slug: string; availability: keyof typeof AVAILABILITY; owner?: { fullName: string; role: string } | null };
 
 function MyProperties({ user }: { user: SessionUser }) {
+  const admin = user.role === 'ADMIN';
   const [items, setItems] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(''); const [ok, setOk] = useState('');
@@ -34,7 +35,7 @@ function MyProperties({ user }: { user: SessionUser }) {
     setBusy(p.id); setError(''); setOk('');
     try {
       await authJson(`/properties/${p.id}${kind === 'submit' ? '/submit' : ''}`, { method: kind === 'submit' ? 'POST' : 'DELETE' });
-      setOk(kind === 'submit' ? `"${p.title}" se envió a revisión. Te avisaremos cuando sea aprobada.` : 'Propiedad eliminada.');
+      setOk(kind === 'submit' ? (admin ? `"${p.title}" ya está publicada en el catálogo.` : `"${p.title}" se envió a revisión. Te avisaremos cuando sea aprobada.`) : 'Propiedad eliminada.');
       await load();
     } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo completar la acción.'); }
     finally { setBusy(''); }
@@ -53,8 +54,8 @@ function MyProperties({ user }: { user: SessionUser }) {
   return <main className="page-wrap">
     <Link href={roleHome[user.role]} className="back-link">← Volver a mi panel</Link>
     <div className="page-heading panel-heading">
-      <div><span className="eyebrow">GESTIÓN INMOBILIARIA</span><h1>Mis propiedades</h1>
-        <p>Crea un borrador → envíalo a revisión → cuando el administrador lo apruebe, aparece en el catálogo. Después controla si está disponible, apartada, rentada o vendida.</p></div>
+      <div><span className="eyebrow">GESTIÓN INMOBILIARIA</span><h1>{admin ? 'Todas las propiedades' : 'Mis propiedades'}</h1>
+        <p>{admin ? 'Agrega propiedades a nombre de cualquier agencia, desarrolladora o agente y publícalas directamente. También puedes editar, publicar o eliminar las de todos.' : 'Crea un borrador → envíalo a revisión → cuando el administrador lo apruebe, aparece en el catálogo. Después controla si está disponible, apartada, rentada o vendida.'}</p></div>
       {!editing && <button className="button button-gold" onClick={() => open('new')}>+ Nueva propiedad</button>}
     </div>
 
@@ -67,8 +68,8 @@ function MyProperties({ user }: { user: SessionUser }) {
 
     {editing && <section id="formulario" className="dashboard-card form-card">
       <div className="section-heading"><h2>{editing === 'new' ? 'Nueva propiedad' : `Editar · ${editing.title}`}</h2><button type="button" className="inline-link" onClick={() => setEditing(null)}>Cancelar</button></div>
-      <p className="muted lead">{editing === 'new' ? <>Se guardará como <b>borrador</b>. Nadie más la verá hasta que la envíes a revisión y sea aprobada.</> : <>Al guardar, la propiedad vuelve a <b>borrador</b> y tendrás que enviarla de nuevo a revisión.</>}</p>
-      <PropertyForm key={editing === 'new' ? 'new' : editing.id} property={editing === 'new' ? undefined : editing}
+      <p className="muted lead">{admin ? (editing === 'new' ? <>Se guarda como <b>borrador</b>; después presiona “Publicar”.</> : <>Como administrador, tus cambios no sacan la propiedad del catálogo.</>) : editing === 'new' ? <>Se guardará como <b>borrador</b>. Nadie más la verá hasta que la envíes a revisión y sea aprobada.</> : <>Al guardar, la propiedad vuelve a <b>borrador</b> y tendrás que enviarla de nuevo a revisión.</>}</p>
+      <PropertyForm admin={admin} key={editing === 'new' ? 'new' : editing.id} property={editing === 'new' ? undefined : editing}
         onCancel={() => setEditing(null)} onDone={async msg => { setEditing(null); setOk(msg); await load(); }} />
     </section>}
 
@@ -87,9 +88,10 @@ function MyProperties({ user }: { user: SessionUser }) {
               <h3>{p.title}</h3>
               <p className="meta">{p.neighborhood ? `${p.neighborhood}, ` : ''}{p.municipality} · {OPERATION_LABEL[p.operation]} · {p.images.length} foto(s)</p>
               <strong>{mxn(Number(p.price))}{p.operation === 'RENT' ? ' / mes' : ''}{p.operation === 'BOTH' && p.rentPrice ? ` · renta ${mxn(Number(p.rentPrice))} / mes` : ''}</strong>
+              {admin && <p className="meta">Anunciante: <b>{p.owner?.fullName || '—'}</b></p>}
               <p className="meta next-step">{p.status === 'PUBLISHED' ? av.help : st.help}</p>
               <div className="property-actions">
-                {(p.status === 'DRAFT' || p.status === 'REJECTED') && <button className="button button-navy" disabled={busy === p.id} onClick={() => action(p, 'submit')}>{p.status === 'REJECTED' ? 'Reenviar a revisión' : 'Enviar a revisión'}</button>}
+                {(p.status === 'DRAFT' || p.status === 'REJECTED' || (admin && p.status === 'REVIEW')) && <button className="button button-navy" disabled={busy === p.id} onClick={() => action(p, 'submit')}>{admin ? 'Publicar' : p.status === 'REJECTED' ? 'Reenviar a revisión' : 'Enviar a revisión'}</button>}
                 {p.status === 'PUBLISHED' && <label className="availability-pick">Disponibilidad
                   <select value={p.availability} disabled={busy === p.id} onChange={e => setAvailability(p, e.target.value)}>{options.map(k => <option key={k} value={k}>{AVAILABILITY[k].label}</option>)}</select></label>}
                 <button className="button button-outline" disabled={busy === p.id} onClick={() => open(p)}>Editar</button>
@@ -107,5 +109,5 @@ function MyProperties({ user }: { user: SessionUser }) {
 }
 
 export default function Page() {
-  return <ProtectedPanel allowed={['AGENT', 'AGENCY', 'DEVELOPER']}>{user => <MyProperties user={user} />}</ProtectedPanel>;
+  return <ProtectedPanel allowed={['AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN']}>{user => <MyProperties user={user} />}</ProtectedPanel>;
 }

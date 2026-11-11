@@ -10,7 +10,7 @@ export type EditableProperty = {
   id: string; title: string; description?: string | null; operation: 'RENT' | 'SALE' | 'BOTH'; price: number | string; rentPrice?: number | string | null;
   category?: string | null; municipality: string; neighborhood?: string | null; propertyType: string; bedrooms?: number | null; bathrooms?: number | null;
   landArea?: number | string | null; builtArea?: number | string | null; availableFrom?: string | null; status: string;
-  latitude?: number | null; longitude?: number | null; showExactLocation?: boolean;
+  latitude?: number | null; longitude?: number | null; showExactLocation?: boolean; ownerId?: string;
   images: { url: string; label?: string | null }[]; custom?: Record<string, string>;
 };
 
@@ -23,7 +23,11 @@ const toForm = (p: EditableProperty) => ({
 });
 
 /** Crear o editar una propiedad: datos, venta y/o renta, categoría, campos personalizados y fotos con etiqueta. */
-export default function PropertyForm({ property, onDone, onCancel }: { property?: EditableProperty; onDone: (msg: string) => void; onCancel: () => void }) {
+export default function PropertyForm({ property, onDone, onCancel, admin = false }: { property?: EditableProperty; onDone: (msg: string) => void; onCancel: () => void; admin?: boolean }) {
+  // Administrador: elige a nombre de qué agencia, desarrolladora o agente queda la propiedad.
+  const [owners, setOwners] = useState<{ id: string; role: string; name: string; agency: string | null }[]>([]);
+  const [ownerId, setOwnerId] = useState(property?.ownerId || '');
+  useEffect(() => { if (admin) authJson<{ id: string; role: string; name: string; agency: string | null }[]>('/users/publishers').then(setOwners).catch(() => {}); }, [admin]);
   const [form, setForm] = useState(property ? toForm(property) : blank);
   const [photos, setPhotos] = useState<Photo[]>(property ? property.images.map(i => ({ url: i.url, label: i.label || '' })) : []);
   const [custom, setCustom] = useState<Record<string, string>>(property?.custom || {});
@@ -41,7 +45,8 @@ export default function PropertyForm({ property, onDone, onCancel }: { property?
 
   async function save(e: FormEvent) {
     e.preventDefault(); setError('');
-    if (editingPublished && !confirm('Al guardar, la propiedad sale del catálogo y vuelve a revisión hasta que el administrador la apruebe. ¿Continuar?')) return;
+    if (admin && !ownerId) { setError('Elige a nombre de quién queda la propiedad.'); return; }
+    if (editingPublished && !admin && !confirm('Al guardar, la propiedad sale del catálogo y vuelve a revisión hasta que el administrador la apruebe. ¿Continuar?')) return;
     setBusy(true);
     const num = (v: string) => v === '' ? undefined : Number(v);
     const payload = {
@@ -50,7 +55,7 @@ export default function PropertyForm({ property, onDone, onCancel }: { property?
       municipality: form.municipality, neighborhood: form.neighborhood, propertyType: form.propertyType,
       bedrooms: num(form.bedrooms), bathrooms: num(form.bathrooms), landArea: num(form.landArea), builtArea: num(form.builtArea),
       availableFrom: (isRent || both) && form.availableFrom ? form.availableFrom : undefined,
-      images: photos.map(p => p.url), imageLabels: photos.map(p => p.label || ''), custom, ...loc,
+      images: photos.map(p => p.url), imageLabels: photos.map(p => p.label || ''), custom, ...loc, ...(admin ? { ownerId } : {}),
     };
     try {
       const saved = await authJson<{ id: string }>(property ? `/properties/${property.id}` : '/properties', { method: property ? 'PATCH' : 'POST', body: JSON.stringify(payload) });
@@ -60,12 +65,22 @@ export default function PropertyForm({ property, onDone, onCancel }: { property?
         const modes = [...(stay.night ? ['NIGHTLY'] : []), ...(stay.week ? ['WEEKLY'] : []), 'MONTHLY'];
         await authJson(`/reservations/settings/${saved.id}`, { method: 'PUT', body: JSON.stringify({ ...cur, enabled: !!cur.enabled || !!stay.night || !!stay.week, modes, nightPrice: stay.night || null, weekPrice: stay.week || null }) });
       }
-      onDone(property ? `Cambios guardados en "${form.title}". Quedó como borrador: envíala a revisión cuando esté lista.` : 'Borrador guardado. Cuando esté listo, presiona "Enviar a revisión" para que un administrador lo apruebe.');
+      onDone(admin ? (property ? `Cambios guardados en "${form.title}".` : 'Propiedad guardada como borrador. Presiona "Publicar" para que aparezca en el catálogo.') : property ? `Cambios guardados en "${form.title}". Quedó como borrador: envíala a revisión cuando esté lista.` : 'Borrador guardado. Cuando esté listo, presiona "Enviar a revisión" para que un administrador lo apruebe.');
     } catch (err) { setError(err instanceof Error ? err.message : 'No se pudo guardar.'); }
     finally { setBusy(false); }
   }
 
+  const group = (role: string) => owners.filter(o => o.role === role);
   return <form onSubmit={save} className="property-form">
+    {admin && <label className="owner-pick">Publicar a nombre de
+      <select required value={ownerId} onChange={e => setOwnerId(e.target.value)}>
+        <option value="">Elige agencia, desarrolladora o agente…</option>
+        {group('AGENCY').length > 0 && <optgroup label="Agencias">{group('AGENCY').map(o => <option key={o.id} value={o.id}>{o.name}</option>)}</optgroup>}
+        {group('DEVELOPER').length > 0 && <optgroup label="Desarrolladoras">{group('DEVELOPER').map(o => <option key={o.id} value={o.id}>{o.name}</option>)}</optgroup>}
+        {group('AGENT').length > 0 && <optgroup label="Agentes">{group('AGENT').map(o => <option key={o.id} value={o.id}>{o.name}{o.agency ? ` · ${o.agency}` : ' · independiente'}</option>)}</optgroup>}
+      </select>
+      <small className="muted">Los prospectos y reservas de esta propiedad le llegarán a esa cuenta. {owners.length === 0 ? 'Aún no hay cuentas: créalas en tu panel, en “Crear cuentas”.' : ''}</small>
+    </label>}
     <label>Título<input required minLength={8} maxLength={180} value={form.title} onChange={set('title')} placeholder="Casa con jardín en zona norte" /></label>
     <label>Descripción<textarea required minLength={30} rows={4} value={form.description} onChange={set('description')} placeholder="Describe el inmueble, su estado y principales ventajas (mínimo 30 caracteres)." /></label>
     <div className="form-grid">

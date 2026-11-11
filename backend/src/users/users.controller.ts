@@ -10,6 +10,7 @@ import { UsersService } from './users.service';
 @Roles('ADMIN')
 export class UsersController {
   constructor(private readonly users: UsersService) {}
+  @Get('publishers') publishers() { return this.users.publishers(); }
   @Get('agencies') agencies() { return this.users.agencies(); }
   @Get('mine') mine(@Req() r: any) { return this.users.mine(r.user.sub); }
   @Post() create(@Req() r: any, @Body() d: CreateUserDto) { return this.users.create(r.user.sub, d); }

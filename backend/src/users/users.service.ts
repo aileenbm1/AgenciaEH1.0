@@ -75,6 +75,14 @@ export class UsersService {
     return rows.map((r: any) => ({ id: r.Id, name: r.Name, kind: r.Role }));
   }
 
+  /** Cuentas que pueden publicar (para que el admin elija a nombre de quién va una propiedad). */
+  async publishers() {
+    const rows = await this.db.query<any>(`SELECT u.Id, u.FullName, u.Role, own.Name AS OwnName, ag.Name AS AgencyName FROM Users u
+      LEFT JOIN AgencyProfiles own ON own.UserId=u.Id LEFT JOIN AgentProfiles ap ON ap.UserId=u.Id LEFT JOIN AgencyProfiles ag ON ag.Id=ap.AgencyId
+      WHERE u.IsActive=1 AND u.Role IN ('AGENT','AGENCY','DEVELOPER') ORDER BY FIELD(u.Role,'AGENCY','DEVELOPER','AGENT'), COALESCE(own.Name,u.FullName)`);
+    return rows.map((r: any) => ({ id: r.Id, role: r.Role, name: r.Role === 'AGENT' ? r.FullName : r.OwnName || r.FullName, agency: r.Role === 'AGENT' ? r.AgencyName || null : null }));
+  }
+
   /** Cuentas creadas por el usuario (el admin ve las que él creó; el resto, en su panel). */
   async mine(creatorId: string) {
     const rows = await this.db.query<any>(`SELECT Id, FullName, Email, Phone, Role, IsActive, EmailVerifiedAt, CreatedAt,

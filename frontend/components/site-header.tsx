@@ -9,7 +9,7 @@ export function SiteHeader() {
   const { user, loading } = useSession();
   const router = useRouter();
   const role = user ? ROLES[user.role] : null;
-  const canPublish = user && ['AGENT', 'AGENCY', 'DEVELOPER'].includes(user.role);
+  const canPublish = user && ['AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN'].includes(user.role);
 
   async function logout() { await signOut(); router.push('/'); router.refresh(); }
 

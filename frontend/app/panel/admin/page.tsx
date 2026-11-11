@@ -80,6 +80,8 @@ function AdminPanel({ user }: { user: SessionUser }) {
     intro="Revisas cada propiedad antes de que sea pública y administras usuarios, membresías y pagos."
     actions={[
       { title: 'Revisar propiedades', text: 'Aprueba o rechaza lo que está en revisión.', href: '#revision', primary: true },
+      { title: 'Agregar propiedad', text: 'Publica a nombre de la agencia, desarrolladora o agente que elijas.', href: '/panel/agente/propiedades#nueva' },
+      { title: 'Todas las propiedades', text: 'Edita, publica, cambia disponibilidad o elimina cualquier propiedad.', href: '/panel/agente/propiedades' },
       { title: 'Cuentas por aprobar', text: 'Agentes, agencias y desarrolladores registrados que esperan tu aprobación.', href: '#usuarios' },
       { title: 'Crear cuentas', text: 'Agencias, desarrolladoras, vendedores, compradores y administradores.', href: '#cuentas' },
       { title: 'Campos personalizados', text: 'Datos extra para las propiedades y filtros de búsqueda.', href: '#campos' },

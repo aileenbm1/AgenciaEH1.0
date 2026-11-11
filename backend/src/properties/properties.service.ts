@@ -74,7 +74,9 @@ export class PropertiesService {
 
   async create(userId: string, role: string, d: CreatePropertyDto) {
     if (!PUBLISHER_ROLES.includes(role)) throw new ForbiddenException('Solo agentes, agencias y desarrolladores pueden publicar propiedades.');
-    await this.assertApproved(userId);
+    // El administrador publica a nombre de una agencia, desarrolladora o agente que él elige.
+    const ownerId = role === 'ADMIN' ? await this.publisherId(d.ownerId) : userId;
+    if (role !== 'ADMIN') await this.assertApproved(userId);
     this.checkPrices(d.operation, d.rentPrice);
     const custom = await this.fields.clean(d.custom);
     const id = randomUUID();
@@ -83,14 +85,30 @@ export class PropertiesService {
         VALUES(?,?,?,?,?,'DRAFT',?,?,'MXN',?,'AVAILABLE',?,?,?,?,?,?,?,?,?,?,?,?)`,
         [id, this.slug(d.title), d.title, d.description, d.operation, d.price, d.operation === 'BOTH' ? d.rentPrice : null, d.category || categoryFor(d.propertyType),
           d.availableFrom ? d.availableFrom.slice(0, 10) : null, d.municipality, d.neighborhood ?? null, d.propertyType, d.bedrooms ?? null, d.bathrooms ?? null,
-          d.landArea ?? null, d.builtArea ?? null, d.latitude ?? null, d.latitude != null ? d.longitude ?? null : null, d.showExactLocation ? 1 : 0, userId], tx);
+          d.landArea ?? null, d.builtArea ?? null, d.latitude ?? null, d.latitude != null ? d.longitude ?? null : null, d.showExactLocation ? 1 : 0, ownerId], tx);
       await this.insertImages(tx, id, d.images || [], d.imageLabels);
       await this.fields.save(tx, id, custom);
     });
     return this.detailInternal(id);
   }
 
-  async mine(userId: string) {
+  /** Valida la cuenta anunciante elegida por el administrador. */
+  private async publisherId(ownerId?: string) {
+    if (!ownerId) throw new BadRequestException('Elige a nombre de qué agencia, desarrolladora o agente queda la propiedad.');
+    const [u] = await this.db.query<any>("SELECT Id FROM Users WHERE Id=? AND IsActive=1 AND Role IN ('AGENT','AGENCY','DEVELOPER') LIMIT 1", [ownerId]);
+    if (!u) throw new BadRequestException('La cuenta elegida no existe o no puede publicar propiedades.');
+    return u.Id as string;
+  }
+
+  /** Mis propiedades. El administrador ve todas, con el nombre del anunciante. */
+  async mine(userId: string, role?: string) {
+    if (role === 'ADMIN') {
+      const rows = await this.db.query(`${WITH_IMAGES} FROM (SELECT p.* FROM Properties p ORDER BY p.UpdatedAt DESC LIMIT 500) p LEFT JOIN PropertyImages i ON i.PropertyId=p.Id ORDER BY p.UpdatedAt DESC,p.Id,i.Position`);
+      const items = await this.withCustom(this.group(rows));
+      const owners = await this.db.query<any>("SELECT u.Id, u.FullName, u.Role, ag.Name AS AgencyName FROM Users u LEFT JOIN AgencyProfiles ag ON ag.UserId=u.Id");
+      const byId = new Map(owners.map((o: any) => [o.Id, { fullName: o.AgencyName || o.FullName, role: o.Role }]));
+      return items.map((p) => ({ ...p, owner: byId.get(p.ownerId) || null }));
+    }
     const rows = await this.db.query(`${WITH_IMAGES} FROM Properties p LEFT JOIN PropertyImages i ON i.PropertyId=p.Id WHERE p.OwnerId=? ORDER BY p.UpdatedAt DESC,p.Id,i.Position`, [userId]);
     return this.withCustom(this.group(rows));
   }
@@ -176,6 +194,7 @@ export class PropertiesService {
     if (d.latitude !== undefined || d.longitude !== undefined) { const has = d.latitude != null && d.longitude != null; sets.push('Latitude=?', 'Longitude=?'); params.push(has ? d.latitude : null, has ? d.longitude : null); }
     if (d.showExactLocation !== undefined) { sets.push('ShowExactLocation=?'); params.push(d.showExactLocation ? 1 : 0); }
     if (d.images && d.images.length > 20) throw new BadRequestException('Puedes agregar hasta 20 fotografías.');
+    if (role === 'ADMIN' && d.ownerId && d.ownerId !== p.OwnerId) { sets.push('OwnerId=?'); params.push(await this.publisherId(d.ownerId)); }
     if (role !== 'ADMIN') sets.push("Status='DRAFT'");
     sets.push('UpdatedAt=UTC_TIMESTAMP()'); params.push(id);
     const oldImages = d.images ? (await this.db.query<any>('SELECT Url FROM PropertyImages WHERE PropertyId=?', [id])).map((r) => r.Url as string) : [];
@@ -202,11 +221,11 @@ export class PropertiesService {
     return this.detailInternal(id);
   }
 
-  async submit(id: string, userId: string) {
+  async submit(id: string, userId: string, role?: string) {
     const p = await this.getById(id);
     if (!p) throw new NotFoundException('Propiedad no encontrada.');
-    if (p.OwnerId !== userId) throw new ForbiddenException();
-    await this.assertApproved(userId);
+    if (role !== 'ADMIN' && p.OwnerId !== userId) throw new ForbiddenException();
+    if (role !== 'ADMIN') await this.assertApproved(userId);
     // RF-02: datos mínimos y al menos una foto antes de enviar a revisión.
     const missing: string[] = [];
     if (!p.Title) missing.push('título');
@@ -219,6 +238,8 @@ export class PropertiesService {
     if (!Number(img.n)) missing.push('al menos una foto');
     missing.push(...await this.fields.missingRequired(id));
     if (missing.length) throw new BadRequestException(`Antes de enviar a revisión completa: ${missing.join(', ')}.`);
+    // El administrador es quien revisa: lo que él envía queda publicado de una vez.
+    if (role === 'ADMIN') return this.moderate(id, 'PUBLISHED');
     await this.db.execute("UPDATE Properties SET Status='REVIEW',UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [id]);
     return this.detailInternal(id);
   }
