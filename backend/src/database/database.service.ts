@@ -27,7 +27,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
   /** Cambios en tablas existentes (idempotentes). */
   private async migrate() {
-    const cols = await this.query<any>("SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('Users','Leads','Properties','PropertyImages','AgentProfiles','AgencyProfiles')");
+    const cols = await this.query<any>("SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('Users','Leads','Properties','PropertyImages','AgentProfiles','AgencyProfiles','RentalSettings','Reservations')");
     const has = (t: string, c: string) => cols.some((r) => r.t === t && r.c === c);
     const tables = new Set(cols.map((r) => r.t));
     const changes: [string, string, string][] = [
@@ -49,6 +49,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       ['AgencyProfiles', 'Views', 'ALTER TABLE AgencyProfiles ADD COLUMN Views INT NOT NULL DEFAULT 0'],
       ['Properties', 'Latitude', 'ALTER TABLE Properties ADD COLUMN Latitude DECIMAL(9,6) NULL, ADD COLUMN Longitude DECIMAL(9,6) NULL'],
       ['Properties', 'ShowExactLocation', 'ALTER TABLE Properties ADD COLUMN ShowExactLocation TINYINT(1) NOT NULL DEFAULT 0'],
+      ['RentalSettings', 'Modes', 'ALTER TABLE RentalSettings ADD COLUMN Modes VARCHAR(40) NULL, ADD COLUMN WeekPrice DECIMAL(12,2) NULL, ADD COLUMN MonthPrice DECIMAL(12,2) NULL, ADD COLUMN MinWeeks INT NOT NULL DEFAULT 1, ADD COLUMN MaxWeeks INT NULL, ADD COLUMN MinMonths INT NOT NULL DEFAULT 1, ADD COLUMN MaxMonths INT NULL'],
+      ['Reservations', 'Weeks', 'ALTER TABLE Reservations ADD COLUMN Weeks INT NULL'],
       ['Leads', 'Source', 'ALTER TABLE Leads ADD COLUMN Source VARCHAR(40) NULL, ADD COLUMN Campaign VARCHAR(80) NULL'],
     ];
     for (const [t, c, sql] of changes) {
@@ -63,10 +65,16 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         ELSE 'Residencial' END WHERE Category IS NULL`);
       const n = r?.[0]?.affectedRows; if (n) console.error(`[Agencia EH] Migración: categoría asignada a ${n} propiedad(es)`);
     } catch (e: any) { console.error('[Agencia EH] No se pudo asignar categorías:', e?.message); }
+    // Renta por noche, semana y mes: las configuraciones anteriores tenían un solo modo.
+    if (tables.has('RentalSettings')) try {
+      await this.getPool().query(`UPDATE RentalSettings SET Modes=Mode, MinMonths=IF(Mode='MONTHLY',MinStay,1), MaxMonths=IF(Mode='MONTHLY',MaxStay,NULL),
+        MinStay=IF(Mode='MONTHLY',1,MinStay), MaxStay=IF(Mode='MONTHLY',NULL,MaxStay) WHERE Modes IS NULL`);
+    } catch (e: any) { console.error('[Agencia EH] No se pudieron migrar las modalidades de renta:', e?.message); }
     // Restricciones CHECK que cambiaron: rol Desarrollador y operación "Venta y renta".
     const checks: [string, string, string, string][] = [
       ['Users', 'CK_Users_Role', 'DEVELOPER', "Role IN ('BUYER','AGENT','AGENCY','DEVELOPER','ADMIN')"],
       ['Properties', 'CK_Properties_Operation', 'BOTH', "Operation IN ('RENT','SALE','BOTH')"],
+      ['Reservations', 'CK_Reservations_Kind', 'WEEKLY', "Kind IN ('NIGHTLY','WEEKLY','MONTHLY','SALE')"],
     ];
     for (const [table, name, needle, clause] of checks) {
       try {

@@ -6,7 +6,9 @@ import { DatabaseService } from '../database/database.service';
 import { MailService } from '../mail/mail.service';
 import { privateRoot } from '../uploads/media';
 
-type Kind = 'NIGHTLY' | 'MONTHLY' | 'SALE';
+type Kind = 'NIGHTLY' | 'WEEKLY' | 'MONTHLY' | 'SALE';
+type RentKind = 'NIGHTLY' | 'WEEKLY' | 'MONTHLY';
+const RENT_KINDS: RentKind[] = ['NIGHTLY', 'WEEKLY', 'MONTHLY'];
 export type Season = { name?: string; from: string; to: string; price: number };
 const ACTIVE = ['PENDING', 'APPROVED', 'DEPOSIT_PAID'];
 /** Estados que ocupan fechas en el calendario (evitan dobles reservas). */
@@ -21,7 +23,7 @@ const money = (n: number) => Math.round(n * 100) / 100;
 const fmtMoney = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n);
 const fmtDay = (d: string) => new Date(d + 'T12:00:00Z').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 const fmtWhen = (d: Date) => d.toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short', timeZone: 'America/Mexico_City' });
-const KIND_LABEL: Record<Kind, string> = { NIGHTLY: 'reserva por noche', MONTHLY: 'renta mensual', SALE: 'apartado de compra' };
+const KIND_LABEL: Record<Kind, string> = { NIGHTLY: 'reserva por noche', WEEKLY: 'renta por semana', MONTHLY: 'renta mensual', SALE: 'apartado de compra' };
 
 @Injectable()
 export class ReservationsService implements OnModuleInit, OnModuleDestroy {
@@ -41,7 +43,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       await this.db.execute('UPDATE Reservations SET ReminderSentAt=UTC_TIMESTAMP() WHERE Id=?', [a.Id]);
     }
     const checkins = await this.db.query<any>(`SELECT r.Id, r.CheckIn, p.Title, g.Email FROM Reservations r JOIN Properties p ON p.Id=r.PropertyId JOIN Users g ON g.Id=r.GuestId
-      WHERE r.Kind='NIGHTLY' AND r.Status IN ('APPROVED','DEPOSIT_PAID','COMPLETED') AND r.CheckinReminderAt IS NULL AND r.CheckIn = UTC_DATE() + INTERVAL 1 DAY`);
+      WHERE r.Kind IN ('NIGHTLY','WEEKLY') AND r.Status IN ('APPROVED','DEPOSIT_PAID','COMPLETED') AND r.CheckinReminderAt IS NULL AND r.CheckIn = UTC_DATE() + INTERVAL 1 DAY`);
     for (const c of checkins) {
       this.mail.notify(c.Email, `Tu llegada es mañana · ${c.Title}`, 'Tu llegada es mañana', `Te esperamos en "${c.Title}" el ${fmtDay(dateOnly(c.CheckIn)!)}. Revisa los detalles y escribe al anfitrión si lo necesitas.`, 'Ver reserva', `/panel/reservas/${c.Id}`);
       await this.db.execute('UPDATE Reservations SET CheckinReminderAt=UTC_TIMESTAMP() WHERE Id=?', [c.Id]);
@@ -66,11 +68,18 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
   private settingsRow(r: any, p: any) {
     let seasons: Season[] = [];
     try { seasons = r?.Seasons ? JSON.parse(r.Seasons) : []; } catch { seasons = []; }
+    const rent = p ? Number(p.Operation === 'BOTH' ? p.RentPrice : p.Operation === 'RENT' ? p.Price : 0) || null : null;
+    const modes = String(r?.Modes || r?.Mode || 'MONTHLY').split(',').filter((m): m is RentKind => RENT_KINDS.includes(m as RentKind));
     return {
-      enabled: !!r?.Enabled, mode: (r?.Mode || 'MONTHLY') as 'MONTHLY' | 'NIGHTLY', nightPrice: r?.NightPrice != null ? Number(r.NightPrice) : null,
-      minStay: r?.MinStay ?? 1, maxStay: r?.MaxStay ?? null, maxGuests: r?.MaxGuests ?? null, deposit: Number(r?.Deposit || 0), taxRate: Number(r?.TaxRate || 0),
+      enabled: !!r?.Enabled, modes: modes.length ? modes : ['MONTHLY'] as RentKind[],
+      nightPrice: r?.NightPrice != null ? Number(r.NightPrice) : null,
+      weekPrice: r?.WeekPrice != null ? Number(r.WeekPrice) : null,
+      // Precio mensual: el propio de la reserva o, si no se indicó, la renta mensual de la propiedad.
+      monthPrice: r?.MonthPrice != null ? Number(r.MonthPrice) : rent,
+      minStay: r?.MinStay ?? 1, maxStay: r?.MaxStay ?? null,
+      minWeeks: r?.MinWeeks ?? 1, maxWeeks: r?.MaxWeeks ?? null, minMonths: r?.MinMonths ?? 1, maxMonths: r?.MaxMonths ?? null, maxGuests: r?.MaxGuests ?? null, deposit: Number(r?.Deposit || 0), taxRate: Number(r?.TaxRate || 0),
       cancellationPolicy: r?.CancellationPolicy || null, seasons, saleRequests: r ? !!r.SaleRequests : true,
-      monthlyRent: p ? Number(p.Operation === 'BOTH' ? p.RentPrice : p.Operation === 'RENT' ? p.Price : 0) || null : null,
+      monthlyRent: rent,
       salePrice: p && (p.Operation === 'SALE' || p.Operation === 'BOTH') ? Number(p.Price) : null,
       operation: p?.Operation, availability: p?.Availability || 'AVAILABLE',
     };
@@ -85,23 +94,35 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
   async saveSettings(userId: string, role: string, propertyId: string, d: any) {
     const p = await this.property(propertyId);
     if (!(await this.manages(userId, role, p.OwnerId))) throw new ForbiddenException('No puedes configurar esta propiedad.');
-    const mode = d.mode === 'NIGHTLY' ? 'NIGHTLY' : 'MONTHLY';
     const enabled = !!d.enabled;
     if (enabled && p.Operation === 'SALE') throw new BadRequestException('Las reservas de renta solo aplican a propiedades en renta o en venta y renta.');
-    const num = (v: any, min = 0) => (v === '' || v === null || v === undefined ? null : Number(v));
-    const nightPrice = num(d.nightPrice);
-    if (enabled && mode === 'NIGHTLY' && !(Number(nightPrice) > 0)) throw new BadRequestException('Indica el precio por noche.');
-    const minStay = Math.max(1, Math.min(365, Number(d.minStay) || 1));
-    const maxStay = num(d.maxStay); if (maxStay !== null && (!Number.isInteger(maxStay) || maxStay < minStay)) throw new BadRequestException('La estadía máxima debe ser mayor o igual a la mínima.');
-    const maxGuests = num(d.maxGuests); if (maxGuests !== null && (!Number.isInteger(maxGuests) || maxGuests < 1 || maxGuests > 100)) throw new BadRequestException('Número de huéspedes no válido.');
+    // Una o varias modalidades: por noche (tipo Airbnb), por semana y por mes.
+    const modes = (Array.isArray(d.modes) ? d.modes : [d.mode]).filter((m: any): m is RentKind => RENT_KINDS.includes(m));
+    if (enabled && !modes.length) throw new BadRequestException('Elige al menos una modalidad: por noche, por semana o por mes.');
+    const num = (v: any) => (v === '' || v === null || v === undefined ? null : Number(v));
+    const int = (v: any, label: string, min = 1, max = 365) => { const n = num(v); if (n === null) return null; if (!Number.isInteger(n) || n < min || n > max) throw new BadRequestException(`${label} no válido.`); return n; };
+    const price = (v: any, label: string, need: boolean) => { const n = num(v); if (n !== null && !(n > 0)) throw new BadRequestException(`${label} no válido.`); if (need && !(Number(n) > 0)) throw new BadRequestException(`Indica el ${label.toLowerCase()}.`); return n; };
+    const has = (m: RentKind) => enabled && modes.includes(m);
+    const nightPrice = price(d.nightPrice, 'Precio por noche', has('NIGHTLY'));
+    const weekPrice = price(d.weekPrice, 'Precio por semana', has('WEEKLY'));
+    const rent = Number(p.Operation === 'BOTH' ? p.RentPrice : p.Price) || null;
+    const monthPrice = price(d.monthPrice, 'Precio por mes', has('MONTHLY') && !rent);
+    const minStay = int(d.minStay, 'Mínimo de noches') ?? 1, maxStay = int(d.maxStay, 'Máximo de noches');
+    const minWeeks = int(d.minWeeks, 'Mínimo de semanas', 1, 52) ?? 1, maxWeeks = int(d.maxWeeks, 'Máximo de semanas', 1, 52);
+    const minMonths = int(d.minMonths, 'Mínimo de meses', 1, 60) ?? 1, maxMonths = int(d.maxMonths, 'Máximo de meses', 1, 60);
+    if ((maxStay !== null && maxStay < minStay) || (maxWeeks !== null && maxWeeks < minWeeks) || (maxMonths !== null && maxMonths < minMonths)) throw new BadRequestException('Cada máximo debe ser mayor o igual a su mínimo.');
+    const maxGuests = int(d.maxGuests, 'Número de huéspedes', 1, 100);
     const deposit = Number(d.deposit) || 0; if (deposit < 0) throw new BadRequestException('Depósito no válido.');
     const taxRate = Number(d.taxRate) || 0; if (taxRate < 0 || taxRate > 50) throw new BadRequestException('Impuesto no válido (0 a 50%).');
     const seasons: Season[] = Array.isArray(d.seasons) ? d.seasons.slice(0, 20).map((s: any) => ({ name: String(s.name || '').slice(0, 40), from: String(s.from || ''), to: String(s.to || ''), price: Number(s.price) })) : [];
     for (const s of seasons) if (!ISO.test(s.from) || !ISO.test(s.to) || s.to < s.from || !(s.price > 0)) throw new BadRequestException('Revisa las temporadas: fechas (inicio ≤ fin) y precio por noche.');
-    await this.db.execute(`INSERT INTO RentalSettings(PropertyId,Enabled,Mode,NightPrice,MinStay,MaxStay,MaxGuests,Deposit,TaxRate,CancellationPolicy,Seasons,SaleRequests,UpdatedAt)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE Enabled=VALUES(Enabled),Mode=VALUES(Mode),NightPrice=VALUES(NightPrice),MinStay=VALUES(MinStay),MaxStay=VALUES(MaxStay),
+    const list = modes.length ? modes : ['MONTHLY'];
+    await this.db.execute(`INSERT INTO RentalSettings(PropertyId,Enabled,Mode,Modes,NightPrice,WeekPrice,MonthPrice,MinStay,MaxStay,MinWeeks,MaxWeeks,MinMonths,MaxMonths,MaxGuests,Deposit,TaxRate,CancellationPolicy,Seasons,SaleRequests,UpdatedAt)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE Enabled=VALUES(Enabled),Mode=VALUES(Mode),Modes=VALUES(Modes),NightPrice=VALUES(NightPrice),WeekPrice=VALUES(WeekPrice),MonthPrice=VALUES(MonthPrice),
+      MinStay=VALUES(MinStay),MaxStay=VALUES(MaxStay),MinWeeks=VALUES(MinWeeks),MaxWeeks=VALUES(MaxWeeks),MinMonths=VALUES(MinMonths),MaxMonths=VALUES(MaxMonths),
       MaxGuests=VALUES(MaxGuests),Deposit=VALUES(Deposit),TaxRate=VALUES(TaxRate),CancellationPolicy=VALUES(CancellationPolicy),Seasons=VALUES(Seasons),SaleRequests=VALUES(SaleRequests),UpdatedAt=UTC_TIMESTAMP()`,
-      [propertyId, enabled ? 1 : 0, mode, nightPrice, minStay, maxStay, maxGuests, deposit, taxRate, String(d.cancellationPolicy || '').slice(0, 1000) || null, JSON.stringify(seasons), d.saleRequests === false ? 0 : 1]);
+      [propertyId, enabled ? 1 : 0, list.includes('NIGHTLY') && list.length === 1 ? 'NIGHTLY' : 'MONTHLY', list.join(','), nightPrice, weekPrice, monthPrice, minStay, maxStay, minWeeks, maxWeeks, minMonths, maxMonths,
+        maxGuests, deposit, taxRate, String(d.cancellationPolicy || '').slice(0, 1000) || null, JSON.stringify(seasons), d.saleRequests === false ? 0 : 1]);
     return this.getSettings(propertyId);
   }
 
@@ -162,7 +183,8 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       return { kind, subtotal: Number(p.Price), taxes: 0, deposit: 0, total: Number(p.Price), lines: [{ label: 'Precio de venta', amount: Number(p.Price) }] };
     }
     if (!s.enabled || !(p.Operation === 'RENT' || p.Operation === 'BOTH')) throw new BadRequestException('Esta propiedad no tiene reservas en línea activas.');
-    if (kind !== s.mode) throw new BadRequestException(s.mode === 'NIGHTLY' ? 'Esta propiedad se reserva por noche.' : 'Esta propiedad se renta por mes.');
+    const MODE_LABEL: Record<RentKind, string> = { NIGHTLY: 'por noche', WEEKLY: 'por semana', MONTHLY: 'por mes' };
+    if (!s.modes.includes(kind as RentKind)) throw new BadRequestException(`Esta propiedad se renta ${s.modes.map((m) => MODE_LABEL[m]).join(', ')}.`);
     const checkIn = String(d.checkIn || '');
     if (!ISO.test(checkIn)) throw new BadRequestException('Elige la fecha de entrada.');
     if (checkIn < today()) throw new BadRequestException('La fecha de entrada no puede ser en el pasado.');
@@ -171,7 +193,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     if (guests !== null && (!Number.isInteger(guests) || guests < 1)) throw new BadRequestException('Número de huéspedes no válido.');
     if (guests && s.maxGuests && guests > s.maxGuests) throw new BadRequestException(`Máximo ${s.maxGuests} huéspedes.`);
     const lines: { label: string; amount: number }[] = [];
-    let checkOut: string, subtotal = 0, nights: number | null = null, months: number | null = null;
+    let checkOut: string, subtotal = 0, nights: number | null = null, weeks: number | null = null, months: number | null = null;
     if (kind === 'NIGHTLY') {
       checkOut = String(d.checkOut || '');
       if (!ISO.test(checkOut) || checkOut <= checkIn) throw new BadRequestException('Elige la fecha de salida (posterior a la entrada).');
@@ -188,38 +210,45 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         subtotal += rate;
       }
       for (const [rate, n] of byRate) lines.push({ label: `${n} noche(s) × ${fmtMoney(rate)}`, amount: money(rate * n) });
+    } else if (kind === 'WEEKLY') {
+      weeks = Number(d.weeks);
+      if (!Number.isInteger(weeks) || weeks < s.minWeeks) throw new BadRequestException(`El mínimo es de ${s.minWeeks} semana(s).`);
+      if ((s.maxWeeks && weeks > s.maxWeeks) || weeks > 52) throw new BadRequestException(`El máximo es de ${s.maxWeeks || 52} semanas.`);
+      if (!s.weekPrice) throw new BadRequestException('La propiedad no tiene precio por semana.');
+      checkOut = addDays(checkIn, weeks * 7);
+      subtotal = s.weekPrice * weeks;
+      lines.push({ label: `${weeks} semana(s) × ${fmtMoney(s.weekPrice)}`, amount: money(subtotal) });
     } else {
       months = Number(d.months);
-      if (!Number.isInteger(months) || months < Math.max(1, s.minStay)) throw new BadRequestException(`El plazo mínimo es de ${Math.max(1, s.minStay)} mes(es).`);
-      if (s.maxStay && months > s.maxStay) throw new BadRequestException(`El plazo máximo es de ${s.maxStay} meses.`);
-      if (months > 60) throw new BadRequestException('Plazo no válido.');
-      if (!s.monthlyRent) throw new BadRequestException('La propiedad no tiene renta mensual definida.');
+      if (!Number.isInteger(months) || months < s.minMonths) throw new BadRequestException(`El plazo mínimo es de ${s.minMonths} mes(es).`);
+      if ((s.maxMonths && months > s.maxMonths) || months > 60) throw new BadRequestException(`El plazo máximo es de ${s.maxMonths || 60} meses.`);
+      if (!s.monthPrice) throw new BadRequestException('La propiedad no tiene precio mensual definido.');
       checkOut = addMonths(checkIn, months);
-      subtotal = s.monthlyRent * months;
-      lines.push({ label: `${months} mes(es) × ${fmtMoney(s.monthlyRent)}`, amount: money(subtotal) });
+      subtotal = s.monthPrice * months;
+      lines.push({ label: `${months} mes(es) × ${fmtMoney(s.monthPrice)}`, amount: money(subtotal) });
     }
     const taxes = money(subtotal * s.taxRate / 100);
     if (taxes) lines.push({ label: `Impuestos (${s.taxRate}%)`, amount: taxes });
     if (s.deposit) lines.push({ label: 'Depósito de garantía (reembolsable)', amount: s.deposit });
     const busy = await this.busyRanges(p.Id);
     const available = !this.overlaps(checkIn, checkOut, busy);
-    return { kind, checkIn, checkOut, nights, months, guests, subtotal: money(subtotal), taxes, deposit: s.deposit, total: money(subtotal + taxes + s.deposit), lines, available };
+    return { kind, checkIn, checkOut, nights, weeks, months, guests, subtotal: money(subtotal), taxes, deposit: s.deposit, total: money(subtotal + taxes + s.deposit), lines, available };
   }
 
   // ───────────── Solicitud (RF-23) ─────────────
   async create(userId: string, d: any) {
     const p = await this.property(String(d.propertyId));
     if (p.OwnerId === userId) throw new BadRequestException('No puedes reservar tu propia propiedad.');
-    if (!['AVAILABLE', 'RESERVED'].includes(p.Availability || 'AVAILABLE') || (d.kind !== 'NIGHTLY' && (p.Availability || 'AVAILABLE') !== 'AVAILABLE')) throw new BadRequestException('Esta propiedad no está disponible por ahora.');
+    if (!['AVAILABLE', 'RESERVED'].includes(p.Availability || 'AVAILABLE') || ((d.kind === 'MONTHLY' || d.kind === 'SALE') && (p.Availability || 'AVAILABLE') !== 'AVAILABLE')) throw new BadRequestException('Esta propiedad no está disponible por ahora.');
     const q = await this.quote(d, p);
     if ((q as any).available === false) throw new BadRequestException('Esas fechas ya no están disponibles. Elige otras en el calendario.');
     const [dup] = await this.db.query<any>(`SELECT Id FROM Reservations WHERE PropertyId=? AND GuestId=? AND Status IN ('PENDING','APPROVED','DEPOSIT_PAID') LIMIT 1`, [p.Id, userId]);
     if (dup) throw new BadRequestException('Ya tienes una solicitud activa para esta propiedad. Revísala en "Mis reservas".');
     const paymentType = q.kind === 'SALE' ? (['CONTADO', 'CREDITO', 'INFONAVIT', 'FOVISSSTE', 'OTRO'].includes(String(d.paymentType)) ? String(d.paymentType) : 'OTRO') : null;
     const id = randomUUID(); const qq: any = q;
-    await this.db.execute(`INSERT INTO Reservations(Id,PropertyId,GuestId,OwnerId,Kind,Status,CheckIn,CheckOut,Months,Nights,Guests,PaymentType,Subtotal,Taxes,Deposit,Total,GuestNote)
-      VALUES(?,?,?,?,?,'PENDING',?,?,?,?,?,?,?,?,?,?,?)`,
-      [id, p.Id, userId, p.OwnerId, q.kind, qq.checkIn || null, qq.checkOut || null, qq.months ?? null, qq.nights ?? null, qq.guests ?? null, paymentType, q.subtotal, q.taxes, q.deposit, q.total, String(d.note || '').slice(0, 1000) || null]);
+    await this.db.execute(`INSERT INTO Reservations(Id,PropertyId,GuestId,OwnerId,Kind,Status,CheckIn,CheckOut,Months,Weeks,Nights,Guests,PaymentType,Subtotal,Taxes,Deposit,Total,GuestNote)
+      VALUES(?,?,?,?,?,'PENDING',?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [id, p.Id, userId, p.OwnerId, q.kind, qq.checkIn || null, qq.checkOut || null, qq.months ?? null, qq.weeks ?? null, qq.nights ?? null, qq.guests ?? null, paymentType, q.subtotal, q.taxes, q.deposit, q.total, String(d.note || '').slice(0, 1000) || null]);
     const [o] = await this.db.query<any>('SELECT u.Email, g.FullName AS GuestName FROM Users u JOIN Users g ON g.Id=? WHERE u.Id=?', [userId, p.OwnerId]);
     if (o) this.mail.notify(o.Email, `Nueva solicitud · ${p.Title}`, 'Tienes una nueva solicitud', `${o.GuestName} solicitó ${KIND_LABEL[q.kind as Kind]} de "${p.Title}"${qq.checkIn ? ` desde el ${fmtDay(qq.checkIn)}` : ''}. Apruébala o recházala desde tu panel.`, 'Revisar solicitud', `/panel/reservas/${id}`);
     return this.detail(userId, 'BUYER', id);
@@ -228,7 +257,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
   // ───────────── Listado y detalle ─────────────
   private row(r: any) {
     return {
-      id: r.Id, kind: r.Kind, status: r.Status, checkIn: dateOnly(r.CheckIn), checkOut: dateOnly(r.CheckOut), months: r.Months, nights: r.Nights, guests: r.Guests,
+      id: r.Id, kind: r.Kind, status: r.Status, checkIn: dateOnly(r.CheckIn), checkOut: dateOnly(r.CheckOut), months: r.Months, weeks: r.Weeks ?? null, nights: r.Nights, guests: r.Guests,
       paymentType: r.PaymentType, subtotal: Number(r.Subtotal), taxes: Number(r.Taxes), deposit: Number(r.Deposit), total: Number(r.Total),
       advanceRequired: r.AdvanceRequired != null ? Number(r.AdvanceRequired) : null, advanceAmount: r.AdvanceAmount != null ? Number(r.AdvanceAmount) : null, advanceMethod: r.AdvanceMethod, advancePaidAt: r.AdvancePaidAt,
       paidAmount: r.PaidAmount != null ? Number(r.PaidAmount) : null, paidMethod: r.PaidMethod, paidAt: r.PaidAt, paymentNotes: r.PaymentNotes,
@@ -320,7 +349,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         need(['PENDING', 'APPROVED', 'DEPOSIT_PAID'].includes(r.Status), 'Esta reserva ya no se puede cancelar.');
         if (isGuest && !isManager) need(r.Status !== 'DEPOSIT_PAID', 'Tu reserva ya tiene anticipo registrado: para cancelarla escribe al anunciante en el chat.');
         await this.db.execute("UPDATE Reservations SET Status='CANCELLED', OwnerNote=COALESCE(?, OwnerNote), UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [String(d.note || '').slice(0, 1000) || null, id]);
-        if (r.Status === 'DEPOSIT_PAID' && r.Kind !== 'NIGHTLY') await this.db.execute("UPDATE Properties SET Availability='AVAILABLE', UpdatedAt=UTC_TIMESTAMP() WHERE Id=? AND Availability='RESERVED'", [r.PropertyId]);
+        if (r.Status === 'DEPOSIT_PAID' && (r.Kind === 'MONTHLY' || r.Kind === 'SALE')) await this.db.execute("UPDATE Properties SET Availability='AVAILABLE', UpdatedAt=UTC_TIMESTAMP() WHERE Id=? AND Availability='RESERVED'", [r.PropertyId]);
         this.mail.notify(isGuest ? ownerEmail : guestEmail, `Reserva cancelada · ${title}`, 'La reserva fue cancelada', `La reserva de "${title}" fue cancelada por ${isGuest ? 'el interesado' : 'el anunciante'}.`, 'Ver reserva', path);
         break;
       }
@@ -343,8 +372,8 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         manager(); need(r.Status === 'APPROVED', 'El anticipo se registra en reservas aprobadas.');
         const amount = money2(d.amount), m = method(d.method);
         await this.db.execute("UPDATE Reservations SET Status='DEPOSIT_PAID', AdvanceAmount=?, AdvanceMethod=?, AdvancePaidAt=UTC_TIMESTAMP(), PaymentNotes=COALESCE(?,PaymentNotes), UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [amount, m, String(d.notes || '').slice(0, 500) || null, id]);
-        // El anticipo deja la propiedad "Apartada" (renta mensual y compra).
-        if (r.Kind !== 'NIGHTLY') await this.db.execute("UPDATE Properties SET Availability='RESERVED', UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [r.PropertyId]);
+        // El anticipo deja la propiedad "Apartada" (renta mensual y compra); las estancias cortas solo ocupan sus fechas.
+        if (r.Kind === 'MONTHLY' || r.Kind === 'SALE') await this.db.execute("UPDATE Properties SET Availability='RESERVED', UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [r.PropertyId]);
         this.mail.notify(guestEmail, `Anticipo registrado · ${title}`, 'Tu apartado quedó registrado', `Se registró tu anticipo de ${fmtMoney(amount)} (${m === 'CASH' ? 'efectivo' : 'transferencia'}) para "${title}". La propiedad queda apartada para ti.`, 'Ver reserva', path);
         break;
       }

@@ -85,7 +85,7 @@ Genera, ya compilados, `deploy/agencia-eh-sitio-unico.zip` (sitio y API en un so
 
 ## Reservas en línea (RF-21 a RF-27)
 - Todo el trato es en línea; **solo el pago es en persona** y se registra en la plataforma.
-- Por propiedad (Mis propiedades → "Reservas y calendario"): renta **mensual** o **por noche** (precio, temporadas, estadía mínima/máxima, huéspedes, depósito, impuestos, política de cancelación), apartado de compra y **fechas bloqueadas**.
+- Por propiedad (Mis propiedades → "Reservas y calendario"): una o varias modalidades a la vez — **por noche** (tipo Airbnb, con temporadas), **por semana** y **por mes** — cada una con su precio, mínimo y máximo; huéspedes, depósito, impuestos, política de cancelación, apartado de compra y **fechas bloqueadas**. El interesado elige la modalidad en la ficha.
 - Ficha: calendario con días ocupados, cotización al momento y solicitud (requiere cuenta). Sin dobles reservas: al aprobar se rechazan las solicitudes que se cruzan.
 - `/panel/reservas`: aprobar (con anticipo opcional), agendar cita de pago, el interesado la confirma, **anticipo → "Apartada"**, pago → cerrada (rentada/vendida). Chat y documentos privados (PDF/JPG/PNG) por reserva; correos en cada paso y recordatorios. El admin puede intervenir en cualquiera.
 - API: `/api/v1/reservations` (calendar, quote, settings, blocks, mensajes, documentos).

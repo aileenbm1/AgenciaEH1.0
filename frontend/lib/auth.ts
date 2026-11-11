@@ -12,8 +12,10 @@ type AuthResponse = { accessToken: string; user: SessionUser };
 export function currentToken() { return readToken(); }
 function readToken() { try { return sessionStorage.getItem(TOKEN_KEY); } catch { return null; } }
 function writeToken(token: string | null) {
+  const before = readToken();
   try { token ? sessionStorage.setItem(TOKEN_KEY, token) : sessionStorage.removeItem(TOKEN_KEY); } catch { /* sin almacenamiento */ }
-  if (typeof window !== 'undefined') window.dispatchEvent(new Event(SESSION_EVENT));
+  // Solo se avisa si la sesión realmente cambió (evita ciclos de "sin sesión" → renovar → "sin sesión").
+  if (typeof window !== 'undefined' && !!before !== !!token) window.dispatchEvent(new Event(SESSION_EVENT));
 }
 
 function errorMessage(d: any, fallback: string) {
@@ -29,13 +31,24 @@ export async function apiAuth(path: string, payload: Record<string, string> = {}
 
 export async function authenticate(path: 'login' | 'register', payload: Record<string, string>): Promise<AuthResponse> {
   const d = await apiAuth(path, payload);
+  noSessionUntil = 0;
   writeToken(d.accessToken);
   return d;
 }
 
+// Una sola renovación a la vez: el servidor rota el refresh token, así que dos
+// renovaciones simultáneas invalidarían la sesión. Si no hay sesión, se recuerda
+// unos segundos para no repetir la consulta en cada componente.
+let refreshing: Promise<string | null> | null = null;
+let noSessionUntil = 0;
 async function refreshToken(): Promise<string | null> {
-  try { const d = await apiAuth('refresh'); writeToken(d.accessToken); return d.accessToken; }
-  catch { writeToken(null); return null; }
+  if (Date.now() < noSessionUntil) return null;
+  if (!refreshing) refreshing = (async () => {
+    try { const d = await apiAuth('refresh'); writeToken(d.accessToken); return d.accessToken as string; }
+    catch { noSessionUntil = Date.now() + 10000; writeToken(null); return null; }
+    finally { setTimeout(() => { refreshing = null; }, 0); }
+  })();
+  return refreshing;
 }
 
 /** fetch autenticado: agrega el token y lo renueva una vez si expiró. */

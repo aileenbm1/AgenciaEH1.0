@@ -619,3 +619,11 @@ h1,h2{font-family:var(--font-title);color:var(--navy);font-weight:600;letter-spa
 .detail-aside,.detail-grid>*{min-width:0}
 .reserve-box{min-width:0;max-width:100%;box-sizing:border-box}.reserve-box>*{min-width:0}
 .reserve-box select,.reserve-box input,.reserve-box textarea{max-width:100%;box-sizing:border-box}
+/* Renta por noche, semana y mes */
+.unit-tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:6px}
+.unit-tabs button{border:1px solid var(--line);background:#fff;border-radius:var(--r-md);padding:8px 6px;cursor:pointer;display:grid;gap:2px;font-weight:600;color:var(--navy)}
+.unit-tabs button small{font-weight:400;color:var(--muted);font-size:12px}
+.unit-tabs button.selected{border-color:var(--navy);background:var(--navy);color:#fff}.unit-tabs button.selected small{color:#dfe5ee}
+.unit-config{display:grid;gap:8px}
+.unit-row{border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px;display:grid;gap:10px;background:#fff}.unit-row.on{border-color:var(--gold)}
+.unit-row .check{flex-wrap:wrap}

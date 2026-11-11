@@ -97,6 +97,7 @@ function ReservationDetail({ user }: { user: SessionUser }) {
         <section className="dashboard-card"><h3>Detalle</h3>
           <dl className="facts">
             {r.kind === 'NIGHTLY' && <><div><dt>Entrada</dt><dd>{fmtDay(r.checkIn)}</dd></div><div><dt>Salida</dt><dd>{fmtDay(r.checkOut)}</dd></div><div><dt>Noches</dt><dd>{r.nights}</dd></div><div><dt>Huéspedes</dt><dd>{r.guests ?? '—'}</dd></div></>}
+            {r.kind === 'WEEKLY' && <><div><dt>Entrada</dt><dd>{fmtDay(r.checkIn)}</dd></div><div><dt>Salida</dt><dd>{fmtDay(r.checkOut)}</dd></div><div><dt>Semanas</dt><dd>{r.weeks}</dd></div><div><dt>Huéspedes</dt><dd>{r.guests ?? '—'}</dd></div></>}
             {r.kind === 'MONTHLY' && <><div><dt>Inicio</dt><dd>{fmtDay(r.checkIn)}</dd></div><div><dt>Fin de contrato</dt><dd>{fmtDay(r.checkOut)}</dd></div><div><dt>Plazo</dt><dd>{r.months} mes(es)</dd></div></>}
             {r.kind === 'SALE' && <div><dt>Forma de pago</dt><dd>{PAY_TYPE[r.paymentType || ''] || '—'}</dd></div>}
             <div><dt>Subtotal</dt><dd>{mxn(r.subtotal)}</dd></div>
