@@ -29,6 +29,9 @@ export default function PropertyForm({ property, onDone, onCancel }: { property?
   const [custom, setCustom] = useState<Record<string, string>>(property?.custom || {});
   const [fields, setFields] = useState<CustomField[]>([]);
   const [loc, setLoc] = useState({ latitude: property?.latitude ?? null, longitude: property?.longitude ?? null, showExactLocation: !!property?.showExactLocation });
+  // Renta en línea tipo Airbnb: precios opcionales por noche y por semana (la renta por mes usa la renta mensual).
+  const [stay, setStay] = useState({ night: '', week: '' });
+  useEffect(() => { if (property && property.operation !== 'SALE') authJson<{ modes: string[]; nightPrice: number | null; weekPrice: number | null }>(`/reservations/settings/${property.id}`).then(x => setStay({ night: x.modes.includes('NIGHTLY') && x.nightPrice ? String(x.nightPrice) : '', week: x.modes.includes('WEEKLY') && x.weekPrice ? String(x.weekPrice) : '' })).catch(() => {}); }, [property]);
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   useEffect(() => { fetch('/api/v1/custom-fields').then(r => r.ok ? r.json() : []).then(setFields).catch(() => {}); }, []);
@@ -50,7 +53,13 @@ export default function PropertyForm({ property, onDone, onCancel }: { property?
       images: photos.map(p => p.url), imageLabels: photos.map(p => p.label || ''), custom, ...loc,
     };
     try {
-      await authJson(property ? `/properties/${property.id}` : '/properties', { method: property ? 'PATCH' : 'POST', body: JSON.stringify(payload) });
+      const saved = await authJson<{ id: string }>(property ? `/properties/${property.id}` : '/properties', { method: property ? 'PATCH' : 'POST', body: JSON.stringify(payload) });
+      // Modalidades de renta en línea: por mes siempre; por noche y por semana si se indicó precio.
+      if (isRent || both) {
+        const cur = await authJson<Record<string, unknown> & { modes: string[] }>(`/reservations/settings/${saved.id}`);
+        const modes = [...(stay.night ? ['NIGHTLY'] : []), ...(stay.week ? ['WEEKLY'] : []), 'MONTHLY'];
+        await authJson(`/reservations/settings/${saved.id}`, { method: 'PUT', body: JSON.stringify({ ...cur, enabled: !!cur.enabled || !!stay.night || !!stay.week, modes, nightPrice: stay.night || null, weekPrice: stay.week || null }) });
+      }
       onDone(property ? `Cambios guardados en "${form.title}". Quedó como borrador: envíala a revisión cuando esté lista.` : 'Borrador guardado. Cuando esté listo, presiona "Enviar a revisión" para que un administrador lo apruebe.');
     } catch (err) { setError(err instanceof Error ? err.message : 'No se pudo guardar.'); }
     finally { setBusy(false); }
@@ -64,6 +73,8 @@ export default function PropertyForm({ property, onDone, onCancel }: { property?
       <label>{isRent ? 'Renta mensual (MXN)' : 'Precio de venta (MXN)'}<input required type="number" min="1" value={form.price} onChange={set('price')} /></label>
       {both && <label>Renta mensual (MXN)<input required type="number" min="1" value={form.rentPrice} onChange={set('rentPrice')} /></label>}
       {(isRent || both) && <label>Disponible a partir de<input type="date" value={form.availableFrom} onChange={set('availableFrom')} /></label>}
+      {(isRent || both) && <label>Precio por noche (opcional)<input type="number" min="1" value={stay.night} onChange={e => setStay({ ...stay, night: e.target.value })} placeholder="Tipo Airbnb" /></label>}
+      {(isRent || both) && <label>Precio por semana (opcional)<input type="number" min="1" value={stay.week} onChange={e => setStay({ ...stay, week: e.target.value })} placeholder="Estancias de 7 noches" /></label>}
       <label>Tipo de inmueble<select value={form.propertyType} onChange={set('propertyType')}>{PROPERTY_TYPES.map(t => <option key={t}>{t}</option>)}</select></label>
       <label>Categoría<select value={form.category || categoryFor(form.propertyType)} onChange={set('category')}>{CATEGORIES.map(c => <option key={c}>{c}</option>)}</select></label>
       <label>Municipio<select value={form.municipality} onChange={set('municipality')}>{MUNICIPALITIES.map(m => <option key={m}>{m}</option>)}</select></label>
@@ -80,6 +91,7 @@ export default function PropertyForm({ property, onDone, onCancel }: { property?
     </div>
     <LocationPicker value={loc} onChange={setLoc} hint={[form.neighborhood, form.municipality, 'Guanajuato'].filter(Boolean).join(', ')} />
     <PhotoUploader value={photos} onChange={setPhotos} onBusyChange={setUploading} />
+    {(isRent || both) && <small className="muted">Las rentas se reservan <b>en línea</b>: por mes con la renta mensual y, si pones precio, también por noche y por semana. El pago es por transferencia o en efectivo. Temporadas, mínimos y fechas bloqueadas se ajustan en “Reservas y calendario”.</small>}
     <small className="muted">Para enviar a revisión se necesitan: superficie, al menos una foto{fields.some(f => f.required) ? ' y los campos marcados con *' : ''}. Etiqueta una foto como <b>Plano</b> para mostrarla en la sección "Plano de planta".</small>
     {error && <div className="notice" role="alert">{error}</div>}
     <div className="property-actions">

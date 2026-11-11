@@ -71,7 +71,8 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     const rent = p ? Number(p.Operation === 'BOTH' ? p.RentPrice : p.Operation === 'RENT' ? p.Price : 0) || null : null;
     const modes = String(r?.Modes || r?.Mode || 'MONTHLY').split(',').filter((m): m is RentKind => RENT_KINDS.includes(m as RentKind));
     return {
-      enabled: !!r?.Enabled, modes: modes.length ? modes : ['MONTHLY'] as RentKind[],
+      // Sin configuración guardada, toda propiedad en renta acepta reservas en línea por mes (con su renta mensual).
+      enabled: r ? !!r.Enabled : !!rent, modes: modes.length ? modes : ['MONTHLY'] as RentKind[],
       nightPrice: r?.NightPrice != null ? Number(r.NightPrice) : null,
       weekPrice: r?.WeekPrice != null ? Number(r.WeekPrice) : null,
       // Precio mensual: el propio de la reserva o, si no se indicó, la renta mensual de la propiedad.
@@ -106,7 +107,9 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     const nightPrice = price(d.nightPrice, 'Precio por noche', has('NIGHTLY'));
     const weekPrice = price(d.weekPrice, 'Precio por semana', has('WEEKLY'));
     const rent = Number(p.Operation === 'BOTH' ? p.RentPrice : p.Price) || null;
-    const monthPrice = price(d.monthPrice, 'Precio por mes', has('MONTHLY') && !rent);
+    // Si coincide con la renta mensual de la propiedad no se guarda aparte: así sigue a la propiedad cuando cambie.
+    let monthPrice = price(d.monthPrice, 'Precio por mes', has('MONTHLY') && !rent);
+    if (monthPrice !== null && rent && Number(monthPrice) === rent) monthPrice = null;
     const minStay = int(d.minStay, 'Mínimo de noches') ?? 1, maxStay = int(d.maxStay, 'Máximo de noches');
     const minWeeks = int(d.minWeeks, 'Mínimo de semanas', 1, 52) ?? 1, maxWeeks = int(d.maxWeeks, 'Máximo de semanas', 1, 52);
     const minMonths = int(d.minMonths, 'Mínimo de meses', 1, 60) ?? 1, maxMonths = int(d.maxMonths, 'Máximo de meses', 1, 60);
