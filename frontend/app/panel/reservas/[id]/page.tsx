@@ -9,6 +9,9 @@ import { fmtDay, fmtWhen, PAY_METHOD, PAY_TYPE, RES_KIND, RES_STATUS, ResRow } f
 
 type Detail = ResRow & {
   viewer: { isGuest: boolean; isManager: boolean }; cancellationPolicy: string | null; rules: string | null;
+  cancel: { guestCanCancel: boolean; until: string | null; reason: string };
+  payDue: { date: string; overdue: boolean; today: boolean } | null;
+  payments: { id: string; amount: number; method: string; kind: string; notes: string | null; createdAt: string; by: string | null; voided: boolean; voidReason: string | null }[];
   messages: { id: string; fullName: string; body: string; createdAt: string; mine: boolean }[];
   documents: { id: string; kind: string | null; fileName: string; mime: string; size: number; createdAt: string; uploadedBy: string; mine: boolean }[];
 };
@@ -19,7 +22,7 @@ function ReservationDetail({ user }: { user: SessionUser }) {
   const { id } = useParams<{ id: string }>();
   const [r, setR] = useState<Detail | null>(null);
   const [error, setError] = useState(''); const [ok, setOk] = useState(''); const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState<'' | 'approve' | 'reject' | 'schedule' | 'deposit' | 'complete' | 'cancel'>('');
+  const [form, setForm] = useState<'' | 'approve' | 'reject' | 'schedule' | 'payment' | 'cancel'>('');
   const [f, setF] = useState<Record<string, string>>({});
   const [text, setText] = useState(''); const [docKind, setDocKind] = useState(DOC_KINDS[0]);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -43,8 +46,10 @@ function ReservationDetail({ user }: { user: SessionUser }) {
     if (form === 'reject') act('reject', { note: f.note }, 'Solicitud rechazada.');
     if (form === 'cancel') act('cancel', { note: f.note }, 'Reserva cancelada.');
     if (form === 'schedule') act('schedule', { appointmentAt: new Date(f.at).toISOString(), place: f.place }, 'Cita agendada; avisamos por correo.');
-    if (form === 'deposit') act('deposit', { amount: Number(f.amount), method: f.method || 'CASH', notes: f.notes }, 'Anticipo registrado: la reserva queda apartada.');
-    if (form === 'complete') act('complete', { amount: Number(f.amount), method: f.method || 'CASH', notes: f.notes }, 'Pago registrado: operación cerrada.');
+    if (form === 'payment') {
+      const amount = Number(f.amount), done = amount >= (r?.remaining || 0) - 0.005;
+      act('payment', { amount, method: f.method || 'CASH', notes: f.notes }, done ? '¡Pago completo! La reserva quedó liquidada.' : `Abono registrado. Falta ${mxn((r?.remaining || 0) - amount)}.`);
+    }
   }
   async function send(e: FormEvent) {
     e.preventDefault(); if (!text.trim()) return;
@@ -74,10 +79,13 @@ function ReservationDetail({ user }: { user: SessionUser }) {
     { t: 'Solicitada', done: true, at: fmtWhen(r.createdAt) },
     { t: 'Aprobada', done: ['APPROVED', 'DEPOSIT_PAID', 'COMPLETED'].includes(r.status) },
     { t: 'Cita de pago', done: !!r.appointmentAt, at: r.appointmentAt ? fmtWhen(r.appointmentAt) : undefined },
-    { t: 'Apartada (anticipo)', done: !!r.advancePaidAt, at: r.advancePaidAt ? fmtWhen(r.advancePaidAt) : undefined },
+    { t: 'Apartada (anticipo)', done: r.paid > 0, at: r.advancePaidAt ? fmtWhen(r.advancePaidAt) : undefined },
     { t: 'Pagada / cerrada', done: r.status === 'COMPLETED', at: r.paidAt ? fmtWhen(r.paidAt) : undefined },
   ];
   const other = isGuest ? r.owner : r.guest;
+  const live = r.payments.filter(x => !x.voided);
+  const pct = r.total > 0 ? Math.min(100, Math.round((r.paid / r.total) * 100)) : 0;
+  const canPay = isManager && ['APPROVED', 'DEPOSIT_PAID'].includes(r.status) && r.remaining > 0;
 
   return <main className="page-wrap">
     <Link href="/panel/reservas" className="back-link">← Volver a reservas</Link>
@@ -105,15 +113,43 @@ function ReservationDetail({ user }: { user: SessionUser }) {
             {r.deposit > 0 && <div><dt>Depósito</dt><dd>{mxn(r.deposit)}</dd></div>}
             <div><dt>Total</dt><dd><b>{mxn(r.total)}</b></dd></div>
             {r.advanceRequired != null && <div><dt>Anticipo para apartar</dt><dd>{mxn(r.advanceRequired)}</dd></div>}
-            {r.advanceAmount != null && <div><dt>Anticipo recibido</dt><dd>{mxn(r.advanceAmount)} · {PAY_METHOD[r.advanceMethod || '']}</dd></div>}
-            {open && <div><dt>Saldo pendiente</dt><dd><b>{mxn(Math.max(0, r.total - (r.advanceAmount || 0)))}</b></dd></div>}
-            {r.status === 'COMPLETED' && <div><dt>Total pagado</dt><dd><b>{mxn((r.advanceAmount || 0) + (r.paidAmount || 0))}</b> ✓</dd></div>}
-            {r.paidAmount != null && <div><dt>Pago registrado</dt><dd>{mxn(r.paidAmount)} · {PAY_METHOD[r.paidMethod || '']}</dd></div>}
           </dl>
           {r.guestNote && <p><b>Mensaje del interesado:</b> {r.guestNote}</p>}
           {r.ownerNote && !closed && <p><b>Nota del anunciante:</b> {r.ownerNote}</p>}
           {r.paymentNotes && <p className="muted">Notas de pago: {r.paymentNotes}</p>}
           <p className="muted">El pago no se cobra en la plataforma: se hace por transferencia o en persona y el anunciante lo registra aquí.</p>
+        </section>
+
+        <section className="dashboard-card pay-card" id="pagos"><h3>Pagos</h3>
+          <div className="pay-summary">
+            <div><small>Total</small><b>{mxn(r.total)}</b></div>
+            <div className="paid"><small>Pagado</small><b>{mxn(r.paid)}</b></div>
+            <div className={r.remaining > 0 ? 'due' : 'done'}><small>{r.remaining > 0 ? 'Falta por pagar' : 'Liquidado'}</small><b>{r.remaining > 0 ? mxn(r.remaining) : '✓'}</b></div>
+          </div>
+          <div className="pay-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label="Avance del pago"><span style={{ width: `${pct}%` }} /></div>
+          <small className="muted">{pct}% pagado{live.length ? ` en ${live.length} pago(s)` : ''}.</small>
+          {r.payDue && r.remaining > 0 && !closed && <p className={`pay-due${r.payDue.overdue ? ' over' : r.payDue.today ? ' today' : ''}`}>
+            {r.payDue.overdue ? <>⚠ La fecha límite para liquidar era el <b>{fmtDay(r.payDue.date)}</b>.</> : r.payDue.today ? <>Hoy es el último día para liquidar.</> : <>Liquida a más tardar el <b>{fmtDay(r.payDue.date)}</b> (un día antes de la llegada). El día de entrada ya no se aceptan pagos.</>}</p>}
+          {r.payments.length > 0 ? <table className="pay-table"><thead><tr><th>Fecha</th><th>Concepto</th><th>Forma</th><th>Monto</th><th>Saldo</th>{user.role === 'ADMIN' && open && <th />}</tr></thead>
+            <tbody>{(() => { let acc = 0; return r.payments.map(x => { if (!x.voided) acc += x.amount; const bal = Math.max(0, r.total - acc); return <tr key={x.id} className={x.voided ? 'voided' : ''}>
+              <td>{fmtWhen(x.createdAt)}</td>
+              <td>{x.kind === 'ADVANCE' ? 'Anticipo' : 'Abono'}{x.notes ? <small className="muted"> · {x.notes}</small> : null}{x.voided && <small className="muted"> · anulado{x.voidReason ? `: ${x.voidReason}` : ''}</small>}{x.by && <small className="muted"> · registró {x.by}</small>}</td>
+              <td>{PAY_METHOD[x.method] || x.method}</td><td><b>{mxn(x.amount)}</b></td><td>{x.voided ? '—' : mxn(bal)}</td>
+              {user.role === 'ADMIN' && open && <td>{!x.voided && <button type="button" className="inline-link" onClick={() => { const reason = prompt('¿Por qué se anula este pago? (queda en el historial)'); if (reason !== null) act('void_payment', { paymentId: x.id, reason }, 'Pago anulado.'); }}>Anular</button>}</td>}
+            </tr>; }); })()}</tbody></table>
+            : <p className="muted">{r.status === 'PENDING' ? 'Los pagos se registran cuando la solicitud se aprueba.' : 'Aún no hay pagos registrados.'}</p>}
+          {canPay && form !== 'payment' && <div className="property-actions">
+            <button className="button button-navy" onClick={() => { setForm('payment'); setF({ amount: String(r.paid <= 0 && r.advanceRequired ? Math.min(r.advanceRequired, r.remaining) : r.remaining), method: 'CASH' }); }}>{r.paid <= 0 ? 'Registrar anticipo o pago' : 'Registrar abono'}</button>
+            {r.paid > 0 && <button className="button button-outline" onClick={() => { setForm('payment'); setF({ amount: String(r.remaining), method: 'CASH' }); }}>Liquidar saldo ({mxn(r.remaining)})</button>}
+          </div>}
+          {form === 'payment' && <form className="form-grid action-form" onSubmit={submitForm}>
+            <label>Monto recibido (MXN)<input type="number" min="1" step="0.01" max={r.remaining} required value={f.amount || ''} onChange={e => setF({ ...f, amount: e.target.value })} /></label>
+            <label>Forma de pago<select value={f.method || 'CASH'} onChange={e => setF({ ...f, method: e.target.value })}><option value="CASH">Efectivo</option><option value="TRANSFER">Transferencia</option></select></label>
+            <p className="wide muted">Falta por pagar {mxn(r.remaining)}. {Number(f.amount) > 0 && Number(f.amount) <= r.remaining ? (Number(f.amount) >= r.remaining - 0.005 ? 'Con este pago la reserva queda liquidada.' : `Después de este abono faltarán ${mxn(r.remaining - Number(f.amount))}.`) : 'El monto no puede ser mayor a lo que falta.'}{r.paid <= 0 && r.advanceRequired ? ` El anticipo acordado es de ${mxn(r.advanceRequired)}.` : ''}</p>
+            <label className="wide">Notas (folio de transferencia, recibo…)<input maxLength={500} value={f.notes || ''} onChange={e => setF({ ...f, notes: e.target.value })} /></label>
+            <div className="wide property-actions"><button className="button button-navy" disabled={busy}>{busy ? 'Guardando…' : 'Registrar pago'}</button><button type="button" className="inline-link" onClick={() => setForm('')}>Cerrar</button></div>
+          </form>}
+          <p className="muted small">Los pagos son por transferencia o en efectivo, fuera de la plataforma; el anunciante los registra aquí y cada abono baja el saldo.</p>
         </section>
 
         {r.rules && r.kind !== 'SALE' && <section className="dashboard-card house-rules"><h3>Reglas de la casa</h3><ul>{r.rules.split(/\n+/).map(x => x.trim()).filter(Boolean).map((x, i) => <li key={i}>{x}</li>)}</ul></section>}
@@ -133,22 +169,18 @@ function ReservationDetail({ user }: { user: SessionUser }) {
           <div className="property-actions">
             {isManager && r.status === 'PENDING' && <><button className="button button-navy" onClick={() => setForm('approve')}>Aprobar</button><button className="button button-outline" onClick={() => setForm('reject')}>Rechazar</button></>}
             {isManager && ['APPROVED', 'DEPOSIT_PAID'].includes(r.status) && <button className="button button-outline" onClick={() => { setForm('schedule'); setF({ at: r.appointmentAt ? localInput(new Date(r.appointmentAt)) : '', place: r.appointmentPlace || '' }); }}>{r.appointmentAt ? 'Cambiar cita' : 'Agendar cita de pago'}</button>}
-            {isManager && r.status === 'APPROVED' && <button className="button button-navy" onClick={() => { setForm('deposit'); setF({ amount: String(r.advanceRequired || ''), method: 'CASH' }); }}>Registrar anticipo (apartar)</button>}
-            {isManager && ['APPROVED', 'DEPOSIT_PAID'].includes(r.status) && <button className="button button-navy" onClick={() => { setForm('complete'); setF({ amount: String(Math.max(0, r.total - (r.advanceAmount || 0))), method: 'CASH' }); }}>Registrar pago y cerrar</button>}
             {isManager && r.status === 'APPROVED' && <button className="button button-ghost" onClick={() => setForm('reject')}>Rechazar</button>}
-            {open && (isManager || r.status !== 'DEPOSIT_PAID') && <button className="button button-ghost" onClick={() => setForm('cancel')}>Cancelar reserva</button>}
+            {open && (isManager || r.cancel.guestCanCancel) && <button className="button button-ghost" onClick={() => setForm('cancel')}>Cancelar reserva</button>}
           </div>
-          {isGuest && r.status === 'DEPOSIT_PAID' && !isManager && <p className="muted">Tu reserva ya tiene anticipo: para cancelarla escribe al anunciante en el chat.</p>}
-          {form && <form className="form-grid action-form" onSubmit={submitForm}>
+          {isGuest && !isManager && open && (r.cancel.guestCanCancel
+            ? <p className="muted">Puedes cancelar hasta el <b>{fmtWhen(r.cancel.until)}</b> (24 horas después de tu solicitud y antes del día de entrada).</p>
+            : <p className="muted">{r.cancel.reason}</p>)}
+          {form && form !== 'payment' && <form className="form-grid action-form" onSubmit={submitForm}>
             {form === 'approve' && <><label>Anticipo para apartar (opcional, MXN)<input type="number" min="1" value={f.advance || ''} onChange={e => setF({ ...f, advance: e.target.value })} /></label>
               <label className="wide">Nota para el interesado (opcional)<textarea rows={2} value={f.note || ''} onChange={e => setF({ ...f, note: e.target.value })} /></label></>}
             {(form === 'reject' || form === 'cancel') && <label className="wide">Motivo (opcional)<textarea rows={2} value={f.note || ''} onChange={e => setF({ ...f, note: e.target.value })} /></label>}
             {form === 'schedule' && <><label>Fecha y hora<input type="datetime-local" required value={f.at || ''} onChange={e => setF({ ...f, at: e.target.value })} /></label>
               <label>Lugar<input required minLength={3} maxLength={250} value={f.place || ''} onChange={e => setF({ ...f, place: e.target.value })} placeholder="Oficina, la propiedad, notaría…" /></label></>}
-            {(form === 'deposit' || form === 'complete') && <><label>Monto recibido (MXN)<input type="number" min={form === 'complete' ? 0 : 1} step="0.01" required max={form === 'deposit' ? r.total : undefined} readOnly={form === 'complete'} value={f.amount || ''} onChange={e => setF({ ...f, amount: e.target.value })} /></label>
-              <label>Forma de pago<select value={f.method || 'CASH'} onChange={e => setF({ ...f, method: e.target.value })}><option value="CASH">Efectivo</option><option value="TRANSFER">Transferencia</option></select></label>
-              <p className="wide muted">{form === 'deposit' ? `El anticipo no puede pasar del total (${mxn(r.total)}).` : `El pago final debe ser exactamente el saldo: ${mxn(r.total)} de total menos ${mxn(r.advanceAmount || 0)} de anticipo = ${mxn(Math.max(0, r.total - (r.advanceAmount || 0)))}.`}</p>
-              <label className="wide">Notas (folio, recibo…)<input maxLength={500} value={f.notes || ''} onChange={e => setF({ ...f, notes: e.target.value })} /></label></>}
             <div className="wide property-actions"><button className="button button-navy" disabled={busy}>{busy ? 'Guardando…' : 'Confirmar'}</button><button type="button" className="inline-link" onClick={() => setForm('')}>Cerrar</button></div>
           </form>}
           {r.cancellationPolicy && <details><summary>Política de cancelación</summary><p>{r.cancellationPolicy}</p></details>}

@@ -7,6 +7,18 @@ type Unit = 'NIGHTLY' | 'WEEKLY' | 'MONTHLY';
 type Settings = { enabled: boolean; modes: Unit[]; nightPrice: number | null; weekPrice: number | string | null; monthPrice: number | string | null; minStay: number; maxStay: number | null; minWeeks: number; maxWeeks: number | null; minMonths: number; maxMonths: number | null; maxGuests: number | null; deposit: number; taxRate: number; cancellationPolicy: string | null; rules: string | null; seasons: Season[]; saleRequests: boolean; monthlyRent: number | null };
 type Range = { id?: string; from: string; to: string; type: 'RESERVED' | 'BLOCKED'; reason?: string | null };
 
+const EXAMPLE_RULES = [
+  'Entrada a partir de las 3:00 pm y salida a más tardar a las 12:00 pm.',
+  'Número máximo de personas: el indicado en la reserva. No se permiten visitas a pernoctar.',
+  'No se permiten fiestas ni eventos.',
+  'Prohibido fumar dentro del inmueble.',
+  'No se admiten mascotas (salvo que se acuerde por escrito).',
+  'Horario de silencio de 10:00 pm a 8:00 am; respeta a los vecinos.',
+  'Cuida el mobiliario y los equipos. Los daños al inmueble o al mobiliario corren por cuenta del huésped y pueden descontarse del depósito.',
+  'Deja el inmueble en orden, saca la basura y apaga luces y aparatos al salir.',
+  'El pago total se liquida a más tardar un día antes de la llegada, por transferencia o en efectivo.',
+  'Puedes cancelar dentro de las 24 horas siguientes a tu reserva y antes del día de entrada; si reservas con un día o menos de anticipación no hay cancelación.',
+].join('\n');
 const fmt = (d: string) => new Date(d + 'T12:00:00Z').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
 /** Reservas en línea por propiedad (RF-21, RF-27): por noche, semana y/o mes, precios, temporadas, política y fechas bloqueadas. */
@@ -73,6 +85,7 @@ export default function RentalSettings({ propertyId, operation }: { propertyId: 
           {(s.modes.includes('NIGHTLY') || s.modes.includes('WEEKLY')) && <label>Huéspedes máximos (opcional)<input type="number" min="1" max="100" value={s.maxGuests ?? ''} onChange={e => set('maxGuests', e.target.value)} /></label>}
           <label>Depósito de garantía (MXN)<input type="number" min="0" value={s.deposit} onChange={e => set('deposit', e.target.value)} /></label>
           <label>Impuestos (%)<input type="number" min="0" max="50" step="0.01" value={s.taxRate} onChange={e => set('taxRate', e.target.value)} /></label>
+          <div className="wide rules-tools"><button type="button" className="inline-link" onClick={() => { if (!s.rules || confirm('¿Reemplazar las reglas actuales por las de ejemplo?')) set('rules', EXAMPLE_RULES); }}>Usar reglas de ejemplo</button><small className="muted">Después edítalas a tu gusto.</small></div>
           <label className="wide">Reglas de la casa (el interesado las ve antes de reservar)<textarea rows={4} maxLength={2000} value={s.rules || ''} onChange={e => set('rules', e.target.value)} placeholder={"Una regla por línea. Ej.:\nNo fiestas ni reuniones\nNo fumar dentro del inmueble\nNo mascotas\nMáximo 4 personas\nEntrada a partir de las 3 pm, salida a las 12 pm\nLos daños al inmueble o al mobiliario corren por cuenta del huésped"} /></label>
           <label className="wide">Política de cancelación<textarea rows={2} maxLength={1000} value={s.cancellationPolicy || ''} onChange={e => set('cancellationPolicy', e.target.value)} placeholder="Ej.: Cancelación gratuita hasta 7 días antes; después se retiene el anticipo." /></label>
           {s.modes.includes('NIGHTLY') && <div className="wide">

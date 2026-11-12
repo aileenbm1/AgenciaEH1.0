@@ -15,6 +15,7 @@ export const fmtWhen = (d?: string | null) => d ? new Date(String(d).includes('T
 export type ResRow = {
   id: string; kind: 'NIGHTLY' | 'WEEKLY' | 'MONTHLY' | 'SALE'; status: string; checkIn: string | null; checkOut: string | null; months: number | null; weeks: number | null; nights: number | null; guests: number | null;
   paymentType: string | null; subtotal: number; taxes: number; deposit: number; total: number;
+  paid: number; remaining: number; payBy: string | null;
   advanceRequired: number | null; advanceAmount: number | null; advanceMethod: string | null; advancePaidAt: string | null;
   paidAmount: number | null; paidMethod: string | null; paidAt: string | null; paymentNotes: string | null;
   appointmentAt: string | null; appointmentPlace: string | null; guestConfirmedAt: string | null; guestNote: string | null; ownerNote: string | null; createdAt: string;

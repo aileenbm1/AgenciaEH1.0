@@ -51,6 +51,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       ['Properties', 'ShowExactLocation', 'ALTER TABLE Properties ADD COLUMN ShowExactLocation TINYINT(1) NOT NULL DEFAULT 0'],
       ['RentalSettings', 'Modes', 'ALTER TABLE RentalSettings ADD COLUMN Modes VARCHAR(40) NULL, ADD COLUMN WeekPrice DECIMAL(12,2) NULL, ADD COLUMN MonthPrice DECIMAL(12,2) NULL, ADD COLUMN MinWeeks INT NOT NULL DEFAULT 1, ADD COLUMN MaxWeeks INT NULL, ADD COLUMN MinMonths INT NOT NULL DEFAULT 1, ADD COLUMN MaxMonths INT NULL'],
       ['RentalSettings', 'Rules', 'ALTER TABLE RentalSettings ADD COLUMN Rules VARCHAR(2000) NULL'],
+      ['Reservations', 'PayReminderAt', 'ALTER TABLE Reservations ADD COLUMN PayReminderAt DATETIME NULL, ADD COLUMN PayDueReminderAt DATETIME NULL, ADD COLUMN OverdueNoticeAt DATETIME NULL'],
       ['Reservations', 'Weeks', 'ALTER TABLE Reservations ADD COLUMN Weeks INT NULL'],
       ['Leads', 'Source', 'ALTER TABLE Leads ADD COLUMN Source VARCHAR(40) NULL, ADD COLUMN Campaign VARCHAR(80) NULL'],
     ];
@@ -71,6 +72,15 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       await this.getPool().query(`UPDATE RentalSettings SET Modes=Mode, MinMonths=IF(Mode='MONTHLY',MinStay,1), MaxMonths=IF(Mode='MONTHLY',MaxStay,NULL),
         MinStay=IF(Mode='MONTHLY',1,MinStay), MaxStay=IF(Mode='MONTHLY',NULL,MaxStay) WHERE Modes IS NULL`);
     } catch (e: any) { console.error('[Agencia EH] No se pudieron migrar las modalidades de renta:', e?.message); }
+    // Historial de pagos: los anticipos y pagos registrados antes de existir el historial se copian una sola vez.
+    try {
+      await this.getPool().query(`INSERT INTO ReservationPayments(Id,ReservationId,Amount,Method,Kind,Notes,CreatedAt)
+        SELECT UUID(), r.Id, r.AdvanceAmount, IF(r.AdvanceMethod='TRANSFER','TRANSFER','CASH'), 'ADVANCE', 'Anticipo', COALESCE(r.AdvancePaidAt, r.UpdatedAt, r.CreatedAt)
+        FROM Reservations r WHERE r.AdvanceAmount > 0 AND NOT EXISTS (SELECT 1 FROM ReservationPayments x WHERE x.ReservationId=r.Id AND x.Kind='ADVANCE')`);
+      await this.getPool().query(`INSERT INTO ReservationPayments(Id,ReservationId,Amount,Method,Kind,Notes,CreatedAt)
+        SELECT UUID(), r.Id, r.PaidAmount, IF(r.PaidMethod='TRANSFER','TRANSFER','CASH'), 'PAYMENT', 'Pago final', COALESCE(r.PaidAt, r.UpdatedAt, r.CreatedAt)
+        FROM Reservations r WHERE r.PaidAmount > 0 AND NOT EXISTS (SELECT 1 FROM ReservationPayments x WHERE x.ReservationId=r.Id AND x.Kind='PAYMENT')`);
+    } catch (e: any) { if (e?.code !== 'ER_NO_SUCH_TABLE') console.error('[Agencia EH] No se pudo migrar el historial de pagos:', e?.message); }
     // Restricciones CHECK que cambiaron: rol Desarrollador y operación "Venta y renta".
     const checks: [string, string, string, string][] = [
       ['Users', 'CK_Users_Role', 'DEVELOPER', "Role IN ('BUYER','AGENT','AGENCY','DEVELOPER','ADMIN')"],
@@ -100,7 +110,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
    * Así no hace falta importar el esquema a mano en phpMyAdmin.
    */
   private async ensureSchema() {
-    const required = ['Users', 'AgencyProfiles', 'AgentProfiles', 'Properties', 'PropertyImages', 'Leads', 'Favorites', 'Payments', 'SavedSearches', 'CustomFields', 'PropertyCustomValues', 'RentalSettings', 'Reservations', 'ReservationMessages', 'ReservationDocuments', 'BlockedDates', 'Fanpages', 'FanpageVersions', 'FanpageTemplates', 'FanpageEvents', 'SiteSettings'];
+    const required = ['Users', 'AgencyProfiles', 'AgentProfiles', 'Properties', 'PropertyImages', 'Leads', 'Favorites', 'Payments', 'SavedSearches', 'CustomFields', 'PropertyCustomValues', 'RentalSettings', 'Reservations', 'ReservationMessages', 'ReservationDocuments', 'BlockedDates', 'Fanpages', 'FanpageVersions', 'FanpageTemplates', 'FanpageEvents', 'SiteSettings', 'ReservationPayments'];
     try {
       const before = await this.tableNames();
       const missingBefore = required.filter((t) => !before.includes(t));

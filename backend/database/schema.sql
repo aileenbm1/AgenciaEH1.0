@@ -273,6 +273,9 @@ CREATE TABLE IF NOT EXISTS Reservations (
   GuestConfirmedAt DATETIME NULL,
   ReminderSentAt DATETIME NULL,
   CheckinReminderAt DATETIME NULL,
+  PayReminderAt DATETIME NULL,
+  PayDueReminderAt DATETIME NULL,
+  OverdueNoticeAt DATETIME NULL,
   GuestNote VARCHAR(1000) NULL,
   OwnerNote VARCHAR(1000) NULL,
   CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -390,4 +393,23 @@ CREATE TABLE IF NOT EXISTS SiteSettings (
   K VARCHAR(60) NOT NULL,
   V TEXT NULL,
   CONSTRAINT PK_SiteSettings PRIMARY KEY (K)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Historial de pagos de cada reserva (anticipo y abonos). El saldo = Total − suma de pagos vigentes.
+CREATE TABLE IF NOT EXISTS ReservationPayments (
+  Id CHAR(36) NOT NULL,
+  ReservationId CHAR(36) NOT NULL,
+  Amount DECIMAL(12,2) NOT NULL,
+  Method VARCHAR(10) NOT NULL,
+  Kind VARCHAR(10) NOT NULL DEFAULT 'PAYMENT',
+  Notes VARCHAR(500) NULL,
+  CreatedById CHAR(36) NULL,
+  CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  VoidedAt DATETIME NULL,
+  VoidedById CHAR(36) NULL,
+  VoidReason VARCHAR(300) NULL,
+  CONSTRAINT PK_ReservationPayments PRIMARY KEY (Id),
+  CONSTRAINT FK_ResPayments_Reservations FOREIGN KEY (ReservationId) REFERENCES Reservations(Id) ON DELETE CASCADE,
+  CONSTRAINT CK_ResPayments_Method CHECK (Method IN ('CASH','TRANSFER')),
+  INDEX IX_ResPayments (ReservationId, CreatedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

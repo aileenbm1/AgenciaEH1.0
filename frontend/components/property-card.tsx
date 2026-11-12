@@ -2,15 +2,16 @@ import Link from "next/link";
 import { BedDouble, Bath, Ruler, MapPin } from "lucide-react";
 import { Property, mxn } from "@/lib/data";
 import ShareButtons from "@/components/share-buttons";
+import CardCarousel from "@/components/card-carousel";
 
 export function PropertyCard({ p }: { p: Property }) {
   const isRent = p.operation === "Renta";
   const both = p.operation === "Venta y renta";
   return <article className="property-card">
-    <Link href={`/propiedades/${p.slug}`} className="property-photo" style={{ backgroundImage: `url(${p.image})` }} aria-label={p.title}>
+    <CardCarousel images={p.images?.length ? p.images : [p.image]} href={`/propiedades/${p.slug}`} title={p.title}>
       <span className={`pill${isRent ? " rent" : both ? " both" : ""}`}>{p.operation}</span>
       {p.tag && <span className="photo-tag">{p.tag}</span>}
-    </Link>
+    </CardCarousel>
     <ShareButtons compact path={`/propiedades/${p.slug}`} title={p.title} />
     <div className="property-body">
       <div className="price">{mxn(p.price)} <small>{isRent ? "/ mes" : "MXN"}</small></div>

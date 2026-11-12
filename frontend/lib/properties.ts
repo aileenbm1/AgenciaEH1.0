@@ -24,6 +24,7 @@ export function toCard(p: ApiProperty): Property {
     price: Number(p.price), rentPrice: p.rentPrice ? Number(p.rentPrice) : null, operation: OPERATION_LABEL[p.operation] || 'Venta',
     beds: p.bedrooms || 0, baths: p.bathrooms || 0, area: Number(p.builtArea || p.landArea || 0), tag,
     image: p.images?.[0]?.url || '/placeholder-property.svg',
+    images: (p.images || []).slice().sort((a, b) => a.position - b.position).map(i => i.url).slice(0, 8),
   };
 }
 

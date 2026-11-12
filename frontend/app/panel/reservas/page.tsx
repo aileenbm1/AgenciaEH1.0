@@ -44,7 +44,7 @@ function Reservations({ user }: { user: SessionUser }) {
             <p className="meta">{resWhen(r)}</p>
             <p className="meta">{as === 'guest' ? `Anunciante: ${r.owner.fullName}` : `Interesado: ${r.guest.fullName}`}{r.appointmentAt ? ' · cita agendada' : ''}</p>
           </div>
-          <strong>{mxn(r.total)}</strong>
+          <div className="res-money"><strong>{mxn(r.total)}</strong>{r.paid > 0 && r.remaining > 0 && <small>Pagado {mxn(r.paid)} · falta {mxn(r.remaining)}</small>}{r.status === 'COMPLETED' && <small>Liquidado ✓</small>}</div>
         </Link>; })}</div>}
   </main>;
 }

@@ -16,6 +16,8 @@ const todayIso = () => iso(new Date(Date.UTC(new Date().getFullYear(), new Date(
 const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const UNIT_LABEL: Record<Unit, string> = { NIGHTLY: 'Por noche', WEEKLY: 'Por semana', MONTHLY: 'Por mes' };
 const range = (a: number, b: number) => Array.from({ length: Math.max(0, b - a + 1) }, (_, i) => a + i);
+const addDay = (d: string, n: number) => { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+const tomorrowIso = () => addDay(todayIso(), 1);
 const fmt = (d: string) => new Date(d + 'T12:00:00Z').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
 /** Calendario mensual: marca días ocupados y permite elegir entrada/salida. */
@@ -144,6 +146,16 @@ export default function ReservationWidget({ propertyId, slug, operation }: { pro
     </div>}
     {(ready || tab === 'SALE') && <label>Mensaje para el anunciante (opcional)<textarea rows={2} maxLength={1000} value={note} onChange={e => setNote(e.target.value)} /></label>}
     {s?.rules && tab === 'RENT' && <div className="house-rules"><b>Reglas de la casa</b><ul>{s.rules.split(/\n+/).map(x => x.trim()).filter(Boolean).map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
+    {(ready || tab === 'SALE') && <div className="reserve-terms">
+      <b>Cancelación y pago</b>
+      <ul>
+        {from && from <= tomorrowIso() && tab === 'RENT'
+          ? <li className="warn">Estás reservando con un día o menos de anticipación: <b>esta reserva no se podrá cancelar</b>.</li>
+          : <li>Puedes cancelar dentro de las <b>24 horas</b> siguientes a tu solicitud, siempre antes del día de entrada. Si reservas con un día o menos de anticipación, no hay cancelación.</li>}
+        {tab === 'RENT' && kind !== 'MONTHLY' && <li>Debes <b>liquidar el total a más tardar un día antes</b> de tu llegada{from ? ` (el ${fmt(addDay(from, -1))})` : ''}. El día de entrada ya no se aceptan pagos.</li>}
+        <li>Puedes pagar en abonos, por <b>transferencia o en efectivo</b>; en tu reserva verás cuánto llevas pagado y cuánto falta.</li>
+      </ul>
+    </div>}
     {s?.cancellationPolicy && tab === 'RENT' && <details><summary>Política de cancelación</summary><p>{s.cancellationPolicy}</p></details>}
     {error && <div className="notice" role="alert">{error}</div>}
     {logged ? <button type="button" className="button button-navy full" disabled={busy || !quote || quote.available === false} onClick={submit}>{busy ? 'Enviando…' : tab === 'SALE' ? 'Solicitar apartado' : 'Solicitar reserva'}</button>

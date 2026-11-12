@@ -15,6 +15,11 @@ const ACTIVE = ['PENDING', 'APPROVED', 'DEPOSIT_PAID'];
 const BLOCKING = ['APPROVED', 'DEPOSIT_PAID', 'COMPLETED'];
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const today = () => new Date().toISOString().slice(0, 10);
+/** Fecha de hoy en México (las reglas de cancelación y pago se cuentan por día local). */
+const todayMx = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const dayMx = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+/** Estancias cortas: se liquidan a más tardar un día antes de la entrada. */
+const SHORT = ['NIGHTLY', 'WEEKLY'];
 const addDays = (d: string, n: number) => { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 const addMonths = (d: string, n: number) => { const x = new Date(d + 'T00:00:00Z'); const day = x.getUTCDate(); x.setUTCMonth(x.getUTCMonth() + n); if (x.getUTCDate() !== day) x.setUTCDate(0); return x.toISOString().slice(0, 10); };
 const nightsBetween = (a: string, b: string) => Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86400000);
@@ -25,6 +30,30 @@ const fmtDay = (d: string) => new Date(d + 'T12:00:00Z').toLocaleDateString('es-
 const fmtWhen = (d: Date) => d.toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short', timeZone: 'America/Mexico_City' });
 const KIND_LABEL: Record<Kind, string> = { NIGHTLY: 'reserva por noche', WEEKLY: 'renta por semana', MONTHLY: 'renta mensual', SALE: 'apartado de compra' };
 
+/**
+ * Reglas de cancelación del interesado:
+ * - Puede cancelar dentro de las 24 h siguientes a su solicitud, siempre antes del día de entrada.
+ * - Si reservó con un día o menos de anticipación (o para el mismo día), no hay cancelación.
+ * El anunciante y el administrador pueden cancelar siempre.
+ */
+export function cancelRule(r: { CreatedAt: any; CheckIn: any; Status: string }) {
+  const created = new Date(r.CreatedAt);
+  const until = new Date(created.getTime() + 24 * 3600000);
+  const checkIn = dateOnly(r.CheckIn);
+  const bookedDay = dayMx(created);
+  if (checkIn && checkIn <= addDays(bookedDay, 1)) return { allowed: false, until: null as string | null, reason: 'Reservaste con un día o menos de anticipación: esta reserva no se puede cancelar.' };
+  if (!['PENDING', 'APPROVED', 'DEPOSIT_PAID'].includes(r.Status)) return { allowed: false, until: null, reason: 'Esta reserva ya no se puede cancelar.' };
+  if (checkIn && todayMx() >= checkIn) return { allowed: false, until: null, reason: 'Ya es el día de entrada: la reserva no se puede cancelar.' };
+  if (Date.now() > until.getTime()) return { allowed: false, until: null, reason: 'Pasaron las 24 horas para cancelar. Si necesitas cancelar, escribe al anunciante en el chat.' };
+  return { allowed: true, until: until.toISOString(), reason: '' };
+}
+
+/** Fecha límite para liquidar: un día antes de la entrada en estancias por noche o semana. */
+export function payBy(r: { Kind: string; CheckIn: any }) {
+  const checkIn = dateOnly(r.CheckIn);
+  return SHORT.includes(r.Kind) && checkIn ? addDays(checkIn, -1) : null;
+}
+
 @Injectable()
 export class ReservationsService implements OnModuleInit, OnModuleDestroy {
   private timer?: NodeJS.Timeout;
@@ -34,6 +63,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
   onModuleInit() { this.timer = setInterval(() => this.reminders().catch(() => undefined), 30 * 60000); this.timer.unref?.(); setTimeout(() => this.reminders().catch(() => undefined), 60000).unref?.(); }
   onModuleDestroy() { if (this.timer) clearInterval(this.timer); }
   async reminders() {
+    await this.paymentReminders().catch((e) => console.error('[Agencia EH] Recordatorios de pago:', e?.message));
     const appts = await this.db.query<any>(`SELECT r.Id, r.AppointmentAt, r.AppointmentPlace, p.Title, g.Email AS GuestEmail, o.Email AS OwnerEmail FROM Reservations r
       JOIN Properties p ON p.Id=r.PropertyId JOIN Users g ON g.Id=r.GuestId JOIN Users o ON o.Id=r.OwnerId
       WHERE r.Status IN ('APPROVED','DEPOSIT_PAID') AND r.ReminderSentAt IS NULL AND r.AppointmentAt BETWEEN UTC_TIMESTAMP() AND UTC_TIMESTAMP() + INTERVAL 24 HOUR`);
@@ -47,6 +77,32 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     for (const c of checkins) {
       this.mail.notify(c.Email, `Tu llegada es mañana · ${c.Title}`, 'Tu llegada es mañana', `Te esperamos en "${c.Title}" el ${fmtDay(dateOnly(c.CheckIn)!)}. Revisa los detalles y escribe al anfitrión si lo necesitas.`, 'Ver reserva', `/panel/reservas/${c.Id}`);
       await this.db.execute('UPDATE Reservations SET CheckinReminderAt=UTC_TIMESTAMP() WHERE Id=?', [c.Id]);
+    }
+  }
+
+  /** Recordatorios de liquidación: 3 días antes de la fecha límite, el día límite, y aviso al anunciante si venció. */
+  async paymentReminders() {
+    const rows = await this.db.query<any>(`SELECT r.Id, r.Kind, r.CheckIn, r.Total, r.PayReminderAt, r.PayDueReminderAt, r.OverdueNoticeAt, p.Title, g.Email AS GuestEmail, o.Email AS OwnerEmail,
+      (SELECT COALESCE(SUM(x.Amount),0) FROM ReservationPayments x WHERE x.ReservationId=r.Id AND x.VoidedAt IS NULL) AS Paid
+      FROM Reservations r JOIN Properties p ON p.Id=r.PropertyId JOIN Users g ON g.Id=r.GuestId JOIN Users o ON o.Id=r.OwnerId
+      WHERE r.Kind IN ('NIGHTLY','WEEKLY') AND r.Status IN ('APPROVED','DEPOSIT_PAID') AND r.CheckIn >= UTC_DATE() - INTERVAL 2 DAY`);
+    const t = todayMx();
+    for (const r of rows) {
+      const due = payBy(r)!, left = money(Number(r.Total) - Number(r.Paid));
+      if (left <= 0) continue;
+      const path = `/panel/reservas/${r.Id}`;
+      if (!r.PayReminderAt && t >= addDays(due, -3) && t < due) {
+        this.mail.notify(r.GuestEmail, `Recordatorio de pago · ${r.Title}`, 'Se acerca tu fecha de pago', `Te faltan ${fmtMoney(left)} para liquidar tu reserva de "${r.Title}". La fecha límite es el ${fmtDay(due)} (un día antes de tu llegada). El pago es por transferencia o en efectivo.`, 'Ver mi reserva', path);
+        await this.db.execute('UPDATE Reservations SET PayReminderAt=UTC_TIMESTAMP() WHERE Id=?', [r.Id]);
+      }
+      if (!r.PayDueReminderAt && t === due) {
+        this.mail.notify(r.GuestEmail, `Hoy vence tu pago · ${r.Title}`, 'Hoy es el último día para liquidar', `Hoy es la fecha límite para pagar los ${fmtMoney(left)} que faltan de tu reserva de "${r.Title}". Mañana ya no se puede liquidar.`, 'Ver mi reserva', path);
+        await this.db.execute('UPDATE Reservations SET PayDueReminderAt=UTC_TIMESTAMP() WHERE Id=?', [r.Id]);
+      }
+      if (!r.OverdueNoticeAt && t > due) {
+        this.mail.notify(r.OwnerEmail, `Pago vencido · ${r.Title}`, 'Una reserva no se liquidó a tiempo', `La reserva de "${r.Title}" del ${fmtDay(dateOnly(r.CheckIn)!)} tiene un saldo de ${fmtMoney(left)} y venció su fecha de pago. Decide si la cancelas para liberar las fechas.`, 'Revisar reserva', path, 'Recibes este aviso porque eres el anunciante de esta propiedad.');
+        await this.db.execute('UPDATE Reservations SET OverdueNoticeAt=UTC_TIMESTAMP() WHERE Id=?', [r.Id]);
+      }
     }
   }
 
@@ -265,6 +321,8 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     return {
       id: r.Id, kind: r.Kind, status: r.Status, checkIn: dateOnly(r.CheckIn), checkOut: dateOnly(r.CheckOut), months: r.Months, weeks: r.Weeks ?? null, nights: r.Nights, guests: r.Guests,
       paymentType: r.PaymentType, subtotal: Number(r.Subtotal), taxes: Number(r.Taxes), deposit: Number(r.Deposit), total: Number(r.Total),
+      // Seguimiento de pagos: total, lo pagado y lo que falta.
+      paid: money(Number(r.Paid || 0)), remaining: Math.max(0, money(Number(r.Total) - Number(r.Paid || 0))), payBy: payBy(r),
       advanceRequired: r.AdvanceRequired != null ? Number(r.AdvanceRequired) : null, advanceAmount: r.AdvanceAmount != null ? Number(r.AdvanceAmount) : null, advanceMethod: r.AdvanceMethod, advancePaidAt: r.AdvancePaidAt,
       paidAmount: r.PaidAmount != null ? Number(r.PaidAmount) : null, paidMethod: r.PaidMethod, paidAt: r.PaidAt, paymentNotes: r.PaymentNotes,
       appointmentAt: r.AppointmentAt, appointmentPlace: r.AppointmentPlace, guestConfirmedAt: r.GuestConfirmedAt, guestNote: r.GuestNote, ownerNote: r.OwnerNote,
@@ -274,6 +332,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     };
   }
   private SELECT = `SELECT r.*, p.Title, p.Slug, p.Municipality, g.FullName AS GuestName, o.FullName AS OwnerName,
+    (SELECT COALESCE(SUM(x.Amount),0) FROM ReservationPayments x WHERE x.ReservationId=r.Id AND x.VoidedAt IS NULL) AS Paid,
     (SELECT i.Url FROM PropertyImages i WHERE i.PropertyId=p.Id ORDER BY i.Position LIMIT 1) AS Cover
     FROM Reservations r JOIN Properties p ON p.Id=r.PropertyId JOIN Users g ON g.Id=r.GuestId JOIN Users o ON o.Id=r.OwnerId`;
 
@@ -304,10 +363,15 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     const [contact] = await this.db.query<any>(`SELECT g.Email AS GuestEmail, g.Phone AS GuestPhone, o.Phone AS OwnerPhone, o.Email AS OwnerEmail FROM Users g JOIN Users o ON o.Id=? WHERE g.Id=?`, [r.OwnerId, r.GuestId]);
     const [s] = await this.db.query<any>('SELECT CancellationPolicy, Rules FROM RentalSettings WHERE PropertyId=?', [r.PropertyId]);
     const base = this.row(r);
+    const payments = await this.db.query<any>('SELECT x.*, u.FullName FROM ReservationPayments x LEFT JOIN Users u ON u.Id=x.CreatedById WHERE x.ReservationId=? ORDER BY x.CreatedAt, x.Id', [id]);
+    const rule = cancelRule(r);
     // Trato directo: el anunciante ve los datos del interesado; el interesado ve los del anunciante al aprobarse.
     const approved = ['APPROVED', 'DEPOSIT_PAID', 'COMPLETED'].includes(r.Status);
     return {
-      ...base, viewer: { isGuest, isManager }, cancellationPolicy: s?.CancellationPolicy || null, rules: s?.Rules || null,
+      ...base, viewer: { isGuest, isManager }, cancel: { guestCanCancel: rule.allowed, until: rule.until, reason: rule.reason },
+      payDue: base.payBy ? { date: base.payBy, overdue: base.remaining > 0 && todayMx() > base.payBy, today: todayMx() === base.payBy } : null,
+      payments: payments.map((x: any) => ({ id: x.Id, amount: Number(x.Amount), method: x.Method, kind: x.Kind, notes: x.Notes, createdAt: x.CreatedAt, by: x.FullName || null, voided: !!x.VoidedAt, voidReason: x.VoidReason })),
+      cancellationPolicy: s?.CancellationPolicy || null, rules: s?.Rules || null,
       guest: { ...base.guest, ...(isManager ? { email: contact?.GuestEmail, phone: contact?.GuestPhone } : {}) },
       owner: { ...base.owner, ...(isGuest && approved ? { phone: contact?.OwnerPhone, email: contact?.OwnerEmail } : {}) },
       messages: messages.map((m: any) => ({ id: m.Id, userId: m.UserId, fullName: m.FullName, body: m.Body, createdAt: m.CreatedAt, mine: m.UserId === userId })),
@@ -353,10 +417,11 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       }
       case 'cancel': {
         need(['PENDING', 'APPROVED', 'DEPOSIT_PAID'].includes(r.Status), 'Esta reserva ya no se puede cancelar.');
-        if (isGuest && !isManager) need(r.Status !== 'DEPOSIT_PAID', 'Tu reserva ya tiene anticipo registrado: para cancelarla escribe al anunciante en el chat.');
+        if (isGuest && !isManager) { const rule = cancelRule(r); need(rule.allowed, rule.reason); }
         await this.db.execute("UPDATE Reservations SET Status='CANCELLED', OwnerNote=COALESCE(?, OwnerNote), UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [String(d.note || '').slice(0, 1000) || null, id]);
         if (r.Status === 'DEPOSIT_PAID' && (r.Kind === 'MONTHLY' || r.Kind === 'SALE')) await this.db.execute("UPDATE Properties SET Availability='AVAILABLE', UpdatedAt=UTC_TIMESTAMP() WHERE Id=? AND Availability='RESERVED'", [r.PropertyId]);
-        this.mail.notify(isGuest ? ownerEmail : guestEmail, `Reserva cancelada · ${title}`, 'La reserva fue cancelada', `La reserva de "${title}" fue cancelada por ${isGuest ? 'el interesado' : 'el anunciante'}.`, 'Ver reserva', path);
+        const paidNow = await this.paidSum(id);
+        this.mail.notify(isGuest ? ownerEmail : guestEmail, `Reserva cancelada · ${title}`, 'La reserva fue cancelada', `La reserva de "${title}" fue cancelada por ${isGuest ? 'el interesado' : 'el anunciante'}.${paidNow > 0 ? ` Hay ${fmtMoney(paidNow)} pagados: acuerden la devolución según la política de cancelación.` : ''}`, 'Ver reserva', path);
         break;
       }
       case 'schedule': {
@@ -374,33 +439,57 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         this.mail.notify(ownerEmail, `Cita confirmada · ${title}`, 'El interesado confirmó la cita', `La cita para "${title}" quedó confirmada.`, 'Ver reserva', path);
         break;
       }
-      case 'deposit': {
-        manager(); need(r.Status === 'APPROVED', 'El anticipo se registra en reservas aprobadas.');
-        const amount = money2(d.amount), m = method(d.method);
-        // El anticipo nunca puede ser mayor al total de la reserva.
-        need(amount <= Number(r.Total) + 0.005, `El anticipo no puede ser mayor al total (${fmtMoney(Number(r.Total))}).`);
-        if (r.AdvanceRequired != null) need(amount >= Number(r.AdvanceRequired) - 0.005, `El anticipo acordado es de ${fmtMoney(Number(r.AdvanceRequired))}.`);
-        await this.db.execute("UPDATE Reservations SET Status='DEPOSIT_PAID', AdvanceAmount=?, AdvanceMethod=?, AdvancePaidAt=UTC_TIMESTAMP(), PaymentNotes=COALESCE(?,PaymentNotes), UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [amount, m, String(d.notes || '').slice(0, 500) || null, id]);
-        // El anticipo deja la propiedad "Apartada" (renta mensual y compra); las estancias cortas solo ocupan sus fechas.
-        if (r.Kind === 'MONTHLY' || r.Kind === 'SALE') await this.db.execute("UPDATE Properties SET Availability='RESERVED', UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [r.PropertyId]);
-        this.mail.notify(guestEmail, `Anticipo registrado · ${title}`, 'Tu apartado quedó registrado', `Se registró tu anticipo de ${fmtMoney(amount)} (${m === 'CASH' ? 'efectivo' : 'transferencia'}) para "${title}". La propiedad queda apartada para ti.`, 'Ver reserva', path);
+      case 'deposit':
+      case 'payment':
+      case 'complete': {
+        manager(); need(['APPROVED', 'DEPOSIT_PAID'].includes(r.Status), 'Los pagos se registran en reservas aprobadas.');
+        const paid = await this.paidSum(id), left = money(Number(r.Total) - paid);
+        need(left > 0, 'Esta reserva ya está pagada por completo.');
+        // Estancias cortas: no se liquida el mismo día de la entrada (solo el administrador puede registrar un pago tardío).
+        const due = payBy(r);
+        if (due && role !== 'ADMIN') need(todayMx() < dateOnly(r.CheckIn)!, `La fecha límite para pagar era el ${fmtDay(due)}. Ya no se pueden registrar pagos; cancela la reserva o pide al administrador que intervenga.`);
+        // "complete" registra exactamente el saldo; "deposit" y "payment" registran el monto indicado.
+        const amount = act === 'complete' ? left : money2(d.amount), m = method(d.method);
+        need(amount <= left + 0.005, `El pago no puede ser mayor a lo que falta: ${fmtMoney(left)} (total ${fmtMoney(Number(r.Total))}, pagado ${fmtMoney(paid)}).`);
+        const first = paid <= 0;
+        if (first && r.AdvanceRequired != null && amount < left) need(amount >= Number(r.AdvanceRequired) - 0.005, `El anticipo acordado es de ${fmtMoney(Number(r.AdvanceRequired))}.`);
+        await this.db.execute('INSERT INTO ReservationPayments(Id,ReservationId,Amount,Method,Kind,Notes,CreatedById) VALUES(?,?,?,?,?,?,?)',
+          [randomUUID(), id, amount, m, first ? 'ADVANCE' : 'PAYMENT', String(d.notes || '').slice(0, 500) || null, userId]);
+        const newPaid = money(paid + amount), newLeft = Math.max(0, money(Number(r.Total) - newPaid));
+        if (first) await this.db.execute("UPDATE Reservations SET AdvanceAmount=?, AdvanceMethod=?, AdvancePaidAt=UTC_TIMESTAMP() WHERE Id=?", [amount, m, id]);
+        const how = m === 'CASH' ? 'efectivo' : 'transferencia';
+        if (newLeft <= 0) {
+          await this.db.execute("UPDATE Reservations SET Status='COMPLETED', PaidAmount=?, PaidMethod=?, PaidAt=UTC_TIMESTAMP(), UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [newPaid, m, id]);
+          if (r.Kind === 'MONTHLY') await this.db.execute("UPDATE Properties SET Availability='RENTED', UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [r.PropertyId]);
+          if (r.Kind === 'SALE') await this.db.execute("UPDATE Properties SET Availability='SOLD', UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [r.PropertyId]);
+          this.mail.notify(guestEmail, `Pago completo · ${title}`, '¡Listo! Tu reserva quedó pagada', `Se registró tu pago de ${fmtMoney(amount)} (${how}) para "${title}". Ya cubriste el total de ${fmtMoney(Number(r.Total))}. Gracias por usar Agencia EH.`, 'Ver reserva', path);
+        } else {
+          await this.db.execute("UPDATE Reservations SET Status='DEPOSIT_PAID', UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [id]);
+          // El primer pago deja la propiedad "Apartada" (renta mensual y compra); las estancias cortas solo ocupan sus fechas.
+          if (first && (r.Kind === 'MONTHLY' || r.Kind === 'SALE')) await this.db.execute("UPDATE Properties SET Availability='RESERVED', UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [r.PropertyId]);
+          this.mail.notify(guestEmail, `${first ? 'Anticipo' : 'Abono'} registrado · ${title}`, first ? 'Tu apartado quedó registrado' : 'Registramos tu abono',
+            `Se registró tu ${first ? 'anticipo' : 'abono'} de ${fmtMoney(amount)} (${how}) para "${title}". Llevas ${fmtMoney(newPaid)} de ${fmtMoney(Number(r.Total))}; te faltan ${fmtMoney(newLeft)}.${due ? ` Liquida a más tardar el ${fmtDay(due)}.` : ''}`, 'Ver reserva', path);
+        }
         break;
       }
-      case 'complete': {
-        manager(); need(['APPROVED', 'DEPOSIT_PAID'].includes(r.Status), 'Esta reserva no está lista para cerrarse.');
-        // Anticipo + pago final deben sumar exactamente el total de la reserva.
-        const remaining = money(Number(r.Total) - Number(r.AdvanceAmount || 0));
-        const amount = remaining <= 0 ? 0 : money2(d.amount), m = remaining <= 0 ? (r.AdvanceMethod || 'CASH') : method(d.method);
-        need(Math.abs(amount - Math.max(0, remaining)) < 0.01, `El pago final debe ser de ${fmtMoney(Math.max(0, remaining))}: total ${fmtMoney(Number(r.Total))} menos anticipo de ${fmtMoney(Number(r.AdvanceAmount || 0))}.`);
-        await this.db.execute("UPDATE Reservations SET Status='COMPLETED', PaidAmount=?, PaidMethod=?, PaidAt=UTC_TIMESTAMP(), PaymentNotes=COALESCE(?,PaymentNotes), UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [amount, m, String(d.notes || '').slice(0, 500) || null, id]);
-        if (r.Kind === 'MONTHLY') await this.db.execute("UPDATE Properties SET Availability='RENTED', UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [r.PropertyId]);
-        if (r.Kind === 'SALE') await this.db.execute("UPDATE Properties SET Availability='SOLD', UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [r.PropertyId]);
-        this.mail.notify(guestEmail, `Pago registrado · ${title}`, '¡Listo! Tu operación quedó cerrada', `Se registró tu pago de ${fmtMoney(amount)} para "${title}". Gracias por usar Agencia EH.`, 'Ver reserva', path);
+      case 'void_payment': {
+        // Corregir un pago registrado por error (solo administrador; queda en el historial como anulado).
+        need(role === 'ADMIN', 'Solo el administrador puede anular un pago.');
+        need(r.Status !== 'COMPLETED', 'La reserva ya está cerrada; no se pueden anular sus pagos.');
+        const [x] = await this.db.query<any>('SELECT Id FROM ReservationPayments WHERE Id=? AND ReservationId=? AND VoidedAt IS NULL', [String(d.paymentId || ''), id]);
+        need(!!x, 'Pago no encontrado.');
+        await this.db.execute('UPDATE ReservationPayments SET VoidedAt=UTC_TIMESTAMP(), VoidedById=?, VoidReason=? WHERE Id=?', [userId, String(d.reason || '').slice(0, 300) || null, x.Id]);
+        if ((await this.paidSum(id)) <= 0) await this.db.execute("UPDATE Reservations SET Status='APPROVED', AdvanceAmount=NULL, AdvanceMethod=NULL, AdvancePaidAt=NULL, UpdatedAt=UTC_TIMESTAMP() WHERE Id=? AND Status='DEPOSIT_PAID'", [id]);
         break;
       }
       default: throw new BadRequestException('Acción no válida.');
     }
     return this.detail(userId, role, id);
+  }
+
+  private async paidSum(id: string) {
+    const [x] = await this.db.query<any>('SELECT COALESCE(SUM(Amount),0) AS n FROM ReservationPayments WHERE ReservationId=? AND VoidedAt IS NULL', [id]);
+    return money(Number(x?.n || 0));
   }
 
   // ───────────── Chat y documentos ─────────────

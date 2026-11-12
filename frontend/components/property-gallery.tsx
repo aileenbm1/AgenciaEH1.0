@@ -1,11 +1,13 @@
 "use client";
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ApiImage } from '@/lib/properties';
 
 /** Galería de la ficha: foto grande + miniaturas con etiqueta y número de posición. */
 export default function PropertyGallery({ images, title }: { images: ApiImage[]; title: string }) {
   const photos = images.length ? images : [{ url: '/placeholder-property.svg', label: null, position: 0 }];
   const [i, setI] = useState(0);
+  // ?foto=N: abre la foto que se tocó en el catálogo.
+  useEffect(() => { const n = Number(new URLSearchParams(window.location.search).get('foto')); if (n >= 1 && n <= photos.length) setI(n - 1); }, [photos.length]);
   const cur = photos[i];
   return <div className="gallery">
     <div className="detail-image" style={{ backgroundImage: `url(${cur.url})` }} role="img" aria-label={cur.label || title}>

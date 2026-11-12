@@ -87,7 +87,9 @@ Genera, ya compilados, `deploy/agencia-eh-sitio-unico.zip` (sitio y API en un so
 - Todo el trato es en línea; **solo el pago es en persona** y se registra en la plataforma.
 - Por propiedad (Mis propiedades → "Reservas y calendario"): una o varias modalidades a la vez — **por noche** (tipo Airbnb, con temporadas), **por semana** y **por mes** — cada una con su precio, mínimo y máximo; huéspedes, depósito, impuestos, política de cancelación, apartado de compra y **fechas bloqueadas**. El interesado elige la modalidad en la ficha.
 - Ficha: calendario con días ocupados, cotización al momento y solicitud (requiere cuenta). Sin dobles reservas: al aprobar se rechazan las solicitudes que se cruzan.
-- `/panel/reservas`: aprobar (con anticipo opcional), agendar cita de pago, el interesado la confirma, **anticipo → "Apartada"**, pago → cerrada (rentada/vendida). Chat y documentos privados (PDF/JPG/PNG) por reserva; correos en cada paso y recordatorios. El admin puede intervenir en cualquiera.
+- `/panel/reservas`: aprobar (con anticipo opcional), agendar cita de pago, el interesado la confirma. **Pagos en abonos** con historial: se ve el total, lo pagado y lo que falta; el primer pago deja la reserva "Apartada" y al cubrir el total se cierra (rentada/vendida). Ningún pago puede pasar del saldo; el admin puede anular un pago capturado por error (queda en el historial).
+- **Cancelación del interesado:** dentro de las 24 h siguientes a su solicitud y antes del día de entrada; si reservó con un día o menos de anticipación, no puede cancelar. El anunciante y el admin pueden cancelar siempre.
+- **Liquidación (noche y semana):** a más tardar un día antes de la entrada; el día de entrada solo el admin puede registrar un pago. Recordatorios por correo 3 días antes y el día límite, y aviso al anunciante si vence. Chat y documentos privados (PDF/JPG/PNG) por reserva; correos en cada paso y recordatorios. El admin puede intervenir en cualquiera.
 - API: `/api/v1/reservations` (calendar, quote, settings, blocks, mensajes, documentos).
 
 ## Perfiles y estadísticas (Fase 4)
