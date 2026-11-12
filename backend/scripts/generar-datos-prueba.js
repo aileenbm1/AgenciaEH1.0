@@ -91,11 +91,11 @@ INSERT IGNORE INTO SavedSearches(Id,UserId,Name,Query,Alerts) VALUES(${q(id(401)
 ${[U.agencia, U.agente, U.asesor, U.desarrolladora].map((u, k) => `INSERT IGNORE INTO Payments(Id,UserId,Plan,Amount,Method,Reference,PaidAt,PeriodStart,PeriodEnd,Notes,RecordedById)
  SELECT ${q(id(501 + k))},${q(u)},'Anual',4800,'TRANSFER','SPEI DEMO-00${k + 1}',UTC_DATE(),UTC_DATE(),UTC_DATE() + INTERVAL 364 DAY,'Membresía de prueba',@admin FROM DUAL WHERE @admin IS NOT NULL;`).join('\n')}
 
--- Reservas en línea: el departamento se renta por noche, semana o mes; la casa de Irapuato por mes.
+-- Reservas en línea: el departamento y la casa de Irapuato se rentan por noche, semana o mes.
 INSERT IGNORE INTO RentalSettings(PropertyId,Enabled,Mode,Modes,NightPrice,WeekPrice,MonthPrice,MinStay,MaxStay,MinWeeks,MaxWeeks,MinMonths,MaxMonths,MaxGuests,Deposit,TaxRate,CancellationPolicy,Rules,Seasons,SaleRequests)
  VALUES(${q(P(2))},1,'MONTHLY','NIGHTLY,WEEKLY,MONTHLY',1200,7000,NULL,1,14,1,8,1,12,4,2000,0,'Cancelación sin costo dentro de las 24 horas siguientes a la reserva y antes del día de entrada.','Entrada a partir de las 3:00 pm y salida a más tardar a las 12:00 pm.\\nNo se permiten fiestas ni eventos.\\nProhibido fumar dentro del inmueble.\\nNo se admiten mascotas.\\nHorario de silencio de 10:00 pm a 8:00 am.\\nLos daños al inmueble o al mobiliario corren por cuenta del huésped.\\nEl pago total se liquida a más tardar un día antes de la llegada, por transferencia o en efectivo.','[]',1);
-INSERT IGNORE INTO RentalSettings(PropertyId,Enabled,Mode,Modes,MinStay,MinWeeks,MinMonths,MaxMonths,Deposit,TaxRate,Rules,Seasons,SaleRequests)
- VALUES(${q(P(7))},1,'MONTHLY','MONTHLY',1,1,6,12,12000,0,'Contrato mínimo de 6 meses.\\nNo se admiten mascotas grandes.\\nLos daños al inmueble corren por cuenta del inquilino.','[]',1);
+INSERT IGNORE INTO RentalSettings(PropertyId,Enabled,Mode,Modes,NightPrice,WeekPrice,MinStay,MaxStay,MinWeeks,MaxWeeks,MinMonths,MaxMonths,MaxGuests,Deposit,TaxRate,Rules,Seasons,SaleRequests)
+ VALUES(${q(P(7))},1,'MONTHLY','NIGHTLY,WEEKLY,MONTHLY',900,5000,1,30,1,8,1,12,6,3000,0,'Entrada a partir de las 3:00 pm y salida a más tardar a las 12:00 pm.\\nNo se admiten mascotas grandes.\\nNo se permiten fiestas.\\nLos daños al inmueble corren por cuenta del huésped.','[]',1);
 `;
 fs.writeFileSync(process.argv[3], sql);
 const all = [...Object.values(U)].map(q).join(',');
