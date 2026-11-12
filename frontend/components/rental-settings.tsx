@@ -4,7 +4,7 @@ import { authJson } from '@/lib/auth';
 
 type Season = { name?: string; from: string; to: string; price: number | string };
 type Unit = 'NIGHTLY' | 'WEEKLY' | 'MONTHLY';
-type Settings = { enabled: boolean; modes: Unit[]; nightPrice: number | null; weekPrice: number | string | null; monthPrice: number | string | null; minStay: number; maxStay: number | null; minWeeks: number; maxWeeks: number | null; minMonths: number; maxMonths: number | null; maxGuests: number | null; deposit: number; taxRate: number; cancellationPolicy: string | null; rules: string | null; seasons: Season[]; saleRequests: boolean; monthlyRent: number | null };
+type Settings = { enabled: boolean; modes: Unit[]; nightPrice: number | null; weekPrice: number | string | null; monthPrice: number | string | null; minStay: number; maxStay: number | null; minWeeks: number; maxWeeks: number | null; minMonths: number; maxMonths: number | null; maxGuests: number | string | null; maxGuestsIsDefault?: boolean; deposit: number; taxRate: number; cancellationPolicy: string | null; rules: string | null; seasons: Season[]; saleRequests: boolean; monthlyRent: number | null };
 type Range = { id?: string; from: string; to: string; type: 'RESERVED' | 'BLOCKED'; reason?: string | null };
 
 const EXAMPLE_RULES = [
@@ -82,7 +82,8 @@ export default function RentalSettings({ propertyId, operation }: { propertyId: 
               </div>;
             })}
           </div>
-          {(s.modes.includes('NIGHTLY') || s.modes.includes('WEEKLY')) && <label>Huéspedes máximos (opcional)<input type="number" min="1" max="100" value={s.maxGuests ?? ''} onChange={e => set('maxGuests', e.target.value)} /></label>}
+          <label>Huéspedes máximos<input type="number" min="1" max="100" required value={s.maxGuests ?? ''} onChange={e => set('maxGuests', e.target.value)} />
+            <small className="muted">{s.maxGuestsIsDefault ? 'Sugerido: 2 por recámara. Ajústalo y guarda.' : 'Nadie podrá reservar para más personas.'}</small></label>
           <label>Depósito de garantía (MXN)<input type="number" min="0" value={s.deposit} onChange={e => set('deposit', e.target.value)} /></label>
           <label>Impuestos (%)<input type="number" min="0" max="50" step="0.01" value={s.taxRate} onChange={e => set('taxRate', e.target.value)} /></label>
           <div className="wide rules-tools"><button type="button" className="inline-link" onClick={() => { if (!s.rules || confirm('¿Reemplazar las reglas actuales por las de ejemplo?')) set('rules', EXAMPLE_RULES); }}>Usar reglas de ejemplo</button><small className="muted">Después edítalas a tu gusto.</small></div>

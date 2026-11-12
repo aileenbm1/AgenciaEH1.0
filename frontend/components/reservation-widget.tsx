@@ -6,7 +6,7 @@ import { authJson, currentToken, getCurrentUser } from '@/lib/auth';
 import { mxn } from '@/lib/data';
 
 type Unit = 'NIGHTLY' | 'WEEKLY' | 'MONTHLY';
-type Settings = { enabled: boolean; modes: Unit[]; nightPrice: number | null; weekPrice: number | null; monthPrice: number | null; minStay: number; maxStay: number | null; minWeeks: number; maxWeeks: number | null; minMonths: number; maxMonths: number | null; maxGuests: number | null; deposit: number; taxRate: number;
+type Settings = { enabled: boolean; modes: Unit[]; nightPrice: number | null; weekPrice: number | null; monthPrice: number | null; minStay: number; maxStay: number | null; minWeeks: number; maxWeeks: number | null; minMonths: number; maxMonths: number | null; maxGuests: number; deposit: number; taxRate: number;
   cancellationPolicy: string | null; rules: string | null; seasons: { name?: string; from: string; to: string; price: number }[]; saleRequests: boolean; monthlyRent: number | null; salePrice: number | null; operation: string; availability: string };
 type Busy = { from: string; to: string; type: string };
 type Quote = { lines: { label: string; amount: number }[]; total: number; checkOut?: string; available?: boolean };
@@ -80,7 +80,7 @@ export default function ReservationWidget({ propertyId, slug, operation }: { pro
   useEffect(() => {
     setQuote(null); setQErr('');
     if (!ready || !s) return;
-    const body = { propertyId, kind, checkIn: from || undefined, checkOut: kind === 'NIGHTLY' ? to : undefined, weeks: kind === 'WEEKLY' ? Number(weeks) : undefined, months: kind === 'MONTHLY' ? Number(months) : undefined, guests: kind === 'NIGHTLY' || kind === 'WEEKLY' ? Number(guests) : undefined };
+    const body = { propertyId, kind, checkIn: from || undefined, checkOut: kind === 'NIGHTLY' ? to : undefined, weeks: kind === 'WEEKLY' ? Number(weeks) : undefined, months: kind === 'MONTHLY' ? Number(months) : undefined, guests: kind === 'SALE' ? undefined : Number(guests) };
     const t = setTimeout(() => fetch('/api/v1/reservations/quote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then(async r => { const d = await r.json(); if (!r.ok) throw new Error(Array.isArray(d.message) ? d.message.join(' ') : d.message); setQuote(d); })
       .catch(e => setQErr(e.message)), 250);
@@ -101,7 +101,7 @@ export default function ReservationWidget({ propertyId, slug, operation }: { pro
   async function submit() {
     setBusy(true); setError('');
     try {
-      const r = await authJson<{ id: string }>('/reservations', { method: 'POST', body: JSON.stringify({ propertyId, kind, checkIn: from || undefined, checkOut: kind === 'NIGHTLY' ? to : undefined, weeks: kind === 'WEEKLY' ? Number(weeks) : undefined, months: kind === 'MONTHLY' ? Number(months) : undefined, guests: kind === 'NIGHTLY' || kind === 'WEEKLY' ? Number(guests) : undefined, paymentType: kind === 'SALE' ? paymentType : undefined, note }) });
+      const r = await authJson<{ id: string }>('/reservations', { method: 'POST', body: JSON.stringify({ propertyId, kind, checkIn: from || undefined, checkOut: kind === 'NIGHTLY' ? to : undefined, weeks: kind === 'WEEKLY' ? Number(weeks) : undefined, months: kind === 'MONTHLY' ? Number(months) : undefined, guests: kind === 'SALE' ? undefined : Number(guests), paymentType: kind === 'SALE' ? paymentType : undefined, note }) });
       router.push(`/panel/reservas/${r.id}?nueva=1`);
     } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo enviar la solicitud.'); }
     finally { setBusy(false); }
@@ -117,7 +117,7 @@ export default function ReservationWidget({ propertyId, slug, operation }: { pro
       {s.modes.length > 1 && <div className="unit-tabs" role="tablist" aria-label="Modalidad de renta">{s.modes.map(m =>
         <button key={m} type="button" role="tab" aria-selected={unit === m} className={unit === m ? 'selected' : ''} onClick={() => { setUnit(m); setTo(''); }}>
           {UNIT_LABEL[m]}<small>{mxn(Number(m === 'NIGHTLY' ? s.nightPrice : m === 'WEEKLY' ? s.weekPrice : s.monthPrice))}</small></button>)}</div>}
-      <p className="muted">{unit === 'NIGHTLY' ? <>Desde <b>{mxn(Number(s.nightPrice))}</b> por noche · mínimo {s.minStay} noche(s){s.maxGuests ? ` · hasta ${s.maxGuests} huéspedes` : ''}</>
+      <p className="muted">{unit === 'NIGHTLY' ? <>Desde <b>{mxn(Number(s.nightPrice))}</b> por noche · mínimo {s.minStay} noche(s){` · hasta ${s.maxGuests} huéspedes`}</>
         : unit === 'WEEKLY' ? <><b>{mxn(Number(s.weekPrice))}</b> por semana · mínimo {s.minWeeks} semana(s)</>
         : <><b>{mxn(Number(s.monthPrice))}</b> al mes · plazo mínimo {s.minMonths} mes(es)</>}</p>
       <Calendar busy={data.busy} from={from} to={kind === 'NIGHTLY' ? to : quote?.checkOut || ''} onPick={pick} single={kind !== 'NIGHTLY'} pickingOut={kind === 'NIGHTLY' && !!from && !to} />
@@ -126,7 +126,8 @@ export default function ReservationWidget({ propertyId, slug, operation }: { pro
         {kind === 'NIGHTLY' && <div><small>Salida</small><b>{to ? fmt(to) : from ? 'Elige la salida' : '—'}</b></div>}
         {kind === 'WEEKLY' && <label>Semanas<select value={weeks} onChange={e => setWeeks(e.target.value)}>{range(s.minWeeks || 1, Math.min(52, s.maxWeeks || 12)).map(n => <option key={n} value={n}>{n} semana(s)</option>)}</select></label>}
         {kind === 'MONTHLY' && <label>Plazo<select value={months} onChange={e => setMonths(e.target.value)}>{range(s.minMonths || 1, Math.min(60, s.maxMonths || 24)).map(n => <option key={n} value={n}>{n} mes(es)</option>)}</select></label>}
-        {kind !== 'MONTHLY' && <label>Huéspedes<input type="number" min="1" max={s.maxGuests || 100} value={guests} onChange={e => setGuests(e.target.value)} /></label>}
+        <label>{kind === 'MONTHLY' ? 'Personas que vivirán' : 'Huéspedes'}<select value={Math.min(Number(guests) || 1, s.maxGuests)} onChange={e => setGuests(e.target.value)}>{range(1, s.maxGuests).map(n => <option key={n} value={n}>{n} {n === 1 ? 'persona' : 'personas'}</option>)}</select>
+          <small className="muted">Máximo {s.maxGuests}</small></label>
       </div>
     </>}
     {tab === 'SALE' && <div className="reserve-fields">

@@ -48,6 +48,9 @@ export function cancelRule(r: { CreatedAt: any; CheckIn: any; Status: string }) 
   return { allowed: true, until: until.toISOString(), reason: '' };
 }
 
+/** Huéspedes permitidos cuando el anunciante no fijó un límite: 2 por recámara, mínimo 2. */
+export const defaultGuests = (p: any) => Math.max(2, Math.min(100, (Number(p?.Bedrooms) || 1) * 2));
+
 /** Fecha límite para liquidar: un día antes de la entrada en estancias por noche o semana. */
 export function payBy(r: { Kind: string; CheckIn: any }) {
   const checkIn = dateOnly(r.CheckIn);
@@ -137,7 +140,8 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       // Precio mensual: el propio de la reserva o, si no se indicó, la renta mensual de la propiedad.
       monthPrice: r?.MonthPrice != null ? Number(r.MonthPrice) : rent,
       minStay: r?.MinStay ?? 1, maxStay: r?.MaxStay ?? null,
-      minWeeks: r?.MinWeeks ?? 1, maxWeeks: r?.MaxWeeks ?? null, minMonths: r?.MinMonths ?? 1, maxMonths: r?.MaxMonths ?? null, maxGuests: r?.MaxGuests ?? null, deposit: Number(r?.Deposit || 0), taxRate: Number(r?.TaxRate || 0),
+      minWeeks: r?.MinWeeks ?? 1, maxWeeks: r?.MaxWeeks ?? null, minMonths: r?.MinMonths ?? 1, maxMonths: r?.MaxMonths ?? null, // Límite de huéspedes: el que fije el anunciante o, si no lo fijó, 2 por recámara (mínimo 2).
+      maxGuests: r?.MaxGuests ?? defaultGuests(p), maxGuestsIsDefault: r?.MaxGuests == null, deposit: Number(r?.Deposit || 0), taxRate: Number(r?.TaxRate || 0),
       cancellationPolicy: r?.CancellationPolicy || null, rules: r?.Rules || null, seasons, saleRequests: r ? !!r.SaleRequests : true,
       monthlyRent: rent,
       salePrice: p && (p.Operation === 'SALE' || p.Operation === 'BOTH') ? Number(p.Price) : null,
@@ -251,9 +255,10 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     if (!ISO.test(checkIn)) throw new BadRequestException('Elige la fecha de entrada.');
     if (checkIn < today()) throw new BadRequestException('La fecha de entrada no puede ser en el pasado.');
     if (checkIn > addDays(today(), 540)) throw new BadRequestException('Solo se puede reservar con hasta 18 meses de anticipación.');
-    const guests = d.guests ? Number(d.guests) : null;
-    if (guests !== null && (!Number.isInteger(guests) || guests < 1)) throw new BadRequestException('Número de huéspedes no válido.');
-    if (guests && s.maxGuests && guests > s.maxGuests) throw new BadRequestException(`Máximo ${s.maxGuests} huéspedes.`);
+    // Siempre hay límite de huéspedes (o de personas que vivirán, en renta mensual).
+    const guests = d.guests === undefined || d.guests === null || d.guests === '' ? 1 : Number(d.guests);
+    if (!Number.isInteger(guests) || guests < 1) throw new BadRequestException('Número de huéspedes no válido.');
+    if (guests > s.maxGuests) throw new BadRequestException(`Esta propiedad admite máximo ${s.maxGuests} ${s.maxGuests === 1 ? 'persona' : 'personas'}.`);
     const lines: { label: string; amount: number }[] = [];
     let checkOut: string, subtotal = 0, nights: number | null = null, weeks: number | null = null, months: number | null = null;
     if (kind === 'NIGHTLY') {
