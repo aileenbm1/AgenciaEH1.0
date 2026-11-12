@@ -7,15 +7,15 @@ const hash = bcrypt.hashSync(PASSWORD, 12);
 const id = (n) => `d3e0${String(n).padStart(4, '0')}-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const q = (v) => v === null || v === undefined ? 'NULL' : typeof v === 'number' ? String(v) : `'${String(v).replace(/\\/g, '\\\\').replace(/'/g, "''")}'`;
 
-const U = { agencia: id(1), agente: id(2), asesor: id(3), comprador: id(4), comprador2: id(5), vencido: id(6) };
-const AG = { profile: id(11), agenteProfile: id(12), asesorProfile: id(13), vencidoProfile: id(14) };
+const U = { agencia: id(1), agente: id(2), asesor: id(3), comprador: id(4), comprador2: id(5), desarrolladora: id(7) };
+const AG = { profile: id(11), agenteProfile: id(12), asesorProfile: id(13), devProfile: id(15) };
 const users = [
   [U.agencia, 'agencia.demo@example.com', 'Laura Méndez', '4770000001', 'AGENCY', '@admin'],
   [U.agente, 'agente.demo@example.com', 'Ana Vendedora', '4770000002', 'AGENT', U.agencia],
   [U.asesor, 'asesor.demo@example.com', 'Carlos Asesor', '4770000003', 'AGENT', '@admin'],
   [U.comprador, 'comprador.demo@example.com', 'Beto Comprador', '4770000004', 'BUYER', U.agente],
   [U.comprador2, 'compradora.demo@example.com', 'Sofía Compradora', null, 'BUYER', U.agencia],
-  [U.vencido, 'vencido.demo@example.com', 'Raúl Membresía Vencida', '4770000006', 'AGENT', '@admin'],
+  [U.desarrolladora, 'desarrolladora.demo@example.com', 'Marco Desarrollos', '4770000007', 'DEVELOPER', '@admin'],
 ];
 const D = (txt) => txt;
 const props = [
@@ -31,7 +31,7 @@ const props = [
   [9, U.asesor, 'Oficina ejecutiva en Celaya', 'RENT', 'PUBLISHED', 18000, 'Celaya', 'Zona de Oro', 'Oficina', null, 2, null, 110, ['oficina-12', 'oficina-13'], 'Oficina en edificio corporativo con recepción, sala de juntas compartida y 3 cajones de estacionamiento.', 7],
   [10, U.agente, 'Casa con vista en San Miguel de Allende', 'SALE', 'PUBLISHED', 6800000, 'San Miguel de Allende', 'Guadiana', 'Casa', 3, 3, 300, 260, ['colonial-vista', 'colonial-patio'], 'Casa estilo mexicano contemporáneo con roof garden y vista a la Parroquia. Ideal para vivir o renta vacacional.', 9],
   // Para probar la revisión del administrador y los estados del agente:
-  [11, U.agente, 'Departamento nuevo en preventa', 'SALE', 'REVIEW', 2150000, 'León', 'Lomas del Campestre', 'Departamento', 2, 2, null, 88, ['departamento-interior'], 'Departamento en preventa con entrega en 12 meses, amenidades: gimnasio, roof garden y área de juegos.', 0],
+  [11, U.desarrolladora, 'Departamento nuevo en preventa', 'SALE', 'REVIEW', 2150000, 'León', 'Lomas del Campestre', 'Departamento', 2, 2, null, 88, ['departamento-interior'], 'Departamento en preventa con entrega en 12 meses, amenidades: gimnasio, roof garden y área de juegos.', 0],
   [12, U.agencia, 'Bodega industrial en Irapuato', 'RENT', 'REVIEW', 45000, 'Irapuato', 'Parque Industrial', 'Local comercial', null, 2, 800, 600, ['local-11'], 'Bodega con andén de carga, oficinas y altura libre de 9 m. Acceso para tráiler.', 0],
   [13, U.agente, 'Casa en Celaya (borrador)', 'SALE', 'DRAFT', 1900000, 'Celaya', 'Las Insurgentes', 'Casa', 3, 2, 150, 130, [], 'Borrador de ejemplo: le faltan fotos. Sirve para probar el flujo de enviar a revisión.', 0],
   [14, U.asesor, 'Terreno sin papeles (rechazado)', 'SALE', 'REJECTED', 600000, 'Silao', 'Ejido', 'Terreno', null, null, 1000, null, ['terreno-9'], 'Ejemplo de propiedad rechazada por el administrador. El asesor puede corregirla y reenviarla.', 0],
@@ -48,7 +48,9 @@ let sql = `-- ==================================================================
 --   asesor.demo@example.com       Agente independiente
 --   comprador.demo@example.com    Comprador (con favoritos, búsqueda y visita)
 --   compradora.demo@example.com   Comprador (sin actividad)
---   vencido.demo@example.com      Agente con membresía VENCIDA (no puede entrar)
+--   desarrolladora.demo@example.com  Desarrolladora (Desarrollos Demo del Bajío)
+-- Las cuentas profesionales tienen membresía anual vigente desde el día que
+-- importes este archivo. Rentas listas para reservar en línea (noche, semana y mes).
 -- El administrador es tu propia cuenta. Se puede ejecutar más de una vez.
 -- Para quitar todo, usa datos-prueba-borrar.sql.
 -- ============================================================================
@@ -61,7 +63,7 @@ sql += `-- Perfiles de agencia y agentes (Ana pertenece a la agencia)
 INSERT IGNORE INTO AgencyProfiles(Id,UserId,Name,Slug,Description,Phone) VALUES(${q(AG.profile)},${q(U.agencia)},'Inmobiliaria Demo Bajío','inmobiliaria-demo-bajio','Agencia de ejemplo para pruebas: casas, departamentos y locales en León, Irapuato y Silao.','4770000001');
 INSERT IGNORE INTO AgentProfiles(Id,UserId,AgencyId) VALUES(${q(AG.agenteProfile)},${q(U.agente)},${q(AG.profile)});
 INSERT IGNORE INTO AgentProfiles(Id,UserId,AgencyId) VALUES(${q(AG.asesorProfile)},${q(U.asesor)},NULL);
-INSERT IGNORE INTO AgentProfiles(Id,UserId,AgencyId) VALUES(${q(AG.vencidoProfile)},${q(U.vencido)},NULL);
+INSERT IGNORE INTO AgencyProfiles(Id,UserId,Name,Slug,Description,Phone) VALUES(${q(AG.devProfile)},${q(U.desarrolladora)},'Desarrollos Demo del Bajío','desarrollos-demo-del-bajio','Desarrolladora de ejemplo para pruebas: preventas de departamentos en León.','4770000007');
 
 -- Propiedades (10 publicadas, 2 en revisión, 1 borrador, 1 rechazada)
 `;
@@ -85,13 +87,15 @@ INSERT IGNORE INTO Leads(Id,PropertyId,Name,Email,Phone,Message,Status,AssignedT
 INSERT IGNORE INTO Favorites(Id,UserId,PropertyId) VALUES(${q(id(301))},${q(U.comprador)},${q(P(1))}),(${q(id(302))},${q(U.comprador)},${q(P(5))});
 INSERT IGNORE INTO SavedSearches(Id,UserId,Name,Query,Alerts) VALUES(${q(id(401))},${q(U.comprador)},'Casas en venta en León','operation=SALE&municipality=Le%C3%B3n&propertyType=Casa',1);
 
--- Membresías (requiere que exista al menos un administrador)
-INSERT IGNORE INTO Payments(Id,UserId,Plan,Amount,Method,Reference,PaidAt,PeriodStart,PeriodEnd,Notes,RecordedById)
- SELECT ${q(id(501))},${q(U.agencia)},'Anual',4800,'TRANSFER','SPEI DEMO-001',UTC_DATE(),UTC_DATE(),UTC_DATE() + INTERVAL 364 DAY,'Pago de prueba',@admin FROM DUAL WHERE @admin IS NOT NULL;
-INSERT IGNORE INTO Payments(Id,UserId,Plan,Amount,Method,Reference,PaidAt,PeriodStart,PeriodEnd,Notes,RecordedById)
- SELECT ${q(id(502))},${q(U.agente)},'Mensual',500,'CASH',NULL,UTC_DATE() - INTERVAL 25 DAY,UTC_DATE() - INTERVAL 25 DAY,UTC_DATE() + INTERVAL 5 DAY,'Vence pronto (aparece en "por vencer")',@admin FROM DUAL WHERE @admin IS NOT NULL;
-INSERT IGNORE INTO Payments(Id,UserId,Plan,Amount,Method,Reference,PaidAt,PeriodStart,PeriodEnd,Notes,RecordedById)
- SELECT ${q(id(503))},${q(U.vencido)},'Mensual',500,'CASH',NULL,UTC_DATE() - INTERVAL 60 DAY,UTC_DATE() - INTERVAL 60 DAY,UTC_DATE() - INTERVAL 31 DAY,'Membresía vencida: esta cuenta no puede entrar',@admin FROM DUAL WHERE @admin IS NOT NULL;
+-- Membresías anuales vigentes desde hoy (requiere que exista al menos un administrador)
+${[U.agencia, U.agente, U.asesor, U.desarrolladora].map((u, k) => `INSERT IGNORE INTO Payments(Id,UserId,Plan,Amount,Method,Reference,PaidAt,PeriodStart,PeriodEnd,Notes,RecordedById)
+ SELECT ${q(id(501 + k))},${q(u)},'Anual',4800,'TRANSFER','SPEI DEMO-00${k + 1}',UTC_DATE(),UTC_DATE(),UTC_DATE() + INTERVAL 364 DAY,'Membresía de prueba',@admin FROM DUAL WHERE @admin IS NOT NULL;`).join('\n')}
+
+-- Reservas en línea: el departamento se renta por noche, semana o mes; la casa de Irapuato por mes.
+INSERT IGNORE INTO RentalSettings(PropertyId,Enabled,Mode,Modes,NightPrice,WeekPrice,MonthPrice,MinStay,MaxStay,MinWeeks,MaxWeeks,MinMonths,MaxMonths,MaxGuests,Deposit,TaxRate,CancellationPolicy,Rules,Seasons,SaleRequests)
+ VALUES(${q(P(2))},1,'MONTHLY','NIGHTLY,WEEKLY,MONTHLY',1200,7000,NULL,1,14,1,8,1,12,4,2000,0,'Cancelación sin costo dentro de las 24 horas siguientes a la reserva y antes del día de entrada.','Entrada a partir de las 3:00 pm y salida a más tardar a las 12:00 pm.\\nNo se permiten fiestas ni eventos.\\nProhibido fumar dentro del inmueble.\\nNo se admiten mascotas.\\nHorario de silencio de 10:00 pm a 8:00 am.\\nLos daños al inmueble o al mobiliario corren por cuenta del huésped.\\nEl pago total se liquida a más tardar un día antes de la llegada, por transferencia o en efectivo.','[]',1);
+INSERT IGNORE INTO RentalSettings(PropertyId,Enabled,Mode,Modes,MinStay,MinWeeks,MinMonths,MaxMonths,Deposit,TaxRate,Rules,Seasons,SaleRequests)
+ VALUES(${q(P(7))},1,'MONTHLY','MONTHLY',1,1,6,12,12000,0,'Contrato mínimo de 6 meses.\\nNo se admiten mascotas grandes.\\nLos daños al inmueble corren por cuenta del inquilino.','[]',1);
 `;
 fs.writeFileSync(process.argv[3], sql);
 const all = [...Object.values(U)].map(q).join(',');
@@ -105,8 +109,10 @@ DELETE FROM Leads WHERE Id LIKE 'd3e0%' OR AssignedToId IN (${all}) OR PropertyI
 DELETE FROM Payments WHERE UserId IN (${all});
 DELETE FROM Favorites WHERE UserId IN (${all}) OR PropertyId IN (SELECT Id FROM Properties WHERE OwnerId IN (${all}));
 DELETE FROM SavedSearches WHERE UserId IN (${all});
+DELETE FROM Reservations WHERE GuestId IN (${all}) OR OwnerId IN (${all});
 DELETE FROM Properties WHERE OwnerId IN (${all});
-UPDATE AgentProfiles SET AgencyId = NULL WHERE AgencyId = ${q(AG.profile)};
+UPDATE AgentProfiles SET AgencyId = NULL WHERE AgencyId IN (${q(AG.profile)},${q(AG.devProfile)});
+DELETE FROM AgentProfiles WHERE UserId IN (${all});
 UPDATE Users SET CreatedById = NULL WHERE CreatedById IN (${all});
 DELETE FROM Users WHERE Id IN (${all});
 `;
