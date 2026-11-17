@@ -27,7 +27,6 @@ export function SiteHeader() {
           <span><b>{user.fullName.split(' ')[0]}</b><small>{role.label}</small></span>
         </Link>
         {canPublish && <Link className="button button-gold" href="/panel/agente/propiedades#nueva">Nueva propiedad</Link>}
-        {user.role === 'ADMIN' && <Link className="button button-gold" href="/panel/admin">Revisar propiedades</Link>}
         <button className="login-link link-button" onClick={logout}>Salir</button>
       </> : <>
         <Link className="login-link" href="/acceso">Ingresar</Link>
