@@ -31,9 +31,10 @@ Hostinger no convierte un sitio PHP en Node.js; hay que crear uno nuevo con el m
 1. Elige **Subir archivos** y sube `agencia-eh-sitio-unico.zip`.
 2. Configuración:
    - Versión de Node.js: **20 o superior** (recomendado 22).
-   - Framework: *Otro* / *Express* (no *Next.js*, porque ya viene compilado).
-   - Archivo de entrada: `start.js`.
-   - Comando de build: vacío (o `npm run build`, que no hace nada).
+   - Framework: **Express**. Hostinger lo detecta solo por el `package.json` del ZIP; no elijas *Next.js*, porque ya viene compilado.
+   - Archivo de entrada: `start.js` (comando de inicio `npm start`).
+   - Comando de build: vacío (o `npm run build`, que no hace nada). Hostinger correrá `npm install`, que solo instala Express en la raíz; el sitio y la API ya traen sus dependencias.
+   - Si aparece "El marco no es compatible o la estructura de proyecto no es válida", el ZIP es de una versión anterior a la 0.19 (su `package.json` no declaraba Express): genera uno nuevo con `bash scripts/build-hostinger.sh`.
 3. Variables de entorno:
 
    | Variable | Valor |

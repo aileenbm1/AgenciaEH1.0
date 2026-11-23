@@ -72,9 +72,14 @@ cp "$ROOT/deploy-templates/sitio-unico/start.js" "$STAGE/unico/start.js"
 cp "$ROOT/backend/.env.example" "$STAGE/unico/.env.example"
 node -e '
 const v=require(process.argv[1]).version;
+// Hostinger detecta el tipo de proyecto por las dependencias del package.json raíz:
+// sin ninguna rechaza el ZIP ("El marco no es compatible"). Se declara Express, que es
+// el servidor real de la API; el sitio y la API traen ya sus propios node_modules.
+const express=require(require("path").join(process.argv[2],"..","api","node_modules","express","package.json")).version;
 const pkg={name:"agencia-eh",version:v,private:true,main:"start.js",
   scripts:{start:"node start.js",build:"echo \"Ya compilado: no hace falta build\"",
     "db:check":"cd api && node scripts/check-db.js","admin:create":"cd api && node scripts/create-admin.js"},
+  dependencies:{express:express},
   engines:{node:">=20.9"}};
 require("fs").writeFileSync(process.argv[2],JSON.stringify(pkg,null,2)+"\n");
 ' "$ROOT/backend/package.json" "$STAGE/unico/package.json"
