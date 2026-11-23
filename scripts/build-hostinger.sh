@@ -102,6 +102,8 @@ const pkg=require(path.join(unico,"package.json"));
 pkg.dependencies=Object.fromEntries(Object.entries(deps).sort());
 fs.writeFileSync(path.join(dest,"package.json"),JSON.stringify(pkg,null,2)+"\n");
 ' "$STAGE/unico" "$STAGE/ligero"
+# package-lock.json: muchos instaladores (npm ci) lo exigen para saber qué instalar.
+(cd "$STAGE/ligero" && npm install --package-lock-only --ignore-scripts --no-audit --no-fund >/dev/null)
 (cd "$STAGE/ligero" && zip -qr -y "$OUT/agencia-eh-sitio-unico-ligero.zip" .)
 rm -rf "$STAGE"
 
