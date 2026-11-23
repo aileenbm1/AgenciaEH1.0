@@ -722,7 +722,7 @@ h1,h2{font-family:var(--font-title);color:var(--navy);font-weight:600;letter-spa
 @media(prefers-reduced-motion:reduce){.cc-track{transition:none}}
 
 /* Encabezado: el logo nunca se parte y en pantallas medianas se compacta. */
-.brand{flex-shrink:0;white-space:nowrap}.header-actions{flex-shrink:0}
+@media(min-width:760px){.brand{flex-shrink:0;white-space:nowrap}.header-actions{flex-shrink:0}}
 @media(max-width:1400px){.site-header{gap:20px}.site-header nav,.header-actions{gap:20px}}
 @media(max-width:1180px){.brand small{display:none}}
 /* Formulario de reservas: etiquetas arriba del campo y campos a todo lo ancho. */
@@ -731,3 +731,4 @@ h1,h2{font-family:var(--font-title);color:var(--navy);font-weight:600;letter-spa
 .rental-settings textarea{min-height:120px;font-family:inherit}
 .rental-settings label small{font-size:12px}
 .rental-settings .season-row input{width:auto;flex:1 1 130px}
+@media(max-width:380px){.site-header .brand>span:last-child{display:none}.site-header{gap:10px}}

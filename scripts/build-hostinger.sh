@@ -84,6 +84,25 @@ const pkg={name:"agencia-eh",version:v,private:true,main:"start.js",
 require("fs").writeFileSync(process.argv[2],JSON.stringify(pkg,null,2)+"\n");
 ' "$ROOT/backend/package.json" "$STAGE/unico/package.json"
 (cd "$STAGE/unico" && zip -qr -y "$OUT/agencia-eh-sitio-unico.zip" .)
+
+# Variante ligera: el mismo sitio ya compilado, pero sin node_modules. Todas las
+# dependencias quedan declaradas (con versión exacta) en el package.json raíz y
+# Hostinger las instala con npm install. Pesa poco y parece un proyecto Express normal.
+mkdir -p "$STAGE/ligero"
+(cd "$STAGE/unico" && tar --exclude='./web/node_modules' --exclude='./api/node_modules' -cf - .) | (cd "$STAGE/ligero" && tar -xf -)
+node -e '
+const fs=require("fs"),path=require("path");const [unico,dest]=process.argv.slice(1);
+const ver=(dir,n)=>require(path.join(unico,dir,"node_modules",n,"package.json")).version;
+const api=require(path.join(unico,"api","package.json"));
+const deps={};
+for (const n of Object.keys(api.dependencies||{})) deps[n]=ver("api",n);
+deps.express=ver("api","express");
+for (const n of ["next","react","react-dom"]) deps[n]=ver("web",n);
+const pkg=require(path.join(unico,"package.json"));
+pkg.dependencies=Object.fromEntries(Object.entries(deps).sort());
+fs.writeFileSync(path.join(dest,"package.json"),JSON.stringify(pkg,null,2)+"\n");
+' "$STAGE/unico" "$STAGE/ligero"
+(cd "$STAGE/ligero" && zip -qr -y "$OUT/agencia-eh-sitio-unico-ligero.zip" .)
 rm -rf "$STAGE"
 
 echo

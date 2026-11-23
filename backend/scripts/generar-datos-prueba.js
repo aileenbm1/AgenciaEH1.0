@@ -61,8 +61,8 @@ SET @admin := (SELECT Id FROM Users WHERE Role='ADMIN' ORDER BY CreatedAt LIMIT 
 sql += `-- Usuarios\n` + users.map(([i, e, n, ph, r, by]) => `INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES(${q(i)},${q(e)},${q(n)},${q(ph)},${q(hash)},${q(r)},1,UTC_TIMESTAMP(),${by === '@admin' ? '@admin' : q(by)},UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());`).join('\n') + '\n\n';
 sql += `-- Perfiles de agencia y agentes (Ana pertenece a la agencia)
 INSERT IGNORE INTO AgencyProfiles(Id,UserId,Name,Slug,Description,Phone) VALUES(${q(AG.profile)},${q(U.agencia)},'Inmobiliaria Demo Bajío','inmobiliaria-demo-bajio','Agencia de ejemplo para pruebas: casas, departamentos y locales en León, Irapuato y Silao.','4770000001');
-INSERT IGNORE INTO AgentProfiles(Id,UserId,AgencyId) VALUES(${q(AG.agenteProfile)},${q(U.agente)},${q(AG.profile)});
-INSERT IGNORE INTO AgentProfiles(Id,UserId,AgencyId) VALUES(${q(AG.asesorProfile)},${q(U.asesor)},NULL);
+INSERT IGNORE INTO AgentProfiles(Id,UserId,AgencyId,Slug) VALUES(${q(AG.agenteProfile)},${q(U.agente)},${q(AG.profile)},'ana-vendedora-d3e00');
+INSERT IGNORE INTO AgentProfiles(Id,UserId,AgencyId,Slug) VALUES(${q(AG.asesorProfile)},${q(U.asesor)},NULL,'carlos-asesor-d3e00');
 INSERT IGNORE INTO AgencyProfiles(Id,UserId,Name,Slug,Description,Phone) VALUES(${q(AG.devProfile)},${q(U.desarrolladora)},'Desarrollos Demo del Bajío','desarrollos-demo-del-bajio','Desarrolladora de ejemplo para pruebas: preventas de departamentos en León.','4770000007');
 
 -- Propiedades (10 publicadas, 2 en revisión, 1 borrador, 1 rechazada)

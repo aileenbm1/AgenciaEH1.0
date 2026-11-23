@@ -28,7 +28,10 @@ Hostinger no convierte un sitio PHP en Node.js; hay que crear uno nuevo con el m
 > Necesitas un plan con Node.js (Business o Cloud). Si no aparece la opción *Aplicaciones Node.js*, el plan no lo incluye y hay que mejorarlo.
 
 ### Subir el paquete
-1. Elige **Subir archivos** y sube `agencia-eh-sitio-unico.zip`.
+1. Elige **Subir archivos** y sube **`agencia-eh-sitio-unico-ligero.zip`** (≈5 MB, recomendado).
+   Es el mismo sitio ya compilado pero sin `node_modules`: Hostinger instala las dependencias con `npm install`
+   (versiones exactas en el `package.json`). `agencia-eh-sitio-unico.zip` (≈40 MB, con `node_modules`) sigue
+   disponible por si tu panel no permite instalar dependencias.
 2. Configuración:
    - Versión de Node.js: **20 o superior** (recomendado 22).
    - Framework: **Express**. Hostinger lo detecta solo por el `package.json` del ZIP; no elijas *Next.js*, porque ya viene compilado.
