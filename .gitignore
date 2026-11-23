@@ -24,3 +24,7 @@ coverage/
 
 # Paquetes de despliegue generados por scripts/build-hostinger.sh
 deploy/
+
+# Compilado para Hostinger (lo genera `npm run build` en la raíz)
+/web/
+/api/

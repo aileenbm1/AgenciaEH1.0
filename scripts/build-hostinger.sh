@@ -69,6 +69,7 @@ mkdir -p "$STAGE/unico"
 mv "$STAGE/frontend" "$STAGE/unico/web"
 mv "$STAGE/api" "$STAGE/unico/api"
 cp "$ROOT/deploy-templates/sitio-unico/start.js" "$STAGE/unico/start.js"
+cp "$ROOT/deploy-templates/sitio-unico/server.js" "$STAGE/unico/server.js"
 cp "$ROOT/backend/.env.example" "$STAGE/unico/.env.example"
 node -e '
 const v=require(process.argv[1]).version;
@@ -76,8 +77,8 @@ const v=require(process.argv[1]).version;
 // sin ninguna rechaza el ZIP ("El marco no es compatible"). Se declara Express, que es
 // el servidor real de la API; el sitio y la API traen ya sus propios node_modules.
 const express=require(require("path").join(process.argv[2],"..","api","node_modules","express","package.json")).version;
-const pkg={name:"agencia-eh",version:v,private:true,main:"start.js",
-  scripts:{start:"node start.js",build:"echo \"Ya compilado: no hace falta build\"",
+const pkg={name:"agencia-eh",version:v,private:true,main:"server.js",
+  scripts:{start:"node server.js",build:"echo \"Ya compilado: no hace falta build\"",
     "db:check":"cd api && node scripts/check-db.js","admin:create":"cd api && node scripts/create-admin.js"},
   dependencies:{express:express},
   engines:{node:">=20.9"}};
