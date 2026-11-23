@@ -108,6 +108,9 @@ fs.writeFileSync(path.join(dest,"package.json"),JSON.stringify(pkg,null,2)+"\n")
 (cd "$STAGE/ligero" && zip -qr -y "$OUT/agencia-eh-sitio-unico-ligero.zip" .)
 rm -rf "$STAGE"
 
+# Código fuente para que Hostinger compile (npm install + npm run build en la raíz).
+(cd "$ROOT" && git archive --format=zip -o "$OUT/agencia-eh-codigo.zip" HEAD)
+
 echo
 echo "Listo:"
 ls -lh "$OUT"/*.zip

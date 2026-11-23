@@ -27,6 +27,19 @@ Hostinger no convierte un sitio PHP en Node.js; hay que crear uno nuevo con el m
 
 > Necesitas un plan con Node.js (Business o Cloud). Si no aparece la opción *Aplicaciones Node.js*, el plan no lo incluye y hay que mejorarlo.
 
+### Tres formas de subirlo (de la más estable a la más simple)
+
+| Opción | Qué subes | Framework | Build | Inicio |
+|---|---|---|---|---|
+| **1. GitHub** (recomendada) | Conecta el repositorio y la rama | Express | `npm run build` | `npm start` (`server.js`) |
+| **2. Código fuente** | `deploy/agencia-eh-codigo.zip` (≈4 MB) | Express | `npm run build` | `npm start` (`server.js`) |
+| **3. Ya compilado** | `deploy/agencia-eh-sitio-unico-ligero.zip` (≈5 MB) | Express | vacío o `npm run build` (no hace nada) | `npm start` (`server.js`) |
+
+- En las tres, el `package.json` está en la raíz (sin carpeta intermedia), declara Express y el archivo de entrada es `server.js`.
+- Opciones 1 y 2: Hostinger corre `npm install` y `npm run build`, que compila el sitio y la API (`scripts/hostinger-build.js`) en `web/` y `api/`. Tarda varios minutos.
+- Opción 3: el sitio ya viene compilado; Hostinger solo instala dependencias.
+- No descomprimas y vuelvas a comprimir los ZIP: Windows y Mac meten todo en una carpeta y Hostinger responde "El marco no es compatible o la estructura de proyecto no es válida". Tampoco uses el ZIP de "Descargar código" de GitHub: trae una carpeta intermedia.
+
 ### Subir el paquete
 1. Elige **Subir archivos** y sube **`agencia-eh-sitio-unico-ligero.zip`** (≈5 MB, recomendado).
    Es el mismo sitio ya compilado pero sin `node_modules`: Hostinger instala las dependencias con `npm install`
