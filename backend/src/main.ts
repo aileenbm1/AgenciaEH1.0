@@ -29,7 +29,7 @@ export async function startApi(): Promise<NestExpressApplication> {
   // Fotos subidas: /api/v1/media/... (archivos con nombre único, se pueden cachear 1 año).
   try {
     app.useStaticAssets(mediaRoot(), { prefix: MEDIA_PREFIX.replace(/\/$/, ''), index: false, dotfiles: 'deny', maxAge: '365d', immutable: true });
-  } catch (err: any) { console.error('[Agencia EH] Fotos deshabilitadas:', err?.message); }
+  } catch (err: any) { console.error('[Mi Casa] Fotos deshabilitadas:', err?.message); }
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.enableShutdownHooks();
   const host = process.env.API_HOST;
@@ -53,7 +53,7 @@ export async function startApi(): Promise<NestExpressApplication> {
           try { chmodSync(socketPath, 0o600); } catch { /* opcional */ }
           target = { socketPath };
         } catch (err: any) {
-          console.error(`[Agencia EH] No se pudo usar el socket ${socketPath}: ${err?.message}. Se usará TCP.`);
+          console.error(`[Mi Casa] No se pudo usar el socket ${socketPath}: ${err?.message}. Se usará TCP.`);
         }
       }
       // 2) Respaldo: TCP en un puerto libre asignado por el sistema (API_PORT=0).

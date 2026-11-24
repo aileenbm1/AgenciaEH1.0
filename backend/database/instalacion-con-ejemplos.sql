@@ -1,5 +1,5 @@
 -- ============================================================================
--- Agencia EH · INSTALACIÓN CON EJEMPLOS (base de datos vacía)
+-- Mi Casa · INSTALACIÓN CON EJEMPLOS (base de datos vacía)
 -- Crea todas las tablas y carga propiedades, cuentas y reservas de ejemplo.
 -- Úsalo en hPanel → Bases de datos → Importar datos (o phpMyAdmin → Importar).
 -- Las cuentas de ejemplo usan la contraseña PruebaEH2026 (bórralas antes de abrir
@@ -9,7 +9,7 @@
 -- ============================================================================
 SET NAMES utf8mb4;
 
--- Agencia EH — esquema MySQL / MariaDB
+-- Mi Casa — esquema MySQL / MariaDB
 -- En Hostinger: crea la base desde hPanel (Bases de datos → MySQL) y luego
 -- importa este archivo en phpMyAdmin con esa base seleccionada.
 -- Es seguro ejecutarlo más de una vez (CREATE TABLE IF NOT EXISTS).
@@ -439,7 +439,7 @@ CREATE TABLE IF NOT EXISTS ReservationPayments (
 
 
 -- ============================================================================
--- Agencia EH · DATOS DE PRUEBA
+-- Mi Casa · DATOS DE PRUEBA
 -- Importa este archivo en phpMyAdmin (pestaña Importar o SQL) con tu base
 -- seleccionada, DESPUÉS de haber desplegado la versión 0.15.0 o posterior
 -- (la API crea/actualiza las tablas al arrancar).
@@ -460,12 +460,12 @@ SET NAMES utf8mb4;
 SET @admin := (SELECT Id FROM Users WHERE Role='ADMIN' ORDER BY CreatedAt LIMIT 1);
 
 -- Usuarios
-INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00001-0000-4000-8000-000000000001','agencia.demo@example.com','Laura Méndez','4770000001','$2a$12$9SWmo/iCKJhiS.8dAqcs0eKIFBxIZX7KBaCmmLducU6KrWWq31/pq','AGENCY',1,UTC_TIMESTAMP(),@admin,UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
-INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00002-0000-4000-8000-000000000002','agente.demo@example.com','Ana Vendedora','4770000002','$2a$12$9SWmo/iCKJhiS.8dAqcs0eKIFBxIZX7KBaCmmLducU6KrWWq31/pq','AGENT',1,UTC_TIMESTAMP(),'d3e00001-0000-4000-8000-000000000001',UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
-INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00003-0000-4000-8000-000000000003','asesor.demo@example.com','Carlos Asesor','4770000003','$2a$12$9SWmo/iCKJhiS.8dAqcs0eKIFBxIZX7KBaCmmLducU6KrWWq31/pq','AGENT',1,UTC_TIMESTAMP(),@admin,UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
-INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00004-0000-4000-8000-000000000004','comprador.demo@example.com','Beto Comprador','4770000004','$2a$12$9SWmo/iCKJhiS.8dAqcs0eKIFBxIZX7KBaCmmLducU6KrWWq31/pq','BUYER',1,UTC_TIMESTAMP(),'d3e00002-0000-4000-8000-000000000002',UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
-INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00005-0000-4000-8000-000000000005','compradora.demo@example.com','Sofía Compradora',NULL,'$2a$12$9SWmo/iCKJhiS.8dAqcs0eKIFBxIZX7KBaCmmLducU6KrWWq31/pq','BUYER',1,UTC_TIMESTAMP(),'d3e00001-0000-4000-8000-000000000001',UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
-INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00007-0000-4000-8000-000000000007','desarrolladora.demo@example.com','Marco Desarrollos','4770000007','$2a$12$9SWmo/iCKJhiS.8dAqcs0eKIFBxIZX7KBaCmmLducU6KrWWq31/pq','DEVELOPER',1,UTC_TIMESTAMP(),@admin,UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
+INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00001-0000-4000-8000-000000000001','agencia.demo@example.com','Laura Méndez','4770000001','$2a$12$jxd4xJ6I7eECmPxKNpDfvOfcE8l0FXn8toK9EJvM2holC3IKfDdVq','AGENCY',1,UTC_TIMESTAMP(),@admin,UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
+INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00002-0000-4000-8000-000000000002','agente.demo@example.com','Ana Vendedora','4770000002','$2a$12$jxd4xJ6I7eECmPxKNpDfvOfcE8l0FXn8toK9EJvM2holC3IKfDdVq','AGENT',1,UTC_TIMESTAMP(),'d3e00001-0000-4000-8000-000000000001',UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
+INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00003-0000-4000-8000-000000000003','asesor.demo@example.com','Carlos Asesor','4770000003','$2a$12$jxd4xJ6I7eECmPxKNpDfvOfcE8l0FXn8toK9EJvM2holC3IKfDdVq','AGENT',1,UTC_TIMESTAMP(),@admin,UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
+INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00004-0000-4000-8000-000000000004','comprador.demo@example.com','Beto Comprador','4770000004','$2a$12$jxd4xJ6I7eECmPxKNpDfvOfcE8l0FXn8toK9EJvM2holC3IKfDdVq','BUYER',1,UTC_TIMESTAMP(),'d3e00002-0000-4000-8000-000000000002',UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
+INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00005-0000-4000-8000-000000000005','compradora.demo@example.com','Sofía Compradora',NULL,'$2a$12$jxd4xJ6I7eECmPxKNpDfvOfcE8l0FXn8toK9EJvM2holC3IKfDdVq','BUYER',1,UTC_TIMESTAMP(),'d3e00001-0000-4000-8000-000000000001',UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
+INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00007-0000-4000-8000-000000000007','desarrolladora.demo@example.com','Marco Desarrollos','4770000007','$2a$12$jxd4xJ6I7eECmPxKNpDfvOfcE8l0FXn8toK9EJvM2holC3IKfDdVq','DEVELOPER',1,UTC_TIMESTAMP(),@admin,UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
 
 -- Perfiles de agencia y agentes (Ana pertenece a la agencia)
 INSERT IGNORE INTO AgencyProfiles(Id,UserId,Name,Slug,Description,Phone) VALUES('d3e00011-0000-4000-8000-000000000011','d3e00001-0000-4000-8000-000000000001','Inmobiliaria Demo Bajío','inmobiliaria-demo-bajio','Agencia de ejemplo para pruebas: casas, departamentos y locales en León, Irapuato y Silao.','4770000001');

@@ -1,4 +1,4 @@
--- Agencia EH — esquema MySQL / MariaDB
+-- Mi Casa — esquema MySQL / MariaDB
 -- En Hostinger: crea la base desde hPanel (Bases de datos → MySQL) y luego
 -- importa este archivo en phpMyAdmin con esa base seleccionada.
 -- Es seguro ejecutarlo más de una vez (CREATE TABLE IF NOT EXISTS).

@@ -14,7 +14,7 @@ export default function Pwa() {
   }, []);
   if (!evt) return null;
   return <div className="pwa-banner" role="dialog" aria-label="Instalar la app">
-    <span>Instala Agencia EH en tu celular para entrar más rápido.</span>
+    <span>Instala Mi Casa en tu celular para entrar más rápido.</span>
     <button className="button button-gold" onClick={async () => { await evt.prompt(); setEvt(null); }}>Instalar</button>
     <button className="inline-link" onClick={() => { try { localStorage.setItem('eh_pwa_no', '1'); } catch { /* */ } setEvt(null); }}>Ahora no</button>
   </div>;

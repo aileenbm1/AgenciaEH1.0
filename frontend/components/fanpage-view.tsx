@@ -144,6 +144,6 @@ export default function FanpageView({ property: p, theme, blocks, preview = fals
         {el}
       </section>;
     })}
-    <footer className="fp-footer"><Link href={`/propiedades/${p.slug}`}>Ver ficha completa</Link> · <Link href="/">Agencia EH</Link></footer>
+    <footer className="fp-footer"><Link href={`/propiedades/${p.slug}`}>Ver ficha completa</Link> · <Link href="/">Mi Casa</Link></footer>
   </div>;
 }

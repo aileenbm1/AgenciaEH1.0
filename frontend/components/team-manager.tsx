@@ -37,7 +37,7 @@ export default function TeamManager({ roles, title, intro }: { roles: UserRole[]
   }
 
   async function copy() { try { await navigator.clipboard.writeText(invite!.activationLink); setCopied(true); } catch { setCopied(false); } }
-  const waText = invite ? encodeURIComponent(`Hola ${invite.name.split(' ')[0]}, te creé una cuenta en Agencia EH. Activa tu cuenta y elige tu contraseña aquí (vence en ${invite.expiresInDays} días): ${invite.activationLink}`) : '';
+  const waText = invite ? encodeURIComponent(`Hola ${invite.name.split(' ')[0]}, te creé una cuenta en Mi Casa. Activa tu cuenta y elige tu contraseña aquí (vence en ${invite.expiresInDays} días): ${invite.activationLink}`) : '';
 
   return <section id="cuentas" className="admin-section">
     <h2 className="panel-subtitle">{title} {items && <em className="count">{items.length}</em>}</h2>

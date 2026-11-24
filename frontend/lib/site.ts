@@ -29,7 +29,7 @@ export const SITE_FONTS: Record<SiteFont, { label: string; title: string; body: 
 };
 
 export const SITE_PALETTES: { name: string; theme: Omit<SiteConfig['theme'], 'font'> }[] = [
-  { name: 'Agencia EH', theme: { primary: '#172536', accent: '#C5A46D', background: '#F7F5F0', text: '#333A40' } },
+  { name: 'Mi Casa', theme: { primary: '#172536', accent: '#C5A46D', background: '#F7F5F0', text: '#333A40' } },
   { name: 'Mar', theme: { primary: '#0E4F5C', accent: '#F2A65A', background: '#FFFDF8', text: '#22313A' } },
   { name: 'Bosque', theme: { primary: '#2F4A3A', accent: '#C9A227', background: '#F6F4EE', text: '#2E3430' } },
   { name: 'Moderno', theme: { primary: '#1F2A44', accent: '#3FA796', background: '#FFFFFF', text: '#2B2F36' } },
@@ -45,7 +45,7 @@ export const SITE_BLOCKS: Record<SiteBlockType, { icon: string; label: string; h
   hero: { icon: '🖼', label: 'Portada', help: 'Foto grande con título, botones y buscador.', make: () => ({ type: 'hero', bg: 'dark', eyebrow: 'TU FRASE CORTA', title: 'Título principal', highlight: 'segunda línea', text: 'Texto de presentación.', imageUrl: '', button1: { label: 'Explorar propiedades ↗', href: '/propiedades' }, button2: { label: '', href: '' }, showSearch: false, searchTitle: 'Encuentra tu próximo espacio', searchNote: 'No necesitas cuenta para buscar' }) },
   paths: { icon: '🧭', label: 'Tarjetas con enlace', help: 'De 1 a 6 tarjetas que llevan a otra página.', make: () => ({ type: 'paths', bg: 'light', eyebrow: 'SECCIÓN', title: 'Título', copy: '', cards: [{ badge: 'Etiqueta', title: 'Tarjeta', text: 'Descripción breve.', linkText: 'Ver más →', href: '/propiedades' }] }) },
   cities: { icon: '📍', label: 'Municipios', help: 'Botones a cada municipio del catálogo.', make: () => ({ type: 'cities', bg: 'soft', eyebrow: 'EXPLORA GUANAJUATO', title: 'Encuentra el lugar ideal', copy: '' }) },
-  featured: { icon: '🏠', label: 'Propiedades', help: 'Las propiedades publicadas más recientes.', make: () => ({ type: 'featured', bg: 'light', eyebrow: 'SELECCIÓN AGENCIA EH', title: 'Propiedades recientes', copy: '', count: 4, operation: '', buttonText: 'Ver todas las propiedades', emptyText: '' }) },
+  featured: { icon: '🏠', label: 'Propiedades', help: 'Las propiedades publicadas más recientes.', make: () => ({ type: 'featured', bg: 'light', eyebrow: 'SELECCIÓN MI CASA', title: 'Propiedades recientes', copy: '', count: 4, operation: '', buttonText: 'Ver todas las propiedades', emptyText: '' }) },
   banner: { icon: '📣', label: 'Franja destacada', help: 'Título grande con botón sobre el color principal.', make: () => ({ type: 'banner', bg: 'dark', eyebrow: 'FRASE CORTA', title: 'Título del anuncio', highlight: '', text: '', button: { label: 'Contáctanos', href: '/anunciar' } }) },
   text: { icon: '📝', label: 'Texto', help: 'Título y párrafos, con botón opcional.', make: () => ({ type: 'text', bg: 'light', eyebrow: '', title: 'Título', copy: '', body: 'Escribe aquí.', align: 'left', button: { label: '', href: '' } }) },
   steps: { icon: '🔢', label: 'Pasos', help: 'Lista numerada (cómo funciona).', make: () => ({ type: 'steps', bg: 'light', eyebrow: '', title: '¿Cómo funciona?', copy: '', items: [{ title: 'Paso 1', text: '' }, { title: 'Paso 2', text: '' }, { title: 'Paso 3', text: '' }] }) },
@@ -60,13 +60,13 @@ export const BG_LABEL: Record<SiteBg, string> = { light: 'Claro', soft: 'Arena (
 
 /** Diseño original del sitio: lo que se ve mientras el administrador no publique cambios. */
 export const DEFAULT_SITE: SiteConfig = {
-  brand: { name: 'AGENCIA EH', tagline: 'PLATAFORMA INMOBILIARIA · BAJÍO', mark: 'EH', logoUrl: '', logoOnly: false },
+  brand: { name: 'Mi Casa', tagline: 'BIENES RAÍCES · BAJÍO', mark: '', logoUrl: '', logoOnly: false },
   theme: { primary: '#172536', accent: '#C5A46D', background: '#F7F5F0', text: '#333A40', font: 'original' },
   header: { links: [{ label: 'Explorar propiedades', href: '/propiedades' }, { label: 'Comparar', href: '/comparar' }], buttonText: 'Anunciar propiedad', buttonHref: '/anunciar' },
   contact: { email: '', phone: '', whatsapp: '', address: 'Guanajuato, México' },
   footer: {
     about: 'Propiedades en renta y venta en Guanajuato, revisadas por nuestro equipo antes de publicarse.',
-    bottom: '© {año} Agencia EH · Guanajuato, México',
+    bottom: '© {año} Mi Casa · Guanajuato, México',
     columns: [
       { title: 'Explorar', auto: '', links: [{ label: 'Propiedades en renta', href: '/propiedades?operation=RENT' }, { label: 'Propiedades en venta', href: '/propiedades?operation=SALE' }, { label: 'Comparar', href: '/comparar' }] },
       { title: 'Municipios', auto: 'municipios', links: [] },
@@ -80,22 +80,22 @@ export const DEFAULT_SITE: SiteConfig = {
         button1: { label: 'Explorar propiedades ↗', href: '/propiedades' }, button2: { label: 'Crear cuenta gratis →', href: '/acceso?registro=1' }, showSearch: true, searchTitle: 'Encuentra tu próximo espacio', searchNote: 'No necesitas cuenta para buscar' },
       { id: 'caminos', type: 'paths', bg: 'light', eyebrow: '¿QUÉ TE TRAE POR AQUÍ?', title: 'Elige tu camino', copy: 'La plataforma funciona distinto según lo que necesites.', cards: [
         { badge: 'Busco propiedad', title: 'Comprar o rentar', text: 'Explora el catálogo y contacta al asesor sin cuenta. Crea tu cuenta gratis para rentar o apartar en línea.', linkText: 'Explorar catálogo →', href: '/propiedades' },
-        { badge: 'Agente / Asesor', title: 'Anunciar mis propiedades', text: 'Registra tus inmuebles; Agencia EH los revisa y, al aprobarlos, aparecen en el catálogo.', linkText: 'Solicitar cuenta de agente →', href: '/anunciar' },
+        { badge: 'Agente / Asesor', title: 'Anunciar mis propiedades', text: 'Registra tus inmuebles; Mi Casa los revisa y, al aprobarlos, aparecen en el catálogo.', linkText: 'Solicitar cuenta de agente →', href: '/anunciar' },
         { badge: 'Agencia', title: 'Publicar como inmobiliaria', text: 'Publica a nombre de tu agencia con tu equipo de asesores; el administrador crea las cuentas.', linkText: 'Solicitar cuenta de agencia →', href: '/anunciar' },
       ] },
       { id: 'municipios', type: 'cities', bg: 'soft', eyebrow: 'EXPLORA GUANAJUATO', title: 'Encuentra el lugar ideal', copy: 'Propiedades en las principales ciudades del Bajío.' },
-      { id: 'recientes', type: 'featured', bg: 'light', eyebrow: 'SELECCIÓN AGENCIA EH', title: 'Propiedades recientes', copy: 'Todas fueron revisadas por nuestro equipo antes de publicarse.', count: 4, operation: '', buttonText: 'Ver todas las propiedades', emptyText: 'Próximamente encontrarás aquí las propiedades publicadas y aprobadas por Agencia EH.' },
-      { id: 'anunciantes', type: 'banner', bg: 'dark', eyebrow: '¿TIENES UNA PROPIEDAD?', title: 'Tu inmueble merece', highlight: 'la mejor vitrina.', text: 'Solicita tu cuenta de agente, agencia o desarrollador: el equipo de Agencia EH la crea y te envía tu enlace de activación. Después registra tus propiedades y envíalas a revisión.', button: { label: 'Anunciar mi propiedad ↗', href: '/anunciar' } },
+      { id: 'recientes', type: 'featured', bg: 'light', eyebrow: 'SELECCIÓN MI CASA', title: 'Propiedades recientes', copy: 'Todas fueron revisadas por nuestro equipo antes de publicarse.', count: 4, operation: '', buttonText: 'Ver todas las propiedades', emptyText: 'Próximamente encontrarás aquí las propiedades publicadas y aprobadas por Mi Casa.' },
+      { id: 'anunciantes', type: 'banner', bg: 'dark', eyebrow: '¿TIENES UNA PROPIEDAD?', title: 'Tu inmueble merece', highlight: 'la mejor vitrina.', text: 'Solicita tu cuenta de agente, agencia o desarrollador: el equipo de Mi Casa la crea y te envía tu enlace de activación. Después registra tus propiedades y envíalas a revisión.', button: { label: 'Anunciar mi propiedad ↗', href: '/anunciar' } },
     ],
     anunciar: [
-      { id: 'intro', type: 'text', bg: 'light', eyebrow: 'ANUNCIA CON NOSOTROS', title: 'Solicita tu cuenta de anunciante', copy: '', body: 'Las cuentas de agentes, agencias y desarrolladoras las crea el administrador de Agencia EH. Escríbenos con tus datos y te enviaremos un enlace para activar tu cuenta y elegir tu contraseña.', align: 'left', button: { label: '', href: '' } },
+      { id: 'intro', type: 'text', bg: 'light', eyebrow: 'ANUNCIA CON NOSOTROS', title: 'Solicita tu cuenta de anunciante', copy: '', body: 'Las cuentas de agentes, agencias y desarrolladoras las crea el administrador de Mi Casa. Escríbenos con tus datos y te enviaremos un enlace para activar tu cuenta y elegir tu contraseña.', align: 'left', button: { label: '', href: '' } },
       { id: 'pasos', type: 'steps', bg: 'light', eyebrow: '', title: '', copy: '', items: [
         { title: 'Solicítala', text: 'Por correo o WhatsApp con tu nombre, tipo de cuenta y empresa.' },
         { title: 'La creamos', text: 'Recibes un enlace de activación por correo.' },
         { title: 'Publica y vende', text: 'Registra propiedades, recibe prospectos y acepta reservas en línea.' },
       ] },
       { id: 'solicitar', type: 'contact', bg: 'light', eyebrow: '', title: '', copy: '', showEmail: true, showWhatsapp: true, emailText: 'Solicitar por correo', whatsappText: 'Solicitar por WhatsApp', subject: 'Solicitud de cuenta de anunciante',
-        message: 'Hola, quiero una cuenta para anunciar en Agencia EH.\n\nTipo de cuenta (agente / agencia / desarrolladora):\nNombre:\nNombre de la empresa (si aplica):\nTeléfono:\nCiudad:' },
+        message: 'Hola, quiero una cuenta para anunciar en Mi Casa.\n\nTipo de cuenta (agente / agencia / desarrolladora):\nNombre:\nNombre de la empresa (si aplica):\nTeléfono:\nCiudad:' },
       { id: 'compradores', type: 'text', bg: 'light', eyebrow: '', title: '', copy: '', body: '¿Buscas comprar o rentar? Crea tu cuenta de comprador al instante.', align: 'left', button: { label: 'Crear cuenta de comprador', href: '/acceso?registro=1' } },
     ],
   },

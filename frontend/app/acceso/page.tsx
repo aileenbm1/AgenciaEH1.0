@@ -56,13 +56,13 @@ export default function Access() {
   const selected = ROLES[role];
 
   return <main className="auth-wrap"><section className={`auth-card${mode === 'register' ? ' wide' : ''}`}>
-    <span className="eyebrow">BIENVENIDO A AGENCIA EH</span>
+    <span className="eyebrow">BIENVENIDO A MI CASA</span>
     <h1>{mode === 'login' ? 'Qué gusto tenerte de vuelta.' : 'Crea tu cuenta'}</h1>
     <p className="muted lead">{mode === 'login'
       ? 'Ingresa y te llevaremos directo a tu panel según tu tipo de cuenta.'
       : 'Cuenta de comprador o inquilino: guarda favoritos, renta o aparta en línea y da seguimiento a tus solicitudes.'}</p>
 
-    {closedNotice && <div className="notice" role="status">El registro público está cerrado. Tu cuenta la crea el administrador de Agencia EH: pídele tu enlace de activación.</div>}
+    {closedNotice && <div className="notice" role="status">El registro público está cerrado. Tu cuenta la crea el administrador de Mi Casa: pídele tu enlace de activación.</div>}
     <div className="auth-tabs" role="tablist">
       <button type="button" role="tab" aria-selected={mode === 'login'} className={mode === 'login' ? 'selected' : ''} onClick={() => switchMode('login')}>Ingresar</button>
       {signupOpen && <button type="button" role="tab" aria-selected={mode === 'register'} className={mode === 'register' ? 'selected' : ''} onClick={() => switchMode('register')}>Crear cuenta</button>}
@@ -86,7 +86,7 @@ export default function Access() {
     </form>
     <small className="muted">{mode === 'login'
       ? signupOpen ? <>¿No tienes cuenta? <button type="button" className="inline-link" onClick={() => switchMode('register')}>Crea una aquí</button>.</>
-        : <>¿No tienes cuenta? Las cuentas las crea el administrador de Agencia EH. <Link className="inline-link" href="/anunciar">Solicítala aquí</Link>.</>
+        : <>¿No tienes cuenta? Las cuentas las crea el administrador de Mi Casa. <Link className="inline-link" href="/anunciar">Solicítala aquí</Link>.</>
       : 'Te enviaremos un correo para verificar tu cuenta.'}</small>
   </section></main>;
 }

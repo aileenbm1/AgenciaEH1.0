@@ -1,5 +1,5 @@
 -- ============================================================================
--- Agencia EH · CAMBIAR LAS FOTOS DE LOS DATOS DE PRUEBA
+-- Mi Casa · CAMBIAR LAS FOTOS DE LOS DATOS DE PRUEBA
 -- Reemplaza las fotos de las propiedades de prueba por las fotos nuevas
 -- (residencias, casas coloniales e interior de departamento).
 -- Solo toca las fotos de prueba (Id que empieza con d3e01): las borra y las

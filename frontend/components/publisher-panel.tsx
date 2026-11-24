@@ -39,6 +39,6 @@ export function PublisherPanel({ user }: { user: SessionUser }) {
     <PublishFlow counts={counts} />
     {user.approvalStatus !== 'PENDING' && <ProfileStats team={isAgency} />}
     {isAgency ? <AgencyProfileEditor /> : <AgentProfileEditor />}
-    <p className="muted">¿Necesitas una cuenta nueva (un asesor para tu equipo, por ejemplo)? Las cuentas las crea el administrador de Agencia EH.</p>
+    <p className="muted">¿Necesitas una cuenta nueva (un asesor para tu equipo, por ejemplo)? Las cuentas las crea el administrador de Mi Casa.</p>
   </PanelShell>;
 }

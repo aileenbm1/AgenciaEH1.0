@@ -152,7 +152,7 @@ export class FanpagesService implements OnModuleInit {
     if (role !== 'ADMIN' && s.requireApproval) {
       await this.db.execute("UPDATE Fanpages SET Status='PENDING', ReviewNote=NULL, UpdatedAt=UTC_TIMESTAMP() WHERE PropertyId=?", [propertyId]);
       const admins = await this.db.query<any>("SELECT Email FROM Users WHERE Role='ADMIN' AND IsActive=1 LIMIT 5");
-      for (const a of admins) this.mail.notify(a.Email, `Fanpage por aprobar · ${p.Title}`, 'Hay una fanpage por aprobar', `Se envió a aprobación el diseño de la fanpage de "${p.Title}".`, 'Revisar', '/panel/admin#fanpages', 'Recibes este aviso porque eres administrador de Agencia EH.');
+      for (const a of admins) this.mail.notify(a.Email, `Fanpage por aprobar · ${p.Title}`, 'Hay una fanpage por aprobar', `Se envió a aprobación el diseño de la fanpage de "${p.Title}".`, 'Revisar', '/panel/admin#fanpages', 'Recibes este aviso porque eres administrador de Mi Casa.');
     } else await this.applyPublish(propertyId, userId);
     return this.get(userId, role, propertyId);
   }

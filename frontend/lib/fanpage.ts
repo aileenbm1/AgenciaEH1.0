@@ -16,7 +16,7 @@ export const FONTS: Record<Theme['font'], { label: string; title: string; body: 
 };
 
 export const PALETTES: { name: string; theme: Omit<Theme, 'font'> }[] = [
-  { name: 'Agencia EH', theme: { primary: '#172536', accent: '#C5A46D', background: '#F7F5F0', text: '#333A40' } },
+  { name: 'Mi Casa', theme: { primary: '#172536', accent: '#C5A46D', background: '#F7F5F0', text: '#333A40' } },
   { name: 'Mar', theme: { primary: '#0E4F5C', accent: '#F2A65A', background: '#FFFDF8', text: '#22313A' } },
   { name: 'Bosque', theme: { primary: '#2F4A3A', accent: '#C9A227', background: '#F6F4EE', text: '#2E3430' } },
   { name: 'Moderno', theme: { primary: '#1F2A44', accent: '#3FA796', background: '#FFFFFF', text: '#2B2F36' } },

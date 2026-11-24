@@ -19,7 +19,7 @@ function Restablecer() {
     finally { setBusy(false); }
   }
   return <main className="auth-wrap"><section className="auth-card">
-    <span className="eyebrow">{welcome ? 'BIENVENIDO A AGENCIA EH' : 'RECUPERAR ACCESO'}</span>
+    <span className="eyebrow">{welcome ? 'BIENVENIDO A MI CASA' : 'RECUPERAR ACCESO'}</span>
     <h1>{welcome ? 'Activa tu cuenta' : 'Elige una nueva contraseña'}</h1>
     {msg ? <>
       <div className="notice ok" role="status">{msg} Ya puedes ingresar con tu correo y tu contraseña.</div>

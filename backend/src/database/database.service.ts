@@ -57,13 +57,26 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       ['Leads', 'Source', 'ALTER TABLE Leads ADD COLUMN Source VARCHAR(40) NULL, ADD COLUMN Campaign VARCHAR(80) NULL'],
     ];
     for (const [t, c, sql] of changes) {
-      if (tables.has(t) && !has(t, c)) { await this.getPool().query(sql); console.error(`[Agencia EH] Migración: columna ${t}.${c} agregada`); }
+      if (tables.has(t) && !has(t, c)) { await this.getPool().query(sql); console.error(`[Mi Casa] Migración: columna ${t}.${c} agregada`); }
     }
     // Diseño del sitio: el valor puede pasar de 64 KB (TEXT) → MEDIUMTEXT.
     try {
       const [t] = await this.query<any>("SELECT DATA_TYPE AS d FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME='SiteSettings' AND COLUMN_NAME='V'");
-      if (t && String(t.d).toLowerCase() === 'text') { await this.getPool().query('ALTER TABLE SiteSettings MODIFY V MEDIUMTEXT NULL'); console.error('[Agencia EH] Migración: SiteSettings.V ahora es MEDIUMTEXT'); }
-    } catch (e: any) { console.error('[Agencia EH] No se pudo ampliar SiteSettings.V:', e?.message); }
+      if (t && String(t.d).toLowerCase() === 'text') { await this.getPool().query('ALTER TABLE SiteSettings MODIFY V MEDIUMTEXT NULL'); console.error('[Mi Casa] Migración: SiteSettings.V ahora es MEDIUMTEXT'); }
+    } catch (e: any) { console.error('[Mi Casa] No se pudo ampliar SiteSettings.V:', e?.message); }
+    // Cambio de nombre a "Mi Casa" (una sola vez): el diseño del sitio guardado por el administrador
+    // y las plantillas de fanpage todavía decían "Agencia EH". Las iniciales "EH" dan paso al logotipo.
+    if (tables.has('Users')) try {
+      const [done] = await this.query<any>("SELECT 1 AS x FROM SiteSettings WHERE K='rename.micasa'");
+      if (!done) {
+        const swap = (col: string) => `REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(${col},'"name":"AGENCIA EH"','"name":"Mi Casa"'),'"mark":"EH"','"mark":""'),'PLATAFORMA INMOBILIARIA · BAJÍO','BIENES RAÍCES · BAJÍO'),'AGENCIA EH','MI CASA'),'Agencia EH','Mi Casa')`;
+        await this.getPool().query(`UPDATE SiteSettings SET V=${swap('V')} WHERE K IN ('site.draft','site.published')`);
+        await this.getPool().query(`UPDATE SiteVersions SET Config=${swap('Config')}`).catch(() => {});
+        await this.getPool().query(`UPDATE FanpageTemplates SET Name=REPLACE(Name,'Agencia EH','Mi Casa'), Description=REPLACE(Description,'Agencia EH','Mi Casa'), Blocks=REPLACE(Blocks,'Agencia EH','Mi Casa')`).catch(() => {});
+        await this.getPool().query("INSERT INTO SiteSettings(K,V) VALUES('rename.micasa','1')");
+        console.error('[Mi Casa] Migración: nombre del sitio cambiado a "Mi Casa"');
+      }
+    } catch (e: any) { console.error('[Mi Casa] No se pudo cambiar el nombre guardado:', e?.message); }
     // Propiedades sin categoría (creadas antes de RF-01): se asigna según el tipo de inmueble.
     if (tables.has('Properties')) try {
       const r: any = await this.getPool().query(`UPDATE Properties SET Category = CASE
@@ -71,13 +84,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         WHEN PropertyType LIKE '%odega%' OR PropertyType LIKE '%ave%' OR PropertyType LIKE '%ndustrial%' THEN 'Industrial'
         WHEN PropertyType LIKE '%ocal%' OR PropertyType LIKE '%ficina%' OR PropertyType LIKE '%omercial%' THEN 'Comercial'
         ELSE 'Residencial' END WHERE Category IS NULL`);
-      const n = r?.[0]?.affectedRows; if (n) console.error(`[Agencia EH] Migración: categoría asignada a ${n} propiedad(es)`);
-    } catch (e: any) { console.error('[Agencia EH] No se pudo asignar categorías:', e?.message); }
+      const n = r?.[0]?.affectedRows; if (n) console.error(`[Mi Casa] Migración: categoría asignada a ${n} propiedad(es)`);
+    } catch (e: any) { console.error('[Mi Casa] No se pudo asignar categorías:', e?.message); }
     // Renta por noche, semana y mes: las configuraciones anteriores tenían un solo modo.
     if (tables.has('RentalSettings')) try {
       await this.getPool().query(`UPDATE RentalSettings SET Modes=Mode, MinMonths=IF(Mode='MONTHLY',MinStay,1), MaxMonths=IF(Mode='MONTHLY',MaxStay,NULL),
         MinStay=IF(Mode='MONTHLY',1,MinStay), MaxStay=IF(Mode='MONTHLY',NULL,MaxStay) WHERE Modes IS NULL`);
-    } catch (e: any) { console.error('[Agencia EH] No se pudieron migrar las modalidades de renta:', e?.message); }
+    } catch (e: any) { console.error('[Mi Casa] No se pudieron migrar las modalidades de renta:', e?.message); }
     // Historial de pagos: los anticipos y pagos registrados antes de existir el historial se copian una sola vez.
     try {
       await this.getPool().query(`INSERT INTO ReservationPayments(Id,ReservationId,Amount,Method,Kind,Notes,CreatedAt)
@@ -86,7 +99,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       await this.getPool().query(`INSERT INTO ReservationPayments(Id,ReservationId,Amount,Method,Kind,Notes,CreatedAt)
         SELECT UUID(), r.Id, r.PaidAmount, IF(r.PaidMethod='TRANSFER','TRANSFER','CASH'), 'PAYMENT', 'Pago final', COALESCE(r.PaidAt, r.UpdatedAt, r.CreatedAt)
         FROM Reservations r WHERE r.PaidAmount > 0 AND NOT EXISTS (SELECT 1 FROM ReservationPayments x WHERE x.ReservationId=r.Id AND x.Kind='PAYMENT')`);
-    } catch (e: any) { if (e?.code !== 'ER_NO_SUCH_TABLE') console.error('[Agencia EH] No se pudo migrar el historial de pagos:', e?.message); }
+    } catch (e: any) { if (e?.code !== 'ER_NO_SUCH_TABLE') console.error('[Mi Casa] No se pudo migrar el historial de pagos:', e?.message); }
     // Restricciones CHECK que cambiaron: rol Desarrollador y operación "Venta y renta".
     const checks: [string, string, string, string][] = [
       ['Users', 'CK_Users_Role', 'DEVELOPER', "Role IN ('BUYER','AGENT','AGENCY','DEVELOPER','ADMIN')"],
@@ -99,9 +112,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         if (ck && !String(ck.c).includes(needle)) {
           await this.getPool().query(`ALTER TABLE ${table} DROP CONSTRAINT ${name}`);
           await this.getPool().query(`ALTER TABLE ${table} ADD CONSTRAINT ${name} CHECK (${clause})`);
-          console.error(`[Agencia EH] Migración: ${name} actualizada`);
+          console.error(`[Mi Casa] Migración: ${name} actualizada`);
         }
-      } catch (e: any) { console.error(`[Agencia EH] No se pudo actualizar ${name}:`, e?.message); }
+      } catch (e: any) { console.error(`[Mi Casa] No se pudo actualizar ${name}:`, e?.message); }
     }
   }
 
@@ -137,10 +150,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         missing,
         ...(wrongCase.length ? { error: `Existen con otras mayúsculas: ${wrongCase.join(', ')}` } : {}),
       };
-      if (this.schema.created.length) console.error(`[Agencia EH] Tablas creadas: ${this.schema.created.join(', ')}`);
+      if (this.schema.created.length) console.error(`[Mi Casa] Tablas creadas: ${this.schema.created.join(', ')}`);
     } catch (err: any) {
       this.schema = { ok: false, created: [], missing: required, error: `${err?.code ? err.code + ': ' : ''}${err?.sqlMessage || err?.message}` };
-      console.error('[Agencia EH] No se pudo verificar/crear el esquema:', this.schema.error);
+      console.error('[Mi Casa] No se pudo verificar/crear el esquema:', this.schema.error);
     }
   }
   async onModuleDestroy() { await this.pool?.end(); }

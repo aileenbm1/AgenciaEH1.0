@@ -7,7 +7,7 @@ const abs = (path: string) => (typeof window !== 'undefined' ? window.location.o
 /** Compartir un inmueble (cualquier persona, con o sin cuenta). */
 export default function ShareButtons({ path, title, compact = false, onShare }: { path: string; title: string; compact?: boolean; onShare?: (channel: string) => void }) {
   const [msg, setMsg] = useState('');
-  const text = `${title} · Agencia EH`;
+  const text = `${title} · Mi Casa`;
   async function nativeOrCopy() {
     const url = abs(path); onShare?.('nativo');
     try {

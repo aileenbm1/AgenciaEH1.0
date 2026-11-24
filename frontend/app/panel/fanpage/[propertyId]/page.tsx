@@ -157,7 +157,7 @@ function FanpageEditor({ user }: { user: SessionUser }) {
     if (!p) return '';
     const facts = [p.bedrooms ? `🛏 ${p.bedrooms} recámaras` : '', p.bathrooms ? `🛁 ${p.bathrooms} baños` : '', p.builtArea ? `📐 ${Number(p.builtArea)} m² construcción` : p.landArea ? `📐 ${Number(p.landArea)} m² terreno` : ''].filter(Boolean).join('\n');
     const price = `💰 ${mxn(Number(p.price))}${p.operation === 'RENT' ? ' / mes' : ''}${p.operation === 'BOTH' && p.rentPrice ? ` · renta ${mxn(Number(p.rentPrice))} / mes` : ''}`;
-    return `🏡 ${p.title}\n📍 ${p.neighborhood ? `${p.neighborhood}, ` : ''}${p.municipality}\n${price}\n${facts}\n\n${(p.description || '').slice(0, 400)}${(p.description || '').length > 400 ? '…' : ''}\n\n👉 Más información: ${utmUrl}\n\n#BienesRaíces #${p.municipality.replace(/\s/g, '')} #AgenciaEH`;
+    return `🏡 ${p.title}\n📍 ${p.neighborhood ? `${p.neighborhood}, ` : ''}${p.municipality}\n${price}\n${facts}\n\n${(p.description || '').slice(0, 400)}${(p.description || '').length > 400 ? '…' : ''}\n\n👉 Más información: ${utmUrl}\n\n#BienesRaíces #${p.municipality.replace(/\s/g, '')} #MiCasa`;
   }, [p, utmUrl]);
   async function copy(text: string, msg: string) { try { await navigator.clipboard.writeText(text); setOk(msg); } catch { setError('No se pudo copiar; selecciona el texto y cópialo manualmente.'); } }
   async function download(url: string, n: number) {

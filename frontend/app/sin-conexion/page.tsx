@@ -1,5 +1,5 @@
 import Link from 'next/link';
-export const metadata = { title: 'Sin conexión · Agencia EH' };
+export const metadata = { title: 'Sin conexión · Mi Casa' };
 
 /** Página que muestra la app instalada cuando no hay internet. */
 export default function Offline() {

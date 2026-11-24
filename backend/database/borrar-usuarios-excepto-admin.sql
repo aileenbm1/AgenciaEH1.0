@@ -1,5 +1,5 @@
 -- ============================================================================
--- Agencia EH · BORRAR TODOS LOS USUARIOS EXCEPTO LOS ADMINISTRADORES
+-- Mi Casa · BORRAR TODOS LOS USUARIOS EXCEPTO LOS ADMINISTRADORES
 --
 -- Deja la base "limpia" para empezar pruebas: borra a todos los usuarios que
 -- NO son administradores (compradores, agentes, agencias y desarrolladoras) y

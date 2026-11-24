@@ -8,7 +8,7 @@ export default function HowItWorksContent() {
     <div className="page-heading">
       <span className="eyebrow">CÓMO FUNCIONA · SOLO ADMINISTRADORES</span>
       <h1>Una plataforma, cinco tipos de cuenta</h1>
-      <p>Quien anuncia registra la propiedad, Agencia EH la revisa y, al aprobarla, cualquier persona puede encontrarla y contactar al asesor.</p>
+      <p>Quien anuncia registra la propiedad, Mi Casa la revisa y, al aprobarla, cualquier persona puede encontrarla y contactar al asesor.</p>
     </div>
 
     <section className="flow big">

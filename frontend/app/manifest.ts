@@ -3,8 +3,8 @@ import type { MetadataRoute } from 'next';
 /** PWA: la plataforma se puede instalar en el celular como una app. */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Agencia EH · Propiedades en Guanajuato',
-    short_name: 'Agencia EH',
+    name: 'Mi Casa · Propiedades en Guanajuato',
+    short_name: 'Mi Casa',
     description: 'Busca, reserva y promociona propiedades en el Bajío.',
     lang: 'es-MX',
     start_url: '/?source=pwa',

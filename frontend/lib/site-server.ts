@@ -10,6 +10,6 @@ export async function getSite(): Promise<SiteConfig> {
   const envEmail = process.env.CONTACT_EMAIL || '';
   return {
     ...site,
-    contact: { ...site.contact, email: site.contact.email || envEmail || 'contacto@agenciaeh.mx', whatsapp: site.contact.whatsapp || envPhone, phone: site.contact.phone || '' },
+    contact: { ...site.contact, email: site.contact.email || envEmail, whatsapp: site.contact.whatsapp || envPhone, phone: site.contact.phone || '' },
   };
 }

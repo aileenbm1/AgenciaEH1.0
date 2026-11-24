@@ -18,12 +18,12 @@ const fmtDay=(d:any)=>new Date(String(d instanceof Date?d.toISOString():d).slice
 @Injectable() export class AuthService implements OnModuleInit {
  constructor(private readonly db:DatabaseService,private readonly jwt:JwtService,private readonly mail:MailService){}
  /** Al arrancar, convierte en ADMIN a los usuarios ya registrados con un correo de ADMIN_EMAILS. */
- async onModuleInit(){const list=adminEmails();if(!list.length)return;try{const r=await this.db.execute(`UPDATE Users SET Role='ADMIN',UpdatedAt=UTC_TIMESTAMP() WHERE Role<>'ADMIN' AND Email IN (${list.map(()=>'?').join(',')})`,list);if(r.affectedRows)console.error(`[Agencia EH] ${r.affectedRows} usuario(s) promovido(s) a ADMIN por ADMIN_EMAILS`);}catch(e:any){console.error('[Agencia EH] ADMIN_EMAILS:',e?.message);}}
+ async onModuleInit(){const list=adminEmails();if(!list.length)return;try{const r=await this.db.execute(`UPDATE Users SET Role='ADMIN',UpdatedAt=UTC_TIMESTAMP() WHERE Role<>'ADMIN' AND Email IN (${list.map(()=>'?').join(',')})`,list);if(r.affectedRows)console.error(`[Mi Casa] ${r.affectedRows} usuario(s) promovido(s) a ADMIN por ADMIN_EMAILS`);}catch(e:any){console.error('[Mi Casa] ADMIN_EMAILS:',e?.message);}}
  /**
   * Bloqueo por membresía: si el usuario (no admin) tiene pagos registrados y el
   * último periodo ya venció, no puede entrar. Sin pagos registrados no se bloquea.
   */
- private async assertMembership(u:any){if(u?.ApprovalStatus==='REJECTED')throw new ForbiddenException('Tu solicitud de cuenta no fue aprobada. Si crees que es un error, contacta a Agencia EH.');if(!u||u.Role==='ADMIN')return;const [m]=await this.db.query<any>('SELECT MAX(PeriodEnd) AS MaxEnd, MAX(PeriodEnd) < UTC_DATE() AS Expired FROM Payments WHERE UserId=?',[u.Id]);if(m?.MaxEnd&&Number(m.Expired)===1)throw new ForbiddenException(`Tu membresía venció el ${fmtDay(m.MaxEnd)}. Contacta a Agencia EH para renovarla y recuperar el acceso.`);}
+ private async assertMembership(u:any){if(u?.ApprovalStatus==='REJECTED')throw new ForbiddenException('Tu solicitud de cuenta no fue aprobada. Si crees que es un error, contacta a Mi Casa.');if(!u||u.Role==='ADMIN')return;const [m]=await this.db.query<any>('SELECT MAX(PeriodEnd) AS MaxEnd, MAX(PeriodEnd) < UTC_DATE() AS Expired FROM Payments WHERE UserId=?',[u.Id]);if(m?.MaxEnd&&Number(m.Expired)===1)throw new ForbiddenException(`Tu membresía venció el ${fmtDay(m.MaxEnd)}. Contacta a Mi Casa para renovarla y recuperar el acceso.`);}
  /** Aviso a los administradores: hay una cuenta profesional por aprobar. */
  private async notifyAdminsPending(name:string,role:string){try{const admins=await this.db.query<any>("SELECT Email FROM Users WHERE Role='ADMIN' AND IsActive=1");for(const a of admins)this.mail.sendApprovalNeeded(a.Email,name,role);}catch{}}
  /** Si el correo está en ADMIN_EMAILS y aún no es ADMIN, lo promueve. */
@@ -35,7 +35,7 @@ const fmtDay=(d:any)=>new Date(String(d instanceof Date?d.toISOString():d).slice
   return {accessToken,refreshToken,user:safeUser(user)};
  }
  async register(dto:RegisterDto){
-  if(!publicSignupOpen())throw new ForbiddenException('El registro público está cerrado. Tu cuenta la crea el administrador de Agencia EH.');
+  if(!publicSignupOpen())throw new ForbiddenException('El registro público está cerrado. Tu cuenta la crea el administrador de Mi Casa.');
   // Solo los compradores se registran solos; agentes, agencias y desarrolladoras los crea el admin.
   dto.role='BUYER';
   const email=dto.email.trim().toLowerCase();

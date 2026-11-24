@@ -66,7 +66,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
   onModuleInit() { this.timer = setInterval(() => this.reminders().catch(() => undefined), 30 * 60000); this.timer.unref?.(); setTimeout(() => this.reminders().catch(() => undefined), 60000).unref?.(); }
   onModuleDestroy() { if (this.timer) clearInterval(this.timer); }
   async reminders() {
-    await this.paymentReminders().catch((e) => console.error('[Agencia EH] Recordatorios de pago:', e?.message));
+    await this.paymentReminders().catch((e) => console.error('[Mi Casa] Recordatorios de pago:', e?.message));
     const appts = await this.db.query<any>(`SELECT r.Id, r.AppointmentAt, r.AppointmentPlace, p.Title, g.Email AS GuestEmail, o.Email AS OwnerEmail FROM Reservations r
       JOIN Properties p ON p.Id=r.PropertyId JOIN Users g ON g.Id=r.GuestId JOIN Users o ON o.Id=r.OwnerId
       WHERE r.Status IN ('APPROVED','DEPOSIT_PAID') AND r.ReminderSentAt IS NULL AND r.AppointmentAt BETWEEN UTC_TIMESTAMP() AND UTC_TIMESTAMP() + INTERVAL 24 HOUR`);
@@ -467,7 +467,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
           await this.db.execute("UPDATE Reservations SET Status='COMPLETED', PaidAmount=?, PaidMethod=?, PaidAt=UTC_TIMESTAMP(), UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [newPaid, m, id]);
           if (r.Kind === 'MONTHLY') await this.db.execute("UPDATE Properties SET Availability='RENTED', UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [r.PropertyId]);
           if (r.Kind === 'SALE') await this.db.execute("UPDATE Properties SET Availability='SOLD', UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [r.PropertyId]);
-          this.mail.notify(guestEmail, `Pago completo · ${title}`, '¡Listo! Tu reserva quedó pagada', `Se registró tu pago de ${fmtMoney(amount)} (${how}) para "${title}". Ya cubriste el total de ${fmtMoney(Number(r.Total))}. Gracias por usar Agencia EH.`, 'Ver reserva', path);
+          this.mail.notify(guestEmail, `Pago completo · ${title}`, '¡Listo! Tu reserva quedó pagada', `Se registró tu pago de ${fmtMoney(amount)} (${how}) para "${title}". Ya cubriste el total de ${fmtMoney(Number(r.Total))}. Gracias por usar Mi Casa.`, 'Ver reserva', path);
         } else {
           await this.db.execute("UPDATE Reservations SET Status='DEPOSIT_PAID', UpdatedAt=UTC_TIMESTAMP() WHERE Id=?", [id]);
           // El primer pago deja la propiedad "Apartada" (renta mensual y compra); las estancias cortas solo ocupan sus fechas.

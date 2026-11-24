@@ -12,7 +12,7 @@ const waNumber = (phone: string) => { const d = phone.replace(/\D/g, ''); return
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const { data: a } = await getJson<Agent>(`agents/${encodeURIComponent(slug)}`);
-  return a ? { title: `${a.fullName} · Asesor inmobiliario · Agencia EH`, description: a.bio?.slice(0, 160) || `Propiedades de ${a.fullName} en Agencia EH.` } : {};
+  return a ? { title: `${a.fullName} · Asesor inmobiliario · Mi Casa`, description: a.bio?.slice(0, 160) || `Propiedades de ${a.fullName} en Mi Casa.` } : {};
 }
 
 /** Perfil público del asesor (RF-11). */
@@ -28,8 +28,8 @@ export default async function AgentPage({ params }: { params: Promise<{ slug: st
         <span className="eyebrow light">ASESOR INMOBILIARIO{a.agency ? <> · <Link href={`/agencias/${a.agency.slug}`}>{a.agency.name.toUpperCase()}</Link></> : null}</span>
         <h1>{a.fullName}</h1>
         {a.bio && <p>{a.bio}</p>}
-        <div className="agent-stats"><span><b>{a.stats.active}</b> propiedades activas</span><span><b>{a.stats.closed}</b> rentadas o vendidas</span><span>En Agencia EH desde <b>{year}</b></span></div>
-        {a.phone && <a className="button button-gold" href={`https://wa.me/${waNumber(a.phone)}?text=${encodeURIComponent(`Hola ${a.fullName.split(' ')[0]}, vi tu perfil en Agencia EH.`)}`} target="_blank" rel="noopener noreferrer">Contactar por WhatsApp</a>}
+        <div className="agent-stats"><span><b>{a.stats.active}</b> propiedades activas</span><span><b>{a.stats.closed}</b> rentadas o vendidas</span><span>En Mi Casa desde <b>{year}</b></span></div>
+        {a.phone && <a className="button button-gold" href={`https://wa.me/${waNumber(a.phone)}?text=${encodeURIComponent(`Hola ${a.fullName.split(' ')[0]}, vi tu perfil en Mi Casa.`)}`} target="_blank" rel="noopener noreferrer">Contactar por WhatsApp</a>}
       </div>
     </section>
     <ShareButtons path={`/asesores/${a.slug}`} title={`${a.fullName} · Asesor inmobiliario`} />

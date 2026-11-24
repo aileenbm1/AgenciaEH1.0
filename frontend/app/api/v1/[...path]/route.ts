@@ -43,7 +43,7 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
     });
   } catch (err: any) {
     const detail = [err?.code, err?.message].filter(Boolean).join(': ');
-    console.error('[Agencia EH] Proxy /api/v1 →', detail);
+    console.error('[Mi Casa] Proxy /api/v1 →', detail);
     return unavailable(embeddedStatus(), detail);
   }
 

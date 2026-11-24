@@ -49,7 +49,7 @@ export default function UserEditor({ user, me, onClose, onSaved, onDeleted }: {
   }); };
 
   const copy = async () => { try { await navigator.clipboard.writeText(link!.link); setCopied(true); } catch { setCopied(false); } };
-  const wa = link ? encodeURIComponent(`Hola ${user.fullName.split(' ')[0]}, entra a este enlace para elegir tu nueva contraseña de Agencia EH (vence en ${link.expiresInHours} horas): ${link.link}`) : '';
+  const wa = link ? encodeURIComponent(`Hola ${user.fullName.split(' ')[0]}, entra a este enlace para elegir tu nueva contraseña de Mi Casa (vence en ${link.expiresInHours} horas): ${link.link}`) : '';
 
   return <section className="dashboard-card form-card user-editor" id="editar">
     <div className="section-heading"><h2>Editar · {user.fullName}{self ? ' (tú)' : ''}</h2><button type="button" className="inline-link" onClick={onClose}>Cerrar</button></div>

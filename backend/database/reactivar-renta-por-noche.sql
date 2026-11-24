@@ -1,5 +1,5 @@
 -- ============================================================================
--- Agencia EH · ACTIVAR RENTA POR NOCHE, SEMANA Y MES EN TODAS LAS RENTAS
+-- Mi Casa · ACTIVAR RENTA POR NOCHE, SEMANA Y MES EN TODAS LAS RENTAS
 --
 -- Para las propiedades en renta que tengan configuradas sus reservas solo por
 -- mes (o sin noche/semana), activa también "Por noche" y "Por semana".

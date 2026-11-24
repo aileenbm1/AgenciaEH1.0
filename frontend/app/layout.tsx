@@ -8,7 +8,7 @@ import { themeCss } from "@/lib/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const site = await getSite();
-  const name = site.brand.name && site.brand.name !== 'AGENCIA EH' ? site.brand.name : 'Agencia EH';
+  const name = site.brand.name && site.brand.name.toLowerCase() !== 'mi casa' ? site.brand.name : 'Mi Casa';
   return {
     title: `${name} | Propiedades en Guanajuato`, description: site.footer.about || "Encuentra, compara y promociona propiedades en Guanajuato.",
     applicationName: name, appleWebApp: { capable: true, title: name, statusBarStyle: "default" },

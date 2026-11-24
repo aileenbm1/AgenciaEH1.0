@@ -15,7 +15,7 @@ export default async function AgencyPage({ params }: { params: Promise<{ slug: s
   return <main className="page-wrap">
     <section className="agency-hero"><span className="eyebrow light">{a.kind === 'DEVELOPER' ? 'DESARROLLADORA INMOBILIARIA' : 'AGENCIA INMOBILIARIA'}</span><h1>{a.name}</h1>
       {a.description && <p>{a.description}</p>}
-      {a.phone && <a className="button button-gold" href={`https://wa.me/${waNumber(a.phone)}?text=${encodeURIComponent(`Hola, vi su perfil de ${a.name} en Agencia EH.`)}`} target="_blank" rel="noopener noreferrer">Contactar por WhatsApp</a>}
+      {a.phone && <a className="button button-gold" href={`https://wa.me/${waNumber(a.phone)}?text=${encodeURIComponent(`Hola, vi su perfil de ${a.name} en Mi Casa.`)}`} target="_blank" rel="noopener noreferrer">Contactar por WhatsApp</a>}
     </section>
     {a.agents.length > 0 && <p className="muted lead">Asesores: {a.agents.map((x, i) => <span key={x.id}>{i ? ' · ' : ''}{x.slug ? <Link className="inline-link" href={`/asesores/${x.slug}`}>{x.fullName}</Link> : x.fullName}</span>)}</p>}
     <h2>{a.kind === 'DEVELOPER' ? 'Propiedades de la desarrolladora' : 'Propiedades de la agencia'}</h2>

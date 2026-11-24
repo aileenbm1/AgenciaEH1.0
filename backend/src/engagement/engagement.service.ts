@@ -170,7 +170,7 @@ export class EngagementService {
         this.mail.sendSearchAlert(s.Email, s.Name, p.Title, p.Slug);
         await this.db.execute('UPDATE SavedSearches SET LastNotifiedAt=UTC_TIMESTAMP() WHERE Id=?', [s.Id]);
       }
-    } catch (e: any) { console.error('[Agencia EH] Avisos de búsquedas:', e?.message); }
+    } catch (e: any) { console.error('[Mi Casa] Avisos de búsquedas:', e?.message); }
   }
 
   // ───────────── Perfil público de agencia ─────────────

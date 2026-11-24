@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: Params) {
   if (!p) return {};
   const img = p.images?.[0]?.url;
   const description = `${mxn(Number(p.price))}${p.operation === 'RENT' ? ' / mes' : ''} · ${p.neighborhood ? `${p.neighborhood}, ` : ''}${p.municipality}. ${(p.description || '').slice(0, 120)}`;
-  return { title: `${p.title} · Agencia EH`, description, openGraph: { title: p.title, description, type: 'website', images: img ? [{ url: img }] : [] } };
+  return { title: `${p.title} · Mi Casa`, description, openGraph: { title: p.title, description, type: 'website', images: img ? [{ url: img }] : [] } };
 }
 
 /** Fanpage pública de la propiedad: diseño por bloques (o el automático), con estadísticas y origen UTM. */

@@ -37,7 +37,7 @@ const props = [
   [14, U.asesor, 'Terreno sin papeles (rechazado)', 'SALE', 'REJECTED', 600000, 'Silao', 'Ejido', 'Terreno', null, null, 1000, null, ['terreno-9'], 'Ejemplo de propiedad rechazada por el administrador. El asesor puede corregirla y reenviarla.', 0],
 ];
 let sql = `-- ============================================================================
--- Agencia EH · DATOS DE PRUEBA
+-- Mi Casa · DATOS DE PRUEBA
 -- Importa este archivo en phpMyAdmin (pestaña Importar o SQL) con tu base
 -- seleccionada, DESPUÉS de haber desplegado la versión 0.15.0 o posterior
 -- (la API crea/actualiza las tablas al arrancar).
@@ -106,7 +106,7 @@ fs.writeFileSync(process.argv[3], sql);
 // Instalación completa en una base vacía: esquema + datos de ejemplo en un solo archivo.
 const schema = fs.readFileSync(require('path').join(require('path').dirname(process.argv[3]), 'schema.sql'), 'utf8');
 fs.writeFileSync(require('path').join(require('path').dirname(process.argv[3]), 'instalacion-con-ejemplos.sql'), `-- ============================================================================
--- Agencia EH · INSTALACIÓN CON EJEMPLOS (base de datos vacía)
+-- Mi Casa · INSTALACIÓN CON EJEMPLOS (base de datos vacía)
 -- Crea todas las tablas y carga propiedades, cuentas y reservas de ejemplo.
 -- Úsalo en hPanel → Bases de datos → Importar datos (o phpMyAdmin → Importar).
 -- Las cuentas de ejemplo usan la contraseña ${PASSWORD} (bórralas antes de abrir
@@ -121,7 +121,7 @@ ${schema}
 ${sql}`);
 const all = [...Object.values(U)].map(q).join(',');
 const del = `-- ============================================================================
--- Agencia EH · BORRAR DATOS DE PRUEBA
+-- Mi Casa · BORRAR DATOS DE PRUEBA
 -- Quita todo lo que agregó datos-prueba.sql (cuentas *.demo@example.com, sus
 -- propiedades, prospectos, favoritos, búsquedas y pagos). No toca tus datos reales.
 -- ============================================================================

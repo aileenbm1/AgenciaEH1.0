@@ -29,7 +29,7 @@ export const ROLES: Record<UserRole, RoleInfo> = {
   },
   AGENT: {
     id: 'AGENT',
-    accountBy: 'La crea el administrador de Agencia EH.',
+    accountBy: 'La crea el administrador de Mi Casa.',
     label: 'Agente / Asesor',
     who: 'Soy asesor inmobiliario o dueño y quiero anunciar',
     summary: 'Registra tus inmuebles, envíalos a revisión y, una vez aprobados, aparecen en el catálogo.',
@@ -39,7 +39,7 @@ export const ROLES: Record<UserRole, RoleInfo> = {
   },
   AGENCY: {
     id: 'AGENCY',
-    accountBy: 'La crea el administrador de Agencia EH.',
+    accountBy: 'La crea el administrador de Mi Casa.',
     label: 'Agencia',
     who: 'Represento a una inmobiliaria con varios asesores',
     summary: 'Publica como agencia con tu equipo de asesores y acepta sus reservas en línea.',
@@ -49,7 +49,7 @@ export const ROLES: Record<UserRole, RoleInfo> = {
   },
   DEVELOPER: {
     id: 'DEVELOPER',
-    accountBy: 'La crea el administrador de Agencia EH.',
+    accountBy: 'La crea el administrador de Mi Casa.',
     label: 'Desarrollador',
     who: 'Desarrollo proyectos inmobiliarios (fraccionamientos, torres, preventas)',
     summary: 'Publica los inmuebles de tus proyectos, administra a tu equipo de vendedores y da seguimiento a prospectos.',
@@ -59,9 +59,9 @@ export const ROLES: Record<UserRole, RoleInfo> = {
   },
   ADMIN: {
     id: 'ADMIN',
-    accountBy: 'El equipo de Agencia EH.',
+    accountBy: 'El equipo de Mi Casa.',
     label: 'Administrador',
-    who: 'Equipo interno de Agencia EH',
+    who: 'Equipo interno de Mi Casa',
     summary: 'Revisa cada propiedad antes de que sea pública y administra usuarios, membresías y pagos.',
     can: ['Ver la cola de propiedades en revisión', 'Aprobar (publicar) o rechazar propiedades', 'Crear todas las cuentas de agentes, agencias, desarrolladoras y administradores', 'Aceptar o intervenir en cualquier reserva', 'Gestionar usuarios y roles', 'Registrar membresías y pagos (efectivo / transferencia)', 'Ver métricas generales', 'Ver todos los prospectos y visitas'],
     home: '/panel/admin',

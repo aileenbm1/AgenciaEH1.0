@@ -34,7 +34,7 @@ function LeadCard({ lead, me, onSaved }: { lead: Lead; me: SessionUser; onSaved:
     {lead.kind === 'VISIT' && lead.visitAt && <p className="lead-visit">📅 Quiere visitar: <b>{fmt(lead.visitAt)}</b></p>}
     {lead.message && <p className="lead-message">“{lead.message}”</p>}
     <div className="property-actions">
-      <a className="button button-outline" href={`mailto:${lead.email}?subject=${encodeURIComponent(lead.property ? 'Re: ' + lead.property.title : 'Agencia EH')}`}>Responder por correo</a>
+      <a className="button button-outline" href={`mailto:${lead.email}?subject=${encodeURIComponent(lead.property ? 'Re: ' + lead.property.title : 'Mi Casa')}`}>Responder por correo</a>
       {lead.phone && <a className="button button-outline" href={`https://wa.me/${waNumber(lead.phone)}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>}
       <select value={lead.status} disabled={busy} onChange={e => save({ status: e.target.value })} aria-label="Estado del prospecto">
         {Object.entries(LEAD_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}

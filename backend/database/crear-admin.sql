@@ -1,5 +1,5 @@
 -- =====================================================================
--- Agencia EH — Crear (o convertir) la cuenta de ADMINISTRADOR
+-- Mi Casa — Crear (o convertir) la cuenta de ADMINISTRADOR
 -- =====================================================================
 -- 1) Cambia SOLO las 3 líneas de abajo (deja las comillas):
 --      @correo  -> el correo con el que vas a entrar
@@ -40,4 +40,4 @@ ON DUPLICATE KEY UPDATE
   UpdatedAt = UTC_TIMESTAMP();
 
 -- Debe aparecer tu correo con Role = ADMIN
-SELECT Email, FullName, Role FROM Users WHERE Email = LOWER(TRIM(@correo));
+SELECT Email, FullName, Role FROM Users WHERE Email = CONVERT(LOWER(TRIM(@correo)) USING utf8mb4) COLLATE utf8mb4_unicode_ci;

@@ -33,9 +33,9 @@ export default function PropertyContact({ propertyId, title, owner, source, camp
     finally { setBusy(false); }
   }
 
-  const wa = owner?.phone ? `https://wa.me/${waNumber(owner.phone)}?text=${encodeURIComponent(`Hola, vi "${title}" en Agencia EH y me interesa.`)}` : null;
+  const wa = owner?.phone ? `https://wa.me/${waNumber(owner.phone)}?text=${encodeURIComponent(`Hola, vi "${title}" en Mi Casa y me interesa.`)}` : null;
   return <div className="agent-box contact-box">
-    <b>{owner?.fullName || 'Agencia EH'}</b>
+    <b>{owner?.fullName || 'Mi Casa'}</b>
     <small>{owner?.role === 'AGENCY' ? 'Agencia inmobiliaria' : owner?.role === 'DEVELOPER' ? 'Desarrolladora' : 'Asesor inmobiliario'}{owner?.agency && owner.role !== 'AGENCY' && owner.role !== 'DEVELOPER' ? <> · <Link href={`/agencias/${owner.agency.slug}`}>{owner.agency.name}</Link></> : null}</small>
     {owner?.agency && (owner.role === 'AGENCY' || owner.role === 'DEVELOPER') && <Link className="small-link" href={`/agencias/${owner.agency.slug}`}>Ver perfil →</Link>}
     {owner?.agent && <Link className="small-link" href={`/asesores/${owner.agent.slug}`}>Ver perfil del asesor →</Link>}

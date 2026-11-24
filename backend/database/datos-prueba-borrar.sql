@@ -1,5 +1,5 @@
 -- ============================================================================
--- Agencia EH · BORRAR DATOS DE PRUEBA
+-- Mi Casa · BORRAR DATOS DE PRUEBA
 -- Quita todo lo que agregó datos-prueba.sql (cuentas *.demo@example.com, sus
 -- propiedades, prospectos, favoritos, búsquedas y pagos). No toca tus datos reales.
 -- ============================================================================

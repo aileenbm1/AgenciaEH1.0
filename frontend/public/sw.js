@@ -1,8 +1,8 @@
-/* Service worker de Agencia EH (PWA).
+/* Service worker de Mi Casa (PWA).
    - Páginas: primero la red; sin conexión, la copia guardada o la página "Sin conexión".
    - Archivos estáticos (_next/static, íconos, fotos de ejemplo): se guardan en caché.
    - La API (/api/...) NUNCA se guarda en caché: datos personales y sesiones siempre frescos. */
-const VERSION = 'eh-v1';
+const VERSION = 'micasa-v2';
 const OFFLINE = '/sin-conexion';
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll([OFFLINE, '/icons/icon-192.png'])).then(() => self.skipWaiting()));
