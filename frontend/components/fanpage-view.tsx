@@ -8,6 +8,7 @@ import PropertyContact from './property-contact';
 import ShareButtons from './share-buttons';
 import PropertyMap from './property-map';
 import ReservationWidget from './reservation-widget';
+import { reviewProperty } from '@/lib/reservations';
 
 type Track = (kind: 'VIEW' | 'SHARE' | 'CTA', channel?: string) => void;
 const waNumber = (phone: string) => { const d = phone.replace(/\D/g, ''); return d.length === 10 ? `52${d}` : d; };
@@ -101,7 +102,7 @@ export default function FanpageView({ property: p, theme, blocks, preview = fals
         if (closed) return null;
         return <div className="fp-inner fp-reserve">{b.title && <h2>{fill(b.title, p)}</h2>}{b.text && <p>{fill(b.text, p)}</p>}
           {preview ? <div className="fp-form-placeholder">Aquí aparece el calendario con la cotización y el botón para solicitar la reserva o el apartado.</div>
-            : <ReservationWidget propertyId={p.id} slug={p.slug} operation={p.operation} />}</div>;
+            : <ReservationWidget propertyId={p.id} slug={p.slug} operation={p.operation} property={reviewProperty(p)} />}</div>;
       }
       case 'agent': {
         const o = p.owner; if (!o) return null;

@@ -23,3 +23,9 @@ export type ResRow = {
   guest: { id: string; fullName: string; email?: string; phone?: string }; owner: { id: string; fullName: string; email?: string; phone?: string };
 };
 export const resWhen = (r: ResRow) => r.kind === 'SALE' ? (r.paymentType ? `Pago: ${PAY_TYPE[r.paymentType] || r.paymentType}` : '') : r.kind === 'NIGHTLY' ? `${fmtDay(r.checkIn)} → ${fmtDay(r.checkOut)} · ${r.nights} noche(s)` : r.kind === 'WEEKLY' ? `${fmtDay(r.checkIn)} → ${fmtDay(r.checkOut)} · ${r.weeks} semana(s)` : `Desde ${fmtDay(r.checkIn)} · ${r.months} mes(es)`;
+
+// Ventana de revisión antes de reservar.
+export type ReviewProperty = { title: string; image?: string | null; place: string; lat?: number | null; lng?: number | null; exact?: boolean };
+/** Datos de la propiedad que se muestran en la ventana. */
+export const reviewProperty = (x: { title: string; images?: { url: string }[]; neighborhood?: string | null; municipality: string; latitude?: number | null; longitude?: number | null; showExactLocation?: boolean }): ReviewProperty =>
+  ({ title: x.title, image: x.images?.[0]?.url || null, place: [x.neighborhood, x.municipality].filter(Boolean).join(', '), lat: x.latitude ?? null, lng: x.longitude ?? null, exact: !!x.showExactLocation });

@@ -51,6 +51,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       ['Properties', 'ShowExactLocation', 'ALTER TABLE Properties ADD COLUMN ShowExactLocation TINYINT(1) NOT NULL DEFAULT 0'],
       ['RentalSettings', 'Modes', 'ALTER TABLE RentalSettings ADD COLUMN Modes VARCHAR(40) NULL, ADD COLUMN WeekPrice DECIMAL(12,2) NULL, ADD COLUMN MonthPrice DECIMAL(12,2) NULL, ADD COLUMN MinWeeks INT NOT NULL DEFAULT 1, ADD COLUMN MaxWeeks INT NULL, ADD COLUMN MinMonths INT NOT NULL DEFAULT 1, ADD COLUMN MaxMonths INT NULL'],
       ['RentalSettings', 'Rules', 'ALTER TABLE RentalSettings ADD COLUMN Rules VARCHAR(2000) NULL'],
+      ['RentalSettings', 'Nearby', 'ALTER TABLE RentalSettings ADD COLUMN Nearby VARCHAR(700) NULL'],
       ['Reservations', 'PayReminderAt', 'ALTER TABLE Reservations ADD COLUMN PayReminderAt DATETIME NULL, ADD COLUMN PayDueReminderAt DATETIME NULL, ADD COLUMN OverdueNoticeAt DATETIME NULL'],
       ['Reservations', 'Weeks', 'ALTER TABLE Reservations ADD COLUMN Weeks INT NULL'],
       ['Leads', 'Source', 'ALTER TABLE Leads ADD COLUMN Source VARCHAR(40) NULL, ADD COLUMN Campaign VARCHAR(80) NULL'],

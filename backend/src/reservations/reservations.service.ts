@@ -142,7 +142,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       minStay: r?.MinStay ?? 1, maxStay: r?.MaxStay ?? null,
       minWeeks: r?.MinWeeks ?? 1, maxWeeks: r?.MaxWeeks ?? null, minMonths: r?.MinMonths ?? 1, maxMonths: r?.MaxMonths ?? null, // Límite de huéspedes: el que fije el anunciante o, si no lo fijó, 2 por recámara (mínimo 2).
       maxGuests: r?.MaxGuests ?? defaultGuests(p), maxGuestsIsDefault: r?.MaxGuests == null, deposit: Number(r?.Deposit || 0), taxRate: Number(r?.TaxRate || 0),
-      cancellationPolicy: r?.CancellationPolicy || null, rules: r?.Rules || null, seasons, saleRequests: r ? !!r.SaleRequests : true,
+      cancellationPolicy: r?.CancellationPolicy || null, rules: r?.Rules || null, nearby: r?.Nearby || null, seasons, saleRequests: r ? !!r.SaleRequests : true,
       monthlyRent: rent,
       salePrice: p && (p.Operation === 'SALE' || p.Operation === 'BOTH') ? Number(p.Price) : null,
       operation: p?.Operation, availability: p?.Availability || 'AVAILABLE',
@@ -183,12 +183,12 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     const seasons: Season[] = Array.isArray(d.seasons) ? d.seasons.slice(0, 20).map((s: any) => ({ name: String(s.name || '').slice(0, 40), from: String(s.from || ''), to: String(s.to || ''), price: Number(s.price) })) : [];
     for (const s of seasons) if (!ISO.test(s.from) || !ISO.test(s.to) || s.to < s.from || !(s.price > 0)) throw new BadRequestException('Revisa las temporadas: fechas (inicio ≤ fin) y precio por noche.');
     const list = modes.length ? modes : ['MONTHLY'];
-    await this.db.execute(`INSERT INTO RentalSettings(PropertyId,Enabled,Mode,Modes,NightPrice,WeekPrice,MonthPrice,MinStay,MaxStay,MinWeeks,MaxWeeks,MinMonths,MaxMonths,MaxGuests,Deposit,TaxRate,CancellationPolicy,Rules,Seasons,SaleRequests,UpdatedAt)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE Enabled=VALUES(Enabled),Mode=VALUES(Mode),Modes=VALUES(Modes),NightPrice=VALUES(NightPrice),WeekPrice=VALUES(WeekPrice),MonthPrice=VALUES(MonthPrice),
+    await this.db.execute(`INSERT INTO RentalSettings(PropertyId,Enabled,Mode,Modes,NightPrice,WeekPrice,MonthPrice,MinStay,MaxStay,MinWeeks,MaxWeeks,MinMonths,MaxMonths,MaxGuests,Deposit,TaxRate,CancellationPolicy,Rules,Nearby,Seasons,SaleRequests,UpdatedAt)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE Enabled=VALUES(Enabled),Mode=VALUES(Mode),Modes=VALUES(Modes),NightPrice=VALUES(NightPrice),WeekPrice=VALUES(WeekPrice),MonthPrice=VALUES(MonthPrice),
       MinStay=VALUES(MinStay),MaxStay=VALUES(MaxStay),MinWeeks=VALUES(MinWeeks),MaxWeeks=VALUES(MaxWeeks),MinMonths=VALUES(MinMonths),MaxMonths=VALUES(MaxMonths),
-      MaxGuests=VALUES(MaxGuests),Deposit=VALUES(Deposit),TaxRate=VALUES(TaxRate),CancellationPolicy=VALUES(CancellationPolicy),Rules=VALUES(Rules),Seasons=VALUES(Seasons),SaleRequests=VALUES(SaleRequests),UpdatedAt=UTC_TIMESTAMP()`,
+      MaxGuests=VALUES(MaxGuests),Deposit=VALUES(Deposit),TaxRate=VALUES(TaxRate),CancellationPolicy=VALUES(CancellationPolicy),Rules=VALUES(Rules),Nearby=VALUES(Nearby),Seasons=VALUES(Seasons),SaleRequests=VALUES(SaleRequests),UpdatedAt=UTC_TIMESTAMP()`,
       [propertyId, enabled ? 1 : 0, list.includes('NIGHTLY') && list.length === 1 ? 'NIGHTLY' : 'MONTHLY', list.join(','), nightPrice, weekPrice, monthPrice, minStay, maxStay, minWeeks, maxWeeks, minMonths, maxMonths,
-        maxGuests, deposit, taxRate, String(d.cancellationPolicy || '').slice(0, 1000) || null, String(d.rules || '').trim().slice(0, 2000) || null, JSON.stringify(seasons), d.saleRequests === false ? 0 : 1]);
+        maxGuests, deposit, taxRate, String(d.cancellationPolicy || '').slice(0, 1000) || null, String(d.rules || '').trim().slice(0, 2000) || null, String(d.nearby || '').split(/\n+/).map((x: string) => x.trim().slice(0, 80)).filter(Boolean).slice(0, 8).join('\n') || null, JSON.stringify(seasons), d.saleRequests === false ? 0 : 1]);
     return this.getSettings(propertyId);
   }
 

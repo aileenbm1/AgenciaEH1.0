@@ -1,3 +1,4 @@
+import { reviewProperty } from '@/lib/reservations';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getPublicProperty, OPERATION_LABEL, toCard } from '@/lib/properties';
@@ -50,7 +51,7 @@ export default async function Detail({ params }: { params: Promise<{ slug: strin
           <dl className="facts">{facts.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl></section>
         {custom.length > 0 && <section className="detail-section"><h3>Características</h3>
           <dl className="facts">{custom.map(c => <div key={c.label}><dt>{c.label}</dt><dd>{c.value}</dd></div>)}</dl></section>}
-        {!closed && <ReservationWidget propertyId={raw.id} slug={raw.slug} operation={raw.operation} />}
+        {!closed && <ReservationWidget propertyId={raw.id} slug={raw.slug} operation={raw.operation} property={reviewProperty(raw)} />}
         {raw.latitude != null && raw.longitude != null && <section className="detail-section"><h3>Ubicación</h3>
           <PropertyMap lat={Number(raw.latitude)} lng={Number(raw.longitude)} title={p.title} exact={!!raw.showExactLocation} /></section>}
         {plans.length > 0 && <section className="detail-section"><h3>Plano de planta</h3>

@@ -4,16 +4,18 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authJson, currentToken, getCurrentUser } from '@/lib/auth';
 import { mxn } from '@/lib/data';
+import ReservationReview, { ReviewProperty } from './reservation-review';
 
 type Unit = 'NIGHTLY' | 'WEEKLY' | 'MONTHLY';
-type Settings = { enabled: boolean; modes: Unit[]; nightPrice: number | null; weekPrice: number | null; monthPrice: number | null; minStay: number; maxStay: number | null; minWeeks: number; maxWeeks: number | null; minMonths: number; maxMonths: number | null; maxGuests: number; deposit: number; taxRate: number;
+type Settings = { nearby?: string | null; enabled: boolean; modes: Unit[]; nightPrice: number | null; weekPrice: number | null; monthPrice: number | null; minStay: number; maxStay: number | null; minWeeks: number; maxWeeks: number | null; minMonths: number; maxMonths: number | null; maxGuests: number; deposit: number; taxRate: number;
   cancellationPolicy: string | null; rules: string | null; seasons: { name?: string; from: string; to: string; price: number }[]; saleRequests: boolean; monthlyRent: number | null; salePrice: number | null; operation: string; availability: string };
 type Busy = { from: string; to: string; type: string };
-type Quote = { lines: { label: string; amount: number }[]; total: number; checkOut?: string; available?: boolean };
+type Quote = { lines: { label: string; amount: number }[]; total: number; checkOut?: string; available?: boolean; nights?: number; deposit?: number };
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const todayIso = () => iso(new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())));
 const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const PAYMENT_LABEL: Record<string, string> = { CONTADO: 'Contado', CREDITO: 'Crédito bancario', INFONAVIT: 'Infonavit', FOVISSSTE: 'Fovissste', OTRO: 'Otro' };
 const UNIT_LABEL: Record<Unit, string> = { NIGHTLY: 'Por noche', WEEKLY: 'Por semana', MONTHLY: 'Por mes' };
 const range = (a: number, b: number) => Array.from({ length: Math.max(0, b - a + 1) }, (_, i) => a + i);
 const addDay = (d: string, n: number) => { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
@@ -53,7 +55,7 @@ function Calendar({ busy, from, to, onPick, single, pickingOut }: { busy: Busy[]
 }
 
 /** Reserva en línea en la ficha (RF-22 a RF-24): renta por noche (tipo Airbnb), por semana o por mes, y apartado de compra. */
-export default function ReservationWidget({ propertyId, slug, operation }: { propertyId: string; slug: string; operation: 'RENT' | 'SALE' | 'BOTH' }) {
+export default function ReservationWidget({ propertyId, slug, operation, property }: { propertyId: string; slug: string; operation: 'RENT' | 'SALE' | 'BOTH'; property?: ReviewProperty }) {
   const router = useRouter();
   const [data, setData] = useState<{ settings: Settings; busy: Busy[] } | null>(null);
   const [tab, setTab] = useState<'RENT' | 'SALE'>(operation === 'SALE' ? 'SALE' : 'RENT');
@@ -64,6 +66,7 @@ export default function ReservationWidget({ propertyId, slug, operation }: { pro
   const [quote, setQuote] = useState<Quote | null>(null); const [qErr, setQErr] = useState('');
   const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const [clash, setClash] = useState('');
+  const [review, setReview] = useState(false);
   const [logged, setLogged] = useState(false);
   // La sesión puede venir solo de la cookie de renovación: se confirma con el servidor.
   useEffect(() => { if (currentToken()) setLogged(true); else getCurrentUser().then(u => setLogged(!!u)).catch(() => {}); }, []);
@@ -159,8 +162,13 @@ export default function ReservationWidget({ propertyId, slug, operation }: { pro
     </div>}
     {s?.cancellationPolicy && tab === 'RENT' && <details><summary>Política de cancelación</summary><p>{s.cancellationPolicy}</p></details>}
     {error && <div className="notice" role="alert">{error}</div>}
-    {logged ? <button type="button" className="button button-navy full" disabled={busy || !quote || quote.available === false} onClick={submit}>{busy ? 'Enviando…' : tab === 'SALE' ? 'Solicitar apartado' : 'Solicitar reserva'}</button>
+    {logged ? <button type="button" className="button button-navy full" disabled={busy || !quote || quote.available === false} onClick={() => { setError(''); setReview(true); }}>{busy ? 'Enviando…' : tab === 'SALE' ? 'Solicitar apartado' : 'Solicitar reserva'}</button>
       : <Link className="button button-navy full" href={`/acceso?next=${encodeURIComponent(`/propiedades/${slug}#reservar`)}`}>Inicia sesión o crea tu cuenta para reservar</Link>}
+    {review && quote && <ReservationReview property={property || { title: 'Propiedad', place: '' }} kind={kind} from={from} to={kind === 'NIGHTLY' ? to : quote.checkOut}
+      nights={kind === 'NIGHTLY' ? quote.nights : undefined} weeks={kind === 'WEEKLY' ? Number(weeks) : undefined} months={kind === 'MONTHLY' ? Number(months) : undefined} guests={kind === 'SALE' ? undefined : Number(guests)}
+      paymentLabel={kind === 'SALE' ? PAYMENT_LABEL[paymentType] : undefined} total={quote.total} deposit={Number(quote.deposit || 0)}
+      rules={tab === 'RENT' ? s?.rules || null : null} nearby={s?.nearby || null} cancellationPolicy={tab === 'RENT' ? s?.cancellationPolicy || null : null}
+      busy={busy} error={error} onClose={() => setReview(false)} onConfirm={submit} />}
     <small className="muted">El agente, la agencia o el administrador revisa tu solicitud y la aprueba. Después acuerdan el pago (transferencia o en persona) desde el chat.</small>
   </section>;
 }

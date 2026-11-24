@@ -224,6 +224,7 @@ CREATE TABLE IF NOT EXISTS RentalSettings (
   CancellationPolicy VARCHAR(1000) NULL,
   -- Reglas de la casa que el interesado ve antes de reservar.
   Rules VARCHAR(2000) NULL,
+  Nearby VARCHAR(700) NULL,
   Seasons VARCHAR(4000) NULL,
   SaleRequests TINYINT(1) NOT NULL DEFAULT 1,
   -- Modalidades que acepta (una o varias): NIGHTLY (por noche), WEEKLY (por semana), MONTHLY (por mes).
