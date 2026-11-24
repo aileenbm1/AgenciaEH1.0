@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authJson, currentToken, getCurrentUser } from '@/lib/auth';
@@ -20,10 +20,11 @@ const UNIT_LABEL: Record<Unit, string> = { NIGHTLY: 'Por noche', WEEKLY: 'Por se
 const range = (a: number, b: number) => Array.from({ length: Math.max(0, b - a + 1) }, (_, i) => a + i);
 const addDay = (d: string, n: number) => { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 const tomorrowIso = () => addDay(todayIso(), 1);
+const shortDay = (d: string) => d ? new Date(d + 'T12:00:00Z').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : '';
 const fmt = (d: string) => new Date(d + 'T12:00:00Z').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
 /** Calendario mensual: marca días ocupados y permite elegir entrada/salida. */
-function Calendar({ busy, from, to, onPick, single, pickingOut }: { busy: Busy[]; from: string; to: string; onPick: (d: string) => void; single: boolean; pickingOut: boolean }) {
+function Calendar({ busy, from, to, onPick, single, pickingOut, children }: { busy: Busy[]; from: string; to: string; onPick: (d: string) => void; single: boolean; pickingOut: boolean; children?: React.ReactNode }) {
   const [cursor, setCursor] = useState(() => { const t = new Date(); return new Date(Date.UTC(t.getFullYear(), t.getMonth(), 1)); });
   const isBusy = (d: string) => busy.some(b => d >= b.from && d < b.to);
   const days = useMemo(() => {
@@ -51,6 +52,7 @@ function Calendar({ busy, from, to, onPick, single, pickingOut }: { busy: Busy[]
       })())}
     </div>
     <div className="cal-legend"><span><i className="dot busy" /> Ocupado</span><span><i className="dot sel" /> Tu selección</span></div>
+    {children}
   </div>;
 }
 
@@ -67,6 +69,8 @@ export default function ReservationWidget({ propertyId, slug, operation, propert
   const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const [clash, setClash] = useState('');
   const [review, setReview] = useState(false);
+  const [popClosed, setPopClosed] = useState(false);
+  useEffect(() => { setPopClosed(false); }, [from, to, weeks, months, guests, unit]);
   const [logged, setLogged] = useState(false);
   // La sesión puede venir solo de la cookie de renovación: se confirma con el servidor.
   useEffect(() => { if (currentToken()) setLogged(true); else getCurrentUser().then(u => setLogged(!!u)).catch(() => {}); }, []);
@@ -123,7 +127,19 @@ export default function ReservationWidget({ propertyId, slug, operation, propert
       <p className="muted">{unit === 'NIGHTLY' ? <>Desde <b>{mxn(Number(s.nightPrice))}</b> por noche · mínimo {s.minStay} noche(s){` · hasta ${s.maxGuests} huéspedes`}</>
         : unit === 'WEEKLY' ? <><b>{mxn(Number(s.weekPrice))}</b> por semana · mínimo {s.minWeeks} semana(s)</>
         : <><b>{mxn(Number(s.monthPrice))}</b> al mes · plazo mínimo {s.minMonths} mes(es)</>}</p>
-      <Calendar busy={data.busy} from={from} to={kind === 'NIGHTLY' ? to : quote?.checkOut || ''} onPick={pick} single={kind !== 'NIGHTLY'} pickingOut={kind === 'NIGHTLY' && !!from && !to} />
+      <Calendar busy={data.busy} from={from} to={kind === 'NIGHTLY' ? to : quote?.checkOut || ''} onPick={pick} single={kind !== 'NIGHTLY'} pickingOut={kind === 'NIGHTLY' && !!from && !to}>
+        {ready && !popClosed && <div className="cal-pop" role="dialog" aria-label="Tu selección">
+          <button type="button" className="cal-pop-x" onClick={() => setPopClosed(true)} aria-label="Cerrar">✕</button>
+          <div className="cal-pop-top"><div><b>{shortDay(from)} → {kind === 'NIGHTLY' ? shortDay(to) : quote?.checkOut ? shortDay(quote.checkOut) : '…'}</b>
+            <small>{kind === 'NIGHTLY' ? `${quote?.nights ?? '…'} ${quote?.nights === 1 ? 'noche' : 'noches'}` : kind === 'WEEKLY' ? `${weeks} ${weeks === '1' ? 'semana' : 'semanas'}` : `${months} ${months === '1' ? 'mes' : 'meses'}`} · {guests} {guests === '1' ? 'persona' : 'personas'}</small></div>
+            {quote && quote.available !== false && <span className="cal-pop-total">{mxn(quote.total)}</span>}</div>
+          {(qErr || quote?.available === false) ? <p className="cal-pop-err">{qErr || 'Esas fechas chocan con días ocupados. Elige otras.'}</p> : !quote && <p className="cal-pop-err muted">Calculando el total…</p>}
+          <div className="cal-pop-acts">
+            <button type="button" className="clear" onClick={() => { setFrom(''); setTo(''); }}>Borrar fechas</button>
+            <button type="button" className="go" disabled={!quote || quote.available === false} onClick={() => { setError(''); setReview(true); }}>Ver detalles y reservar</button>
+          </div>
+        </div>}
+      </Calendar>
       <div className="reserve-fields">
         <div><small>{kind === 'NIGHTLY' ? 'Entrada' : 'Inicio'}</small><b>{from ? fmt(from) : 'Elige en el calendario'}</b></div>
         {kind === 'NIGHTLY' && <div><small>Salida</small><b>{to ? fmt(to) : from ? 'Elige la salida' : '—'}</b></div>}
@@ -142,33 +158,18 @@ export default function ReservationWidget({ propertyId, slug, operation, propert
       const hit = quote.checkOut ? data.busy.find(b => from < b.to && b.from < quote.checkOut!) : null;
       return <p className="auth-error" role="alert">Esas fechas chocan con días ya ocupados{hit ? ` (del ${fmt(hit.from)} al ${fmt(hit.to)})` : ''}. Elige otro inicio{kind !== 'NIGHTLY' ? ' o un plazo más corto' : ''}.</p>;
     })()}
-    {quote && <div className="quote">
+    {tab === 'SALE' && quote && <div className="quote">
       {quote.lines.map(l => <div key={l.label}><span>{l.label}</span><b>{mxn(l.amount)}</b></div>)}
-      <div className="quote-total"><span>Total</span><b>{mxn(quote.total)}</b></div>
-      {(kind === 'MONTHLY' || kind === 'WEEKLY') && quote.checkOut && <small className="muted">{kind === 'MONTHLY' ? 'Contrato' : 'Estancia'} hasta el {fmt(quote.checkOut)}. El pago es por transferencia o en persona; se acuerda en el chat.</small>}
-      {(kind === 'NIGHTLY' || kind === 'SALE') && <small className="muted">No se cobra en línea: el pago (y el anticipo para apartar) se hace por transferencia o en persona.</small>}
     </div>}
-    {(ready || tab === 'SALE') && <label>Mensaje para el anunciante (opcional)<textarea rows={2} maxLength={1000} value={note} onChange={e => setNote(e.target.value)} /></label>}
-    {s?.rules && tab === 'RENT' && <div className="house-rules"><b>Reglas de la casa</b><ul>{s.rules.split(/\n+/).map(x => x.trim()).filter(Boolean).map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
-    {(ready || tab === 'SALE') && <div className="reserve-terms">
-      <b>Cancelación y pago</b>
-      <ul>
-        {from && from <= tomorrowIso() && tab === 'RENT'
-          ? <li className="warn">Estás reservando con un día o menos de anticipación: <b>esta reserva no se podrá cancelar</b>.</li>
-          : <li>Puedes cancelar dentro de las <b>24 horas</b> siguientes a tu solicitud, siempre antes del día de entrada. Si reservas con un día o menos de anticipación, no hay cancelación.</li>}
-        {tab === 'RENT' && kind !== 'MONTHLY' && <li>Debes <b>liquidar el total a más tardar un día antes</b> de tu llegada{from ? ` (el ${fmt(addDay(from, -1))})` : ''}. El día de entrada ya no se aceptan pagos.</li>}
-        <li>Puedes pagar en abonos, por <b>transferencia o en efectivo</b>; en tu reserva verás cuánto llevas pagado y cuánto falta.</li>
-      </ul>
-    </div>}
-    {s?.cancellationPolicy && tab === 'RENT' && <details><summary>Política de cancelación</summary><p>{s.cancellationPolicy}</p></details>}
-    {error && <div className="notice" role="alert">{error}</div>}
-    {logged ? <button type="button" className="button button-navy full" disabled={busy || !quote || quote.available === false} onClick={() => { setError(''); setReview(true); }}>{busy ? 'Enviando…' : tab === 'SALE' ? 'Solicitar apartado' : 'Solicitar reserva'}</button>
-      : <Link className="button button-navy full" href={`/acceso?next=${encodeURIComponent(`/propiedades/${slug}#reservar`)}`}>Inicia sesión o crea tu cuenta para reservar</Link>}
+    {error && !review && <div className="notice" role="alert">{error}</div>}
+    {tab === 'RENT' && !ready && <p className="muted small reserve-hint">Elige tus fechas en el calendario para ver el total y reservar.</p>}
+    {tab === 'RENT' && ready && popClosed && quote && quote.available !== false && <button type="button" className="button button-navy full" onClick={() => { setError(''); setReview(true); }}>Ver detalles y reservar · {mxn(quote.total)}</button>}
+    {tab === 'SALE' && <button type="button" className="button button-navy full" disabled={!quote} onClick={() => { setError(''); setReview(true); }}>Ver detalles y solicitar apartado</button>}
     {review && quote && <ReservationReview property={property || { title: 'Propiedad', place: '' }} kind={kind} from={from} to={kind === 'NIGHTLY' ? to : quote.checkOut}
       nights={kind === 'NIGHTLY' ? quote.nights : undefined} weeks={kind === 'WEEKLY' ? Number(weeks) : undefined} months={kind === 'MONTHLY' ? Number(months) : undefined} guests={kind === 'SALE' ? undefined : Number(guests)}
       paymentLabel={kind === 'SALE' ? PAYMENT_LABEL[paymentType] : undefined} total={quote.total} deposit={Number(quote.deposit || 0)}
       rules={tab === 'RENT' ? s?.rules || null : null} nearby={s?.nearby || null} cancellationPolicy={tab === 'RENT' ? s?.cancellationPolicy || null : null}
+      lines={quote.lines} note={note} onNote={setNote} logged={logged} loginHref={`/acceso?next=${encodeURIComponent(`/propiedades/${slug}#reservar`)}`}
       busy={busy} error={error} onClose={() => setReview(false)} onConfirm={submit} />}
-    <small className="muted">El agente, la agencia o el administrador revisa tu solicitud y la aprueba. Después acuerdan el pago (transferencia o en persona) desde el chat.</small>
   </section>;
 }

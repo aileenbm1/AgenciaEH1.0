@@ -832,3 +832,24 @@ h1,h2{font-family:var(--font-title);color:var(--navy);font-weight:600;letter-spa
  .rv-foot label{flex-basis:100%}.rv-foot .button{flex:1}
 }
 .rv-mapbtn{position:absolute;right:10px;top:10px;z-index:500;background:#fff;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;color:var(--navy);box-shadow:0 2px 8px rgba(0,0,0,.15)}.rv-map .osm-map{border-radius:0;border:0}
+
+/* ---------- Globo sobre el calendario al elegir fechas ---------- */
+.cal{position:relative}
+.cal-pop{position:absolute;left:50%;transform:translateX(-50%);bottom:44px;width:min(340px,94%);background:var(--navy);color:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 18px 40px -12px rgba(0,0,0,.5);display:grid;gap:10px;z-index:5;animation:calpop .2s ease-out}
+@keyframes calpop{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+.cal-pop:after{content:"";position:absolute;left:50%;bottom:-8px;margin-left:-8px;border:8px solid transparent;border-bottom:0;border-top-color:var(--navy)}
+.cal-pop-top{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-right:18px}
+.cal-pop-top b{font-size:15px;display:block}.cal-pop-top small{color:rgba(255,255,255,.8);font-size:12.5px}
+.cal-pop-total{font:600 22px var(--font-title);color:var(--gold);white-space:nowrap}
+.cal-pop-err{margin:0;font-size:13px;color:#ffd2c8}.cal-pop-err.muted{color:rgba(255,255,255,.75)}
+.cal-pop-acts{display:flex;gap:8px}.cal-pop-acts button{flex:1;min-height:42px;border-radius:10px;border:0;font-weight:700;cursor:pointer;font-size:13.5px;line-height:1.2;padding:6px 8px}
+.cal-pop-acts .go{background:var(--gold);color:var(--navy)}.cal-pop-acts .go:disabled{opacity:.45;cursor:default}
+.cal-pop-acts .clear{background:rgba(255,255,255,.14);color:#fff;flex:0 1 auto;padding:6px 14px}
+.cal-pop-x{position:absolute;right:6px;top:4px;background:none;border:0;color:#fff;opacity:.75;font-size:15px;cursor:pointer;width:30px;height:30px}
+.reserve-hint{margin:4px 0 0}
+.rv-bill{display:grid;gap:6px;font-size:13.5px;margin-bottom:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+.rv-bill div{display:flex;justify-content:space-between;gap:10px}.rv-bill b{white-space:nowrap}
+.rv-bill .tot{border-top:1px solid var(--line);padding-top:6px;margin-top:2px;font-size:15px}.rv-bill .tot b{color:var(--navy)}
+.rv .rv-sec h3 small{font-weight:400;font-size:12.5px}
+.rv-msg{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit;font-size:14px;resize:vertical}
+.rv-foot a.button.is-disabled{opacity:.45;pointer-events:none}

@@ -12,6 +12,7 @@ type Props = {
   kind: 'NIGHTLY' | 'WEEKLY' | 'MONTHLY' | 'SALE';
   from: string; to?: string; nights?: number; weeks?: number; months?: number; guests?: number; paymentLabel?: string;
   total: number; deposit: number; rules: string | null; nearby: string | null; cancellationPolicy: string | null;
+  lines: { label: string; amount: number }[]; note: string; onNote: (v: string) => void; logged: boolean; loginHref: string;
   busy: boolean; error: string; onClose: () => void; onConfirm: () => void;
 };
 
@@ -81,6 +82,7 @@ export default function ReservationReview(p: Props) {
             <p className="rv-note">{p.property.exact ? 'Ubicación indicada por el anunciante.' : 'Zona aproximada.'} La dirección exacta y las indicaciones de llegada se comparten en el chat cuando el anunciante aprueba tu solicitud.</p>
           </section>
           <section className="rv-sec" id="rv-pagos"><h3><span className="ic">💳</span>Pagos (no se cobra en línea)</h3>
+            <div className="rv-bill">{p.lines.map(l => <div key={l.label}><span>{l.label}</span><b>{mxn(l.amount)}</b></div>)}<div className="tot"><span>Total</span><b>{mxn(p.total)}</b></div></div>
             <div className="rv-pay">
               <div className="hi"><span>{sale ? 'Anticipo para apartar' : 'Anticipo para apartar tus fechas'}: el anunciante te indica el monto al aprobar · transferencia o efectivo</span></div>
               {shortStay && payBy && <div><span>Liquida el total a más tardar el <b>{day(payBy)}</b> (un día antes de llegar). Puedes pagar en abonos.</span><b>{mxn(p.total)}</b></div>}
@@ -105,13 +107,16 @@ export default function ReservationReview(p: Props) {
                 {!sale && <div className="rv-alert">⚠ Si reservas para hoy o mañana (1 día o menos de anticipación), no hay cancelación.</div>}</>}
             {p.cancellationPolicy && <p className="rv-note"><b>Nota del anunciante:</b> {p.cancellationPolicy}</p>}
           </section>
+          <section className="rv-sec" id="rv-mensaje"><h3><span className="ic">💬</span>Mensaje para el anunciante <small className="muted">(opcional)</small></h3>
+            <textarea className="rv-msg" rows={3} maxLength={1000} value={p.note} onChange={e => p.onNote(e.target.value)} placeholder="Ej. Llegamos alrededor de las 6 pm; viajamos con un bebé." /></section>
         </div>
       </div>
       <div className="rv-foot">
         {p.error && <div className="notice rv-error" role="alert">{p.error}</div>}
         <label><input type="checkbox" checked={ok} onChange={e => setOk(e.target.checked)} /> He leído {rules.length ? 'las reglas de la casa, ' : ''}la política de cancelación y las condiciones de pago.</label>
         <button type="button" className="button button-ghost" onClick={p.onClose} disabled={p.busy}>{sale ? 'Volver' : 'Cambiar fechas'}</button>
-        <button type="button" className="button button-navy" onClick={p.onConfirm} disabled={!ok || p.busy}>{p.busy ? 'Enviando…' : 'Enviar solicitud'}</button>
+        {p.logged ? <button type="button" className="button button-navy" onClick={p.onConfirm} disabled={!ok || p.busy}>{p.busy ? 'Enviando…' : 'Enviar solicitud'}</button>
+          : <a className={`button button-navy${ok ? '' : ' is-disabled'}`} href={ok ? p.loginHref : undefined} aria-disabled={!ok}>Inicia sesión para enviar</a>}
       </div>
     </div>
   </div>;
