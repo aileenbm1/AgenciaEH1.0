@@ -15,7 +15,7 @@ export function SiteFooter({ site = DEFAULT_SITE }: { site?: SiteConfig }) {
   return <footer className="site-footer">
     <div className="footer-grid">
       <div className="footer-brand">
-        <SiteBrand brand={site.brand} />
+        <SiteBrand brand={site.brand} full />
         {f.about && <p>{f.about}</p>}
         {socials.length > 0 && <div className="footer-social">
           {socials.map(k => { const Icon = ICONS[k]; return <a key={k} href={f.social[k]} target="_blank" rel="noopener noreferrer" aria-label={SOCIAL_LABEL[k]} title={SOCIAL_LABEL[k]}><Icon size={17} strokeWidth={1.5} /></a>; })}

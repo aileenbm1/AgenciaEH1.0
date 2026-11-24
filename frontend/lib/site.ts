@@ -60,7 +60,7 @@ export const BG_LABEL: Record<SiteBg, string> = { light: 'Claro', soft: 'Arena (
 
 /** Diseño original del sitio: lo que se ve mientras el administrador no publique cambios. */
 export const DEFAULT_SITE: SiteConfig = {
-  brand: { name: 'Mi Casa', tagline: 'BIENES RAÍCES · BAJÍO', mark: '', logoUrl: '', logoOnly: false },
+  brand: { name: 'Mi Casa', tagline: 'AGENCIA INMOBILIARIA', mark: '', logoUrl: '', logoOnly: false },
   theme: { primary: '#172536', accent: '#C5A46D', background: '#F7F5F0', text: '#333A40', font: 'original' },
   header: { links: [{ label: 'Explorar propiedades', href: '/propiedades' }, { label: 'Comparar', href: '/comparar' }], buttonText: 'Anunciar propiedad', buttonHref: '/anunciar' },
   contact: { email: '', phone: '', whatsapp: '', address: 'Guanajuato, México' },

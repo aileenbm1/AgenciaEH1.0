@@ -308,7 +308,7 @@ function SiteEditor() {
         {cfg.brand.logoUrl && <label className="check"><input type="checkbox" checked={cfg.brand.logoOnly} onChange={e => setBrand({ logoOnly: e.target.checked })} /> Mostrar solo el logotipo (sin el nombre a un lado)</label>}
         <label>Nombre<input maxLength={40} value={cfg.brand.name} onChange={e => setBrand({ name: e.target.value })} /></label>
         <label>Frase bajo el nombre<input maxLength={70} value={cfg.brand.tagline} onChange={e => setBrand({ tagline: e.target.value })} /></label>
-        {!cfg.brand.logoUrl && <label>Iniciales del cuadro (si no hay logotipo)<input maxLength={4} value={cfg.brand.mark} onChange={e => setBrand({ mark: e.target.value })} /></label>}
+        {!cfg.brand.logoUrl && <label>Iniciales en un cuadro (déjalo vacío para usar el logotipo de Mi Casa)<input maxLength={4} value={cfg.brand.mark} onChange={e => setBrand({ mark: e.target.value })} /></label>}
         <div className="site-preview-chrome" style={{ borderRadius: 8 }}><style>{themeCss(cfg.theme).replace(':root', '.brand-sample')}</style><span className="brand-sample"><SiteBrand brand={cfg.brand} href="#" /></span></div>
       </section>
       <section className="dashboard-card fp-controls"><h3>Colores y fuente de todo el sitio</h3>

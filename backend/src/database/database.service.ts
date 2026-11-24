@@ -69,7 +69,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     if (tables.has('Users')) try {
       const [done] = await this.query<any>("SELECT 1 AS x FROM SiteSettings WHERE K='rename.micasa'");
       if (!done) {
-        const swap = (col: string) => `REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(${col},'"name":"AGENCIA EH"','"name":"Mi Casa"'),'"mark":"EH"','"mark":""'),'PLATAFORMA INMOBILIARIA · BAJÍO','BIENES RAÍCES · BAJÍO'),'AGENCIA EH','MI CASA'),'Agencia EH','Mi Casa')`;
+        const swap = (col: string) => `REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(${col},'"name":"AGENCIA EH"','"name":"Mi Casa"'),'"mark":"EH"','"mark":""'),'PLATAFORMA INMOBILIARIA · BAJÍO','AGENCIA INMOBILIARIA'),'AGENCIA EH','MI CASA'),'Agencia EH','Mi Casa')`;
         await this.getPool().query(`UPDATE SiteSettings SET V=${swap('V')} WHERE K IN ('site.draft','site.published')`);
         await this.getPool().query(`UPDATE SiteVersions SET Config=${swap('Config')}`).catch(() => {});
         await this.getPool().query(`UPDATE FanpageTemplates SET Name=REPLACE(Name,'Agencia EH','Mi Casa'), Description=REPLACE(Description,'Agencia EH','Mi Casa'), Blocks=REPLACE(Blocks,'Agencia EH','Mi Casa')`).catch(() => {});
@@ -77,6 +77,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         console.error('[Mi Casa] Migración: nombre del sitio cambiado a "Mi Casa"');
       }
     } catch (e: any) { console.error('[Mi Casa] No se pudo cambiar el nombre guardado:', e?.message); }
+    // Logotipo definitivo de Mi Casa: la frase bajo el nombre pasa a "AGENCIA INMOBILIARIA" (una sola vez).
+    if (tables.has('Users')) try {
+      const [done] = await this.query<any>("SELECT 1 AS x FROM SiteSettings WHERE K='rename.micasa2'");
+      if (!done) {
+        await this.getPool().query(`UPDATE SiteSettings SET V=REPLACE(V,'"tagline":"BIENES RAÍCES · BAJÍO"','"tagline":"AGENCIA INMOBILIARIA"') WHERE K IN ('site.draft','site.published')`);
+        await this.getPool().query("INSERT INTO SiteSettings(K,V) VALUES('rename.micasa2','1')");
+      }
+    } catch (e: any) { console.error('[Mi Casa] No se pudo actualizar la frase del logotipo:', e?.message); }
     // Propiedades sin categoría (creadas antes de RF-01): se asigna según el tipo de inmueble.
     if (tables.has('Properties')) try {
       const r: any = await this.getPool().query(`UPDATE Properties SET Category = CASE

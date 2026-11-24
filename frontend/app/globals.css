@@ -1,6 +1,6 @@
 /* Mi Casa · V0.7.3 · Midnight Luxury (rediseño visual)
    Mismos nombres de clase que V0.7.2: ningún componente ni lógica depende de este cambio. */
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500&family=Montserrat:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
 
 :root{
   /* Paleta oficial */
@@ -855,14 +855,8 @@ h1,h2{font-family:var(--font-title);color:var(--navy);font-weight:600;letter-spa
 .rv-foot a.button.is-disabled{opacity:.45;pointer-events:none}
 
 /* ---------- Logotipo Mi Casa ---------- */
-.brand-svg{display:block;flex:none}
-.brand-svg .bl-bg{fill:var(--navy)}
-.brand-svg .bl-roof{fill:none;stroke:var(--gold);stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
-.brand-svg .bl-gold{fill:var(--gold)}
-.brand-svg .bl-walls{fill:none;stroke:var(--ivory);stroke-width:2.6;stroke-linecap:round}
-.brand-svg .bl-heart{fill:var(--ivory)}
-.footer-brand .brand-svg .bl-bg{fill:var(--ivory)}.footer-brand .brand-svg .bl-walls{stroke:var(--navy)}.footer-brand .brand-svg .bl-heart{fill:var(--navy)}
-.brand b{font-size:22px;letter-spacing:.01em}.brand b em{color:var(--gold-ink);font-style:italic}
-.footer-brand .brand b em{color:var(--gold)}
-.site-preview-chrome .brand-svg{width:32px;height:32px}
-@media(max-width:760px){.site-header .brand-svg{width:38px;height:38px}}
+.brand-lockup{display:block;height:66px;width:auto;flex:none;margin:-4px 0}
+.brand-lockup .bl-name,.brand-lockup .bl-tag{fill:var(--navy)}
+.footer-brand .brand-lockup{height:118px}.footer-brand .brand-lockup .bl-name,.footer-brand .brand-lockup .bl-tag{fill:#F4ECDD}
+.site-preview-chrome .brand-lockup{height:38px}
+@media(max-width:760px){.site-header .brand-lockup{height:52px}}
