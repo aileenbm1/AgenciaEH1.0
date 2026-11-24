@@ -391,8 +391,19 @@ CREATE TABLE IF NOT EXISTS FanpageEvents (
 -- Ajustes generales que cambia el admin desde el panel (clave → valor JSON).
 CREATE TABLE IF NOT EXISTS SiteSettings (
   K VARCHAR(60) NOT NULL,
-  V TEXT NULL,
+  V MEDIUMTEXT NULL,
   CONSTRAINT PK_SiteSettings PRIMARY KEY (K)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Historial de versiones publicadas del diseño del sitio (editor del administrador).
+CREATE TABLE IF NOT EXISTS SiteVersions (
+  Id CHAR(36) NOT NULL,
+  Config MEDIUMTEXT NOT NULL,
+  Note VARCHAR(120) NULL,
+  CreatedById CHAR(36) NULL,
+  CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT PK_SiteVersions PRIMARY KEY (Id),
+  INDEX IX_SiteVersions_Created (CreatedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Historial de pagos de cada reserva (anticipo y abonos). El saldo = Total − suma de pagos vigentes.

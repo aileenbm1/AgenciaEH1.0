@@ -402,8 +402,19 @@ CREATE TABLE IF NOT EXISTS FanpageEvents (
 -- Ajustes generales que cambia el admin desde el panel (clave → valor JSON).
 CREATE TABLE IF NOT EXISTS SiteSettings (
   K VARCHAR(60) NOT NULL,
-  V TEXT NULL,
+  V MEDIUMTEXT NULL,
   CONSTRAINT PK_SiteSettings PRIMARY KEY (K)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Historial de versiones publicadas del diseño del sitio (editor del administrador).
+CREATE TABLE IF NOT EXISTS SiteVersions (
+  Id CHAR(36) NOT NULL,
+  Config MEDIUMTEXT NOT NULL,
+  Note VARCHAR(120) NULL,
+  CreatedById CHAR(36) NULL,
+  CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT PK_SiteVersions PRIMARY KEY (Id),
+  INDEX IX_SiteVersions_Created (CreatedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Historial de pagos de cada reserva (anticipo y abonos). El saldo = Total − suma de pagos vigentes.
@@ -448,12 +459,12 @@ SET NAMES utf8mb4;
 SET @admin := (SELECT Id FROM Users WHERE Role='ADMIN' ORDER BY CreatedAt LIMIT 1);
 
 -- Usuarios
-INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00001-0000-4000-8000-000000000001','agencia.demo@example.com','Laura Méndez','4770000001','$2a$12$tOAaf21hSH/iettCJW2qJ.8oTJ3d12b8pu4maZHBv62IApKTbBxO.','AGENCY',1,UTC_TIMESTAMP(),@admin,UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
-INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00002-0000-4000-8000-000000000002','agente.demo@example.com','Ana Vendedora','4770000002','$2a$12$tOAaf21hSH/iettCJW2qJ.8oTJ3d12b8pu4maZHBv62IApKTbBxO.','AGENT',1,UTC_TIMESTAMP(),'d3e00001-0000-4000-8000-000000000001',UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
-INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00003-0000-4000-8000-000000000003','asesor.demo@example.com','Carlos Asesor','4770000003','$2a$12$tOAaf21hSH/iettCJW2qJ.8oTJ3d12b8pu4maZHBv62IApKTbBxO.','AGENT',1,UTC_TIMESTAMP(),@admin,UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
-INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00004-0000-4000-8000-000000000004','comprador.demo@example.com','Beto Comprador','4770000004','$2a$12$tOAaf21hSH/iettCJW2qJ.8oTJ3d12b8pu4maZHBv62IApKTbBxO.','BUYER',1,UTC_TIMESTAMP(),'d3e00002-0000-4000-8000-000000000002',UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
-INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00005-0000-4000-8000-000000000005','compradora.demo@example.com','Sofía Compradora',NULL,'$2a$12$tOAaf21hSH/iettCJW2qJ.8oTJ3d12b8pu4maZHBv62IApKTbBxO.','BUYER',1,UTC_TIMESTAMP(),'d3e00001-0000-4000-8000-000000000001',UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
-INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00007-0000-4000-8000-000000000007','desarrolladora.demo@example.com','Marco Desarrollos','4770000007','$2a$12$tOAaf21hSH/iettCJW2qJ.8oTJ3d12b8pu4maZHBv62IApKTbBxO.','DEVELOPER',1,UTC_TIMESTAMP(),@admin,UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
+INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00001-0000-4000-8000-000000000001','agencia.demo@example.com','Laura Méndez','4770000001','$2a$12$XTJmHmYK.Qr4yQqqj0CPA.Tfo3LI.1uQJjm08OnL1GI4gp8L/N4b.','AGENCY',1,UTC_TIMESTAMP(),@admin,UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
+INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00002-0000-4000-8000-000000000002','agente.demo@example.com','Ana Vendedora','4770000002','$2a$12$XTJmHmYK.Qr4yQqqj0CPA.Tfo3LI.1uQJjm08OnL1GI4gp8L/N4b.','AGENT',1,UTC_TIMESTAMP(),'d3e00001-0000-4000-8000-000000000001',UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
+INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00003-0000-4000-8000-000000000003','asesor.demo@example.com','Carlos Asesor','4770000003','$2a$12$XTJmHmYK.Qr4yQqqj0CPA.Tfo3LI.1uQJjm08OnL1GI4gp8L/N4b.','AGENT',1,UTC_TIMESTAMP(),@admin,UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
+INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00004-0000-4000-8000-000000000004','comprador.demo@example.com','Beto Comprador','4770000004','$2a$12$XTJmHmYK.Qr4yQqqj0CPA.Tfo3LI.1uQJjm08OnL1GI4gp8L/N4b.','BUYER',1,UTC_TIMESTAMP(),'d3e00002-0000-4000-8000-000000000002',UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
+INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00005-0000-4000-8000-000000000005','compradora.demo@example.com','Sofía Compradora',NULL,'$2a$12$XTJmHmYK.Qr4yQqqj0CPA.Tfo3LI.1uQJjm08OnL1GI4gp8L/N4b.','BUYER',1,UTC_TIMESTAMP(),'d3e00001-0000-4000-8000-000000000001',UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
+INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00007-0000-4000-8000-000000000007','desarrolladora.demo@example.com','Marco Desarrollos','4770000007','$2a$12$XTJmHmYK.Qr4yQqqj0CPA.Tfo3LI.1uQJjm08OnL1GI4gp8L/N4b.','DEVELOPER',1,UTC_TIMESTAMP(),@admin,UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
 
 -- Perfiles de agencia y agentes (Ana pertenece a la agencia)
 INSERT IGNORE INTO AgencyProfiles(Id,UserId,Name,Slug,Description,Phone) VALUES('d3e00011-0000-4000-8000-000000000011','d3e00001-0000-4000-8000-000000000001','Inmobiliaria Demo Bajío','inmobiliaria-demo-bajio','Agencia de ejemplo para pruebas: casas, departamentos y locales en León, Irapuato y Silao.','4770000001');

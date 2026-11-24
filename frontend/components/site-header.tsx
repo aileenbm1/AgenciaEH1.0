@@ -4,8 +4,11 @@ import { useRouter } from "next/navigation";
 import { signOut } from "@/lib/auth";
 import { ROLES } from "@/lib/roles";
 import { useSession } from "@/lib/use-session";
+import { DEFAULT_SITE, SiteConfig } from "@/lib/site";
+import { SiteA } from "@/components/site-link";
+import { SiteBrand } from "@/components/site-brand";
 
-export function SiteHeader() {
+export function SiteHeader({ site = DEFAULT_SITE }: { site?: SiteConfig }) {
   const { user, loading } = useSession();
   const router = useRouter();
   const role = user ? ROLES[user.role] : null;
@@ -14,10 +17,10 @@ export function SiteHeader() {
   async function logout() { await signOut(); router.push('/'); router.refresh(); }
 
   return <header className="site-header">
-    <Link className="brand" href="/"><span className="brand-mark">EH</span><span><b>AGENCIA EH</b><small>PLATAFORMA INMOBILIARIA · BAJÍO</small></span></Link>
+    <SiteBrand brand={site.brand} />
     <nav>
-      <Link href="/propiedades">Explorar propiedades</Link>
-      <Link href="/comparar">Comparar</Link>
+      {site.header.links.map((l, i) => <SiteA key={i} href={l.href}>{l.label}</SiteA>)}
+      {site.extra.filter(p => p.inHeader).map(p => <Link key={p.slug} href={`/p/${p.slug}`}>{p.title}</Link>)}
       {user?.role === 'ADMIN' && <Link href="/como-funciona">Cómo funciona</Link>}
     </nav>
     <div className="header-actions">
@@ -30,7 +33,7 @@ export function SiteHeader() {
         <button className="login-link link-button" onClick={logout}>Salir</button>
       </> : <>
         <Link className="login-link" href="/acceso">Ingresar</Link>
-        <Link className="button button-gold" href="/anunciar">Anunciar propiedad</Link>
+        {site.header.buttonText && site.header.buttonHref && <SiteA className="button button-gold" href={site.header.buttonHref}>{site.header.buttonText}</SiteA>}
       </>}
     </div>
   </header>;

@@ -58,6 +58,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     for (const [t, c, sql] of changes) {
       if (tables.has(t) && !has(t, c)) { await this.getPool().query(sql); console.error(`[Agencia EH] Migración: columna ${t}.${c} agregada`); }
     }
+    // Diseño del sitio: el valor puede pasar de 64 KB (TEXT) → MEDIUMTEXT.
+    try {
+      const [t] = await this.query<any>("SELECT DATA_TYPE AS d FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME='SiteSettings' AND COLUMN_NAME='V'");
+      if (t && String(t.d).toLowerCase() === 'text') { await this.getPool().query('ALTER TABLE SiteSettings MODIFY V MEDIUMTEXT NULL'); console.error('[Agencia EH] Migración: SiteSettings.V ahora es MEDIUMTEXT'); }
+    } catch (e: any) { console.error('[Agencia EH] No se pudo ampliar SiteSettings.V:', e?.message); }
     // Propiedades sin categoría (creadas antes de RF-01): se asigna según el tipo de inmueble.
     if (tables.has('Properties')) try {
       const r: any = await this.getPool().query(`UPDATE Properties SET Category = CASE
@@ -110,7 +115,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
    * Así no hace falta importar el esquema a mano en phpMyAdmin.
    */
   private async ensureSchema() {
-    const required = ['Users', 'AgencyProfiles', 'AgentProfiles', 'Properties', 'PropertyImages', 'Leads', 'Favorites', 'Payments', 'SavedSearches', 'CustomFields', 'PropertyCustomValues', 'RentalSettings', 'Reservations', 'ReservationMessages', 'ReservationDocuments', 'BlockedDates', 'Fanpages', 'FanpageVersions', 'FanpageTemplates', 'FanpageEvents', 'SiteSettings', 'ReservationPayments'];
+    const required = ['Users', 'AgencyProfiles', 'AgentProfiles', 'Properties', 'PropertyImages', 'Leads', 'Favorites', 'Payments', 'SavedSearches', 'CustomFields', 'PropertyCustomValues', 'RentalSettings', 'Reservations', 'ReservationMessages', 'ReservationDocuments', 'BlockedDates', 'Fanpages', 'FanpageVersions', 'FanpageTemplates', 'FanpageEvents', 'SiteSettings', 'ReservationPayments', 'SiteVersions'];
     try {
       const before = await this.tableNames();
       const missingBefore = required.filter((t) => !before.includes(t));

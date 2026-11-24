@@ -2,6 +2,7 @@
 import { FormEvent, Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import PasswordInput from '@/components/password-input';
 import { apiAuth } from '@/lib/auth';
 
 function Restablecer() {
@@ -25,8 +26,8 @@ function Restablecer() {
       <Link className="button button-navy full" href="/acceso">Ingresar</Link>
     </> : <form onSubmit={submit} className="auth-form">
       <p className="muted lead">{welcome ? 'Crea la contraseña con la que entrarás a tu cuenta.' : 'Escribe tu nueva contraseña.'} Mínimo 10 caracteres.</p>
-      <label>Contraseña<input type="password" required minLength={10} maxLength={72} autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} /></label>
-      <label>Confirmar contraseña<input type="password" required minLength={10} maxLength={72} autoComplete="new-password" value={confirm} onChange={e => setConfirm(e.target.value)} /></label>
+      <label>Contraseña<PasswordInput required minLength={10} maxLength={72} autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} /></label>
+      <label>Confirmar contraseña<PasswordInput required minLength={10} maxLength={72} autoComplete="new-password" value={confirm} onChange={e => setConfirm(e.target.value)} /></label>
       {err && <p role="alert" className="auth-error">{err}</p>}
       <button className="button button-navy full" disabled={busy}>{busy ? 'Guardando…' : welcome ? 'Activar mi cuenta' : 'Guardar contraseña'}</button>
     </form>}

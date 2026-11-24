@@ -1,1 +1,1 @@
-export function SectionTitle({eyebrow,title,copy}:{eyebrow:string;title:string;copy?:string}){return <div className="section-title"><span className="eyebrow">{eyebrow}</span><h2>{title}</h2>{copy&&<p>{copy}</p>}</div>}
+export function SectionTitle({eyebrow,title,copy}:{eyebrow:string;title:string;copy?:string}){return <div className="section-title">{eyebrow&&<span className="eyebrow">{eyebrow}</span>}{title&&<h2>{title}</h2>}{copy&&<p>{copy}</p>}</div>}

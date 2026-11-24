@@ -1,5 +1,6 @@
 "use client";
 import { FormEvent, useState } from 'react';
+import PasswordInput from '@/components/password-input';
 import { authJson, SessionUser } from '@/lib/auth';
 import { AdminUser } from './admin-types';
 
@@ -69,8 +70,8 @@ export default function UserEditor({ user, me, onClose, onSaved, onDeleted }: {
       <h3>Contraseña</h3>
       <p className="muted">Escribe una nueva contraseña y compártela con la persona, o envíale un enlace para que ella elija la suya. En ambos casos se cierran sus sesiones abiertas.</p>
       <div className="form-grid">
-        <label>Nueva contraseña<input type="password" required minLength={10} maxLength={72} autoComplete="new-password" value={pw.password} onChange={e => setPw({ ...pw, password: e.target.value })} placeholder="Mínimo 10 caracteres" /></label>
-        <label>Confirmar contraseña<input type="password" required minLength={10} maxLength={72} autoComplete="new-password" value={pw.confirm} onChange={e => setPw({ ...pw, confirm: e.target.value })} /></label>
+        <label>Nueva contraseña<PasswordInput required minLength={10} maxLength={72} autoComplete="new-password" value={pw.password} onChange={e => setPw({ ...pw, password: e.target.value })} placeholder="Mínimo 10 caracteres" /></label>
+        <label>Confirmar contraseña<PasswordInput required minLength={10} maxLength={72} autoComplete="new-password" value={pw.confirm} onChange={e => setPw({ ...pw, confirm: e.target.value })} /></label>
       </div>
       <div className="property-actions">
         <button className="button button-navy" disabled={busy === 'pw'}>{busy === 'pw' ? 'Guardando…' : 'Cambiar contraseña'}</button>

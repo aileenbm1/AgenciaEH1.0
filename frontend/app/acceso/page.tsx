@@ -2,6 +2,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import PasswordInput from '@/components/password-input';
 import { authenticate, getCurrentUser, roleHome, UserRole } from '@/lib/auth';
 import { ROLES } from '@/lib/roles';
 
@@ -76,7 +77,7 @@ export default function Access() {
 
       {mode === 'register' && <label>Nombre completo<input value={fullName} onChange={e => setFullName(e.target.value)} required minLength={2} autoComplete="name" placeholder="Tu nombre" /></label>}
       <label>Correo electrónico<input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" placeholder="nombre@correo.com" /></label>
-      <label>Contraseña<input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={mode === 'register' ? 10 : 1} maxLength={72} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder={mode === 'register' ? 'Mínimo 10 caracteres' : 'Tu contraseña'} /></label>
+      <label>Contraseña<PasswordInput value={password} onChange={e => setPassword(e.target.value)} required minLength={mode === 'register' ? 10 : 1} maxLength={72} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder={mode === 'register' ? 'Mínimo 10 caracteres' : 'Tu contraseña'} /></label>
       {mode === 'login' && <Link className="small-link" href="/recuperar">¿Olvidaste tu contraseña?</Link>}
       {error && <p role="alert" className="auth-error">{error}</p>}
       <button className="button button-navy full" type="submit" disabled={busy}>
