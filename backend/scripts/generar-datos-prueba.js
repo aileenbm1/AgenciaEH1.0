@@ -97,7 +97,28 @@ INSERT IGNORE INTO RentalSettings(PropertyId,Enabled,Mode,Modes,NightPrice,WeekP
 INSERT IGNORE INTO RentalSettings(PropertyId,Enabled,Mode,Modes,NightPrice,WeekPrice,MinStay,MaxStay,MinWeeks,MaxWeeks,MinMonths,MaxMonths,MaxGuests,Deposit,TaxRate,Rules,Seasons,SaleRequests)
  VALUES(${q(P(7))},1,'MONTHLY','NIGHTLY,WEEKLY,MONTHLY',900,5000,1,30,1,8,1,12,6,3000,0,'Entrada a partir de las 3:00 pm y salida a más tardar a las 12:00 pm.\\nNo se admiten mascotas grandes.\\nNo se permiten fiestas.\\nLos daños al inmueble corren por cuenta del huésped.','[]',1);
 `;
+// Ubicación aproximada en el mapa (colonia o centro de cada ciudad).
+const COORDS = { 1: [21.1236, -101.6800, 0], 2: [21.1619, -101.6921, 0], 3: [21.1550, -101.7015, 0], 4: [21.1221, -101.6826, 1], 5: [21.0190, -101.2574, 1],
+  6: [21.0175, -101.2490, 0], 7: [20.6767, -101.3563, 0], 8: [20.9480, -101.4280, 0], 9: [20.5230, -100.8150, 1], 10: [20.9144, -100.7452, 0] };
+sql += `\n-- Ubicación en el mapa (las que no muestran la exacta se ven como zona aproximada)\n` +
+  Object.entries(COORDS).map(([n, [la, lo, ex]]) => `UPDATE Properties SET Latitude=${la}, Longitude=${lo}, ShowExactLocation=${ex} WHERE Id=${q(P(Number(n)))} AND Latitude IS NULL;`).join('\n') + '\n';
 fs.writeFileSync(process.argv[3], sql);
+// Instalación completa en una base vacía: esquema + datos de ejemplo en un solo archivo.
+const schema = fs.readFileSync(require('path').join(require('path').dirname(process.argv[3]), 'schema.sql'), 'utf8');
+fs.writeFileSync(require('path').join(require('path').dirname(process.argv[3]), 'instalacion-con-ejemplos.sql'), `-- ============================================================================
+-- Agencia EH · INSTALACIÓN CON EJEMPLOS (base de datos vacía)
+-- Crea todas las tablas y carga propiedades, cuentas y reservas de ejemplo.
+-- Úsalo en hPanel → Bases de datos → Importar datos (o phpMyAdmin → Importar).
+-- Las cuentas de ejemplo usan la contraseña ${PASSWORD} (bórralas antes de abrir
+-- el sitio al público con borrar-usuarios-excepto-admin.sql).
+-- El administrador NO se crea aquí: regístrate en el sitio con el correo que
+-- pusiste en ADMIN_EMAILS y al iniciar sesión queda como administrador.
+-- ============================================================================
+SET NAMES utf8mb4;
+
+${schema}
+
+${sql}`);
 const all = [...Object.values(U)].map(q).join(',');
 const del = `-- ============================================================================
 -- Agencia EH · BORRAR DATOS DE PRUEBA

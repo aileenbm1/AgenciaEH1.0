@@ -74,6 +74,7 @@ Genera, ya compilados, `deploy/agencia-eh-sitio-unico-ligero.zip` (recomendado p
 
 ## Datos de prueba
 - `backend/database/datos-prueba.sql`: cuentas `*.demo@example.com` (contraseña `PruebaEH2026`) para agencia, 2 agentes, desarrolladora y 2 compradores; 14 propiedades (publicadas, en revisión, borrador y rechazada) con fotos de `frontend/public/demo/`, prospectos, visitas, favoritos, búsqueda guardada, membresías anuales vigentes desde la importación y rentas listas para reservar en línea.
+- `backend/database/instalacion-con-ejemplos.sql`: para una base **vacía**: crea todas las tablas y carga los ejemplos en un solo paso (hPanel → Bases de datos → Importar datos).
 - `backend/database/datos-prueba-borrar.sql`: quita todo lo anterior sin tocar datos reales.
 - `backend/database/borrar-usuarios-excepto-admin.sql`: borra **todos** los usuarios que no son administradores y todo lo suyo (propiedades, reservas, prospectos, membresías). Deja solo a los administradores.
 
