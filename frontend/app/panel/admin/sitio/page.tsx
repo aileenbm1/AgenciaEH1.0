@@ -8,7 +8,7 @@ import { authJson, uploadImage } from '@/lib/auth';
 import { Property } from '@/lib/data';
 import { ApiProperty, toCard } from '@/lib/properties';
 import {
-  BG_LABEL, DEFAULT_SITE, ExtraPage, FooterColumn, newSiteId, PAGE_LABEL, SITE_BLOCKS, SITE_FONTS, SITE_PALETTES, SiteBg, SiteBlock, SiteBlockType,
+  BG_LABEL, DEFAULT_SITE, SITE_ICON_LABEL, ExtraPage, FooterColumn, newSiteId, PAGE_LABEL, SITE_BLOCKS, SITE_FONTS, SITE_PALETTES, SiteBg, SiteBlock, SiteBlockType,
   SiteConfig, SiteLink, SitePageKey, Social, SOCIAL_LABEL, themeCss, videoUrlOf, withDefaults,
 } from '@/lib/site';
 
@@ -99,6 +99,12 @@ function BlockFields({ b, set, onError }: { b: SiteBlock; set: (p: Partial<SiteB
       fields={(c, s) => <><div className="fp-two"><label>Etiqueta<input maxLength={40} value={c.badge} onChange={e => s({ badge: e.target.value })} /></label><label>Título<input maxLength={80} value={c.title} onChange={e => s({ title: e.target.value })} /></label></div>
         <label>Texto<textarea rows={2} maxLength={300} value={c.text} onChange={e => s({ text: e.target.value })} /></label>
         <div className="fp-two"><label>Texto del enlace<input maxLength={50} value={c.linkText} onChange={e => s({ linkText: e.target.value })} /></label><label>Lleva a<input maxLength={400} list="se-links" value={c.href} onChange={e => s({ href: e.target.value })} /></label></div></>} /></>;
+    case 'values': return <>{head}
+      <label>Acomodo<select value={b.layout || 'cards'} onChange={e => set({ layout: e.target.value })}><option value="cards">Tarjetas</option><option value="row">En fila, sin tarjeta</option></select></label>
+      <Items value={b.items} onChange={v => set({ items: v })} max={8} addLabel="+ Agregar ícono" empty={{ icon: 'casa', title: 'Nuevo', text: '' }}
+      fields={(x, s) => <><div className="fp-two"><label>Ícono<select value={x.icon} onChange={e => s({ icon: e.target.value })}>{Object.entries(SITE_ICON_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+        <label>Título<input maxLength={60} value={x.title} onChange={e => s({ title: e.target.value })} /></label></div>
+        <label>Texto (opcional)<textarea rows={2} maxLength={240} value={x.text} onChange={e => s({ text: e.target.value })} /></label></>} /></>;
     case 'cities': return <>{head}<p className="muted small">Los municipios salen del catálogo y llevan a sus propiedades.</p></>;
     case 'featured': return <>{head}<div className="fp-two">
       <label>Cuántas<select value={b.count || 4} onChange={e => set({ count: Number(e.target.value) })}>{[4, 8, 12].map(n => <option key={n} value={n}>{n}</option>)}</select></label>
@@ -285,7 +291,7 @@ function SiteEditor() {
             {!pageKey.startsWith('x') && <button type="button" className="inline-link" onClick={restorePage}>Regresar esta página a su diseño original</button>}
           </section>
         </div>
-        <div className="fp-preview site-preview" aria-label="Vista previa">
+        <div className={`fp-preview site-preview${cfg.theme.pattern !== false ? " mc-pattern" : ""}`} aria-label="Vista previa">
           <style>{themeCss(cfg.theme).replace(':root', '.site-preview')}</style>
           <div className="fp-preview-bar"><span>Vista previa · {publicPath}</span></div>
           <div className="site-preview-chrome"><SiteBrand brand={cfg.brand} href="#" /><nav>{cfg.header.links.map((l, i) => <span key={i}>{l.label}</span>)}{cfg.extra.filter(p => p.inHeader).map(p => <span key={p.slug}>{p.title}</span>)}</nav></div>
@@ -314,10 +320,11 @@ function SiteEditor() {
       <section className="dashboard-card fp-controls"><h3>Colores y fuente de todo el sitio</h3>
         <div className="fp-palettes">{SITE_PALETTES.map(x => <button key={x.name} type="button" title={x.name} onClick={() => setTheme(x.theme)} className="fp-palette"><i style={{ background: x.theme.primary }} /><i style={{ background: x.theme.accent }} /><i style={{ background: x.theme.background }} /><span>{x.name}</span></button>)}</div>
         <div className="fp-two">
-          {([['primary', 'Principal (encabezados, botones)'], ['accent', 'Acento (detalles dorados)'], ['background', 'Fondo'], ['text', 'Texto']] as const).map(([k, l]) => <label key={k} className="fp-color">{l}<input type="color" value={cfg.theme[k]} onChange={e => setTheme({ [k]: e.target.value.toUpperCase() })} /></label>)}
+          {([['primary', 'Principal (encabezados, botones, logo)'], ['accent', 'Acento (dorado del logo y detalles)'], ['secondary', 'Secundario (fondos suaves y tarjetas)'], ['background', 'Fondo'], ['text', 'Texto']] as const).map(([k, l]) => <label key={k} className="fp-color">{l}<input type="color" value={cfg.theme[k]} onChange={e => setTheme({ [k]: e.target.value.toUpperCase() })} /></label>)}
         </div>
         <label>Fuente<select value={cfg.theme.font} onChange={e => setTheme({ font: e.target.value as SiteConfig['theme']['font'] })}>{Object.entries(SITE_FONTS).map(([k, f]) => <option key={k} value={k}>{f.label}</option>)}</select></label>
-        <button type="button" className="inline-link" onClick={() => setTheme({ ...DEFAULT_SITE.theme })}>Regresar a los colores originales</button>
+        <label className="check"><input type="checkbox" checked={cfg.theme.pattern !== false} onChange={e => setTheme({ pattern: e.target.checked })} /> Textura de líneas doradas en las franjas oscuras y el pie de página</label>
+        <button type="button" className="inline-link" onClick={() => setTheme({ ...DEFAULT_SITE.theme })}>Regresar a los colores de la marca Mi Casa</button>
       </section>
     </div>}
 

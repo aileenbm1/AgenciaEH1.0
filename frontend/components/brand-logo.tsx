@@ -8,7 +8,8 @@ const GOLD = 'mc-gold';
 
 export function GoldDefs() {
   return <defs><linearGradient id={GOLD} x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stopColor="#F0D29A" /><stop offset=".55" stopColor="#C9A05A" /><stop offset="1" stopColor="#A97E3A" />
+    {/* Los tonos salen del color de acento del sitio: el administrador los cambia en el editor. */}
+    <stop offset="0" style={{ stopColor: 'var(--gold-light, #E3CB9F)' }} /><stop offset=".55" style={{ stopColor: 'var(--gold, #C9A36A)' }} /><stop offset="1" style={{ stopColor: 'var(--gold-ink, #8D724A)' }} />
   </linearGradient></defs>;
 }
 
@@ -16,8 +17,8 @@ export function GoldDefs() {
 export function RoofMark() {
   const g = `url(#${GOLD})`;
   return <>
-    <path d="M884 353V318H936V390" fill="none" stroke={g} strokeWidth="11" />
-    <polygon points="455,488 770,274 1080,492 1065,491 770,291 467,488" fill={g} />
+    <path className="bl-chimney" d="M884 353V318H936V390" fill="none" stroke={g} strokeWidth="11" />
+    <polygon className="bl-roof" points="455,488 770,274 1080,492 1065,491 770,291 467,488" fill={g} />
     <g fill={g}><rect x="745" y="388" width="23" height="23" /><rect x="773" y="388" width="23" height="23" /><rect x="745" y="416" width="23" height="23" /><rect x="773" y="416" width="23" height="23" /></g>
   </>;
 }

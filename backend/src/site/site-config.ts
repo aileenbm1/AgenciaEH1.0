@@ -9,7 +9,10 @@ import { videoId } from '../fanpages/fanpage-blocks';
  * al propio sitio, IDs de videos de YouTube/Vimeo y enlaces seguros (rutas del
  * sitio, https://, mailto: y tel:). Todo lo demás se descarta o se rechaza.
  */
-export const SITE_BLOCK_TYPES = ['hero', 'paths', 'cities', 'featured', 'banner', 'text', 'steps', 'faq', 'image', 'gallery', 'video', 'contact'] as const;
+export const SITE_BLOCK_TYPES = ['hero', 'paths', 'values', 'cities', 'featured', 'banner', 'text', 'steps', 'faq', 'image', 'gallery', 'video', 'contact'] as const;
+/** Íconos de línea permitidos en el bloque "Íconos con texto" (lista fija). */
+export const SITE_ICONS = ['casa', 'escudo', 'personas', 'estrella', 'saludo', 'documento', 'ubicacion', 'llave', 'corazon', 'edificio', 'reloj', 'brillo'] as const;
+export const BRAND_THEME = { primary: '#0F172A', accent: '#C9A36A', secondary: '#E7E1D8', background: '#F6F5F2', text: '#2B3140' };
 export type SiteBlockType = typeof SITE_BLOCK_TYPES[number];
 export const SITE_FONTS = ['original', 'clasica', 'moderna', 'elegante', 'redonda'] as const;
 export const SITE_BGS = ['light', 'soft', 'dark', 'accent'] as const;
@@ -72,6 +75,10 @@ export function cleanSiteBlocks(list: unknown, page: string): SiteBlock[] {
         const cards = Array.isArray(b.cards) ? b.cards.slice(0, 6).map((c: any) => ({ badge: str(c?.badge, 40), title: str(c?.title, 80), text: str(c?.text, 300), linkText: str(c?.linkText, 50), href: safeHref(c?.href, where) })) : [];
         return { ...base, ...head, cards };
       }
+      case 'values': {
+        const items = Array.isArray(b.items) ? b.items.slice(0, 8).map((x: any) => ({ icon: pick(x?.icon, SITE_ICONS, 'casa'), title: str(x?.title, 60), text: str(x?.text, 240) })).filter((x: any) => x.title || x.text) : [];
+        return { ...base, ...head, items, layout: pick(b.layout, ['cards', 'row'] as const, 'cards') };
+      }
       case 'cities': return { ...base, ...head };
       case 'featured':
         return { ...base, ...head, count: [4, 8, 12].includes(Number(b.count)) ? Number(b.count) : 4, operation: pick(b.operation, ['', 'RENT', 'SALE'] as const, ''), buttonText: str(b.buttonText, 50), emptyText: str(b.emptyText, 200) };
@@ -132,7 +139,7 @@ export function cleanSiteConfig(c: any) {
   });
   return {
     brand: { name: str(brand.name, 40), tagline: str(brand.tagline, 70), mark: str(brand.mark, 4), logoUrl: image(brand.logoUrl, 'el logotipo'), logoOnly: bool(brand.logoOnly, false) },
-    theme: { primary: color(theme.primary, '#172536'), accent: color(theme.accent, '#C5A46D'), background: color(theme.background, '#F7F5F0'), text: color(theme.text, '#333A40'), font: pick(theme.font, SITE_FONTS, 'original') },
+    theme: { primary: color(theme.primary, BRAND_THEME.primary), accent: color(theme.accent, BRAND_THEME.accent), secondary: color(theme.secondary, BRAND_THEME.secondary), background: color(theme.background, BRAND_THEME.background), text: color(theme.text, BRAND_THEME.text), font: pick(theme.font, SITE_FONTS, 'original'), pattern: bool(theme.pattern, true) },
     header: { links: links(header.links, 6, 'el encabezado'), buttonText: str(header.buttonText, 40), buttonHref: safeHref(header.buttonHref, 'el encabezado') },
     contact: { email, phone: str(contact.phone, 25).replace(/[^\d+\s()-]/g, ''), whatsapp: str(contact.whatsapp, 25).replace(/[^\d+]/g, ''), address: str(contact.address, 200) },
     footer: {

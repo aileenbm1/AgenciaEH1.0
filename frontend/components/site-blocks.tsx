@@ -6,10 +6,12 @@ import { SectionTitle } from '@/components/section-title';
 import { Property } from '@/lib/data';
 import { SiteA } from '@/components/site-link';
 import { MUNICIPALITIES, PROPERTY_TYPES } from '@/lib/roles';
+import { Home, ShieldCheck, Users, Star, Handshake, FileCheck2, MapPin, KeyRound, Heart, Building2, Clock, Sparkles } from 'lucide-react';
 import { rgba, SiteBlock, SiteConfig, SiteLink, videoSrc, waLink } from '@/lib/site';
 
 const HERO_IMG = 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1800';
 
+const ICONS: Record<string, typeof Home> = { casa: Home, escudo: ShieldCheck, personas: Users, estrella: Star, saludo: Handshake, documento: FileCheck2, ubicacion: MapPin, llave: KeyRound, corazon: Heart, edificio: Building2, reloj: Clock, brillo: Sparkles };
 const btn = (l: SiteLink | undefined, className: string) => (l?.label && l?.href ? <SiteA href={l.href} className={className}>{l.label}</SiteA> : null);
 const Head = ({ b }: { b: SiteBlock }) => (b.eyebrow || b.title || b.copy ? <SectionTitle eyebrow={b.eyebrow || ''} title={b.title || ''} copy={b.copy || undefined} /> : null);
 const paragraphs = (s: string) => String(s || '').split(/\n{2,}/).map((p, i) => <p key={i}>{p}</p>);
@@ -62,6 +64,9 @@ export default function SiteBlocks({ blocks, site, featured = {}, editor }: Prop
           const inner = <>{c.badge && <span className="role-badge">{c.badge}</span>}<h3>{c.title}</h3>{c.text && <p>{c.text}</p>}{c.linkText && <span className="path-cta">{c.linkText}</span>}</>;
           return c.href ? <SiteA key={i} href={c.href} className="path-card">{inner}</SiteA> : <div key={i} className="path-card">{inner}</div>;
         })}</div></section>;
+      case 'values': return <section className={`content-section${bgCls}`}><Head b={b} />
+        <div className={`site-values ${b.layout === 'row' ? 'is-row' : 'is-cards'}`}>{(b.items || []).map((x: any, i: number) => { const Icon = ICONS[x.icon] || Home; return <div key={i} className="site-value">
+          <span className="site-value-ic"><Icon size={26} strokeWidth={1.5} aria-hidden /></span><b>{x.title}</b>{x.text && <p>{x.text}</p>}</div>; })}</div></section>;
       case 'cities': return <section className={`content-section${bgCls}`}><Head b={b} />
         <div className="city-chips">{MUNICIPALITIES.map(c => <Link href={`/propiedades?municipality=${encodeURIComponent(c)}`} key={c}>{c} <span>↗</span></Link>)}</div></section>;
       case 'featured': {

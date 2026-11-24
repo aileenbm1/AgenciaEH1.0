@@ -17,10 +17,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 // El diseño del sitio (logotipo, colores, menú) se lee en cada visita: ninguna página queda congelada con el diseño de la compilación.
 export const dynamic = "force-dynamic";
-export const viewport: Viewport = { themeColor: "#172536" };
+export const viewport: Viewport = { themeColor: "#0F172A" };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const site = await getSite();
   // Colores y fuente elegidos por el administrador (solo #RRGGBB y fuentes de una lista fija).
-  return <html lang="es-MX"><head><style id="site-theme">{themeCss(site.theme)}</style></head><body><SiteHeader site={site} />{children}<SiteFooter site={site} /><Pwa /></body></html>;
+  return <html lang="es-MX"><head><style id="site-theme">{themeCss(site.theme)}</style></head><body className={site.theme.pattern !== false ? "mc-pattern" : undefined}><SiteHeader site={site} />{children}<SiteFooter site={site} /><Pwa /></body></html>;
 }

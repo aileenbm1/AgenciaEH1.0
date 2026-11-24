@@ -1,18 +1,52 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { DatabaseService } from '../database/database.service';
-import { cleanSiteConfig, SiteConfig } from './site-config';
+import { BRAND_THEME, cleanSiteConfig, SiteConfig } from './site-config';
 
 const MAX_BYTES = 900_000;
 const KEEP_VERSIONS = 30;
 type Meta = { updatedAt?: string; publishedAt?: string; publishedBy?: string };
+const VALUES_BLOCK = { id: 'valores', type: 'values', bg: 'soft', layout: 'cards', eyebrow: '¿POR QUÉ MI CASA?', title: 'Te acompañamos hasta tu hogar ideal',
+  copy: 'MI CASA es una agencia inmobiliaria que conecta personas con el hogar ideal, brindando confianza, cercanía y acompañamiento profesional.',
+  items: [
+    { icon: 'escudo', title: 'Confianza', text: 'Cada propiedad se revisa antes de publicarse.' },
+    { icon: 'personas', title: 'Cercanía', text: 'Un asesor te acompaña en cada paso.' },
+    { icon: 'estrella', title: 'Profesionalismo', text: 'Procesos claros, contratos y pagos en orden.' },
+    { icon: 'casa', title: 'Hogares reales', text: 'Fotos y datos reales de cada inmueble.' },
+  ] };
 const parse = <T>(s: string | null | undefined, d: T): T => { try { return s ? JSON.parse(s) : d; } catch { return d; } };
 
 /** Diseño de todo el sitio: borrador (lo que edita el admin) y versión publicada (lo que ve el público). */
 @Injectable()
-export class SiteService {
+export class SiteService implements OnModuleInit {
   private cache: { at: number; value: { config: SiteConfig | null; updatedAt: string | null } } | null = null;
   constructor(private readonly db: DatabaseService) {}
+
+  /**
+   * Branding de Mi Casa (una sola vez): el diseño guardado toma la paleta de la marca y el
+   * Inicio gana la sección de valores. Después el administrador puede cambiar todo en el editor.
+   */
+  onModuleInit() {
+    setTimeout(async () => {
+      try {
+        if ((await this.get<string | null>('brand.micasa3', null)) !== null) return;
+        for (const k of ['site.draft', 'site.published']) {
+          const c = await this.get<any>(k, null);
+          if (!c) continue;
+          c.theme = { ...(c.theme || {}), ...BRAND_THEME, font: 'original', pattern: true };
+          if (c.brand) { c.brand.mark = ''; if (!c.brand.tagline || c.brand.tagline === 'BIENES RAÍCES · BAJÍO') c.brand.tagline = 'AGENCIA INMOBILIARIA'; }
+          const home = c.pages?.home;
+          if (Array.isArray(home) && !home.some((b: any) => b?.type === 'values')) {
+            const at = home.findIndex((b: any) => b?.type === 'paths');
+            home.splice(at >= 0 ? at + 1 : Math.min(1, home.length), 0, VALUES_BLOCK);
+          }
+          await this.set(k, cleanSiteConfig(c));
+        }
+        await this.set('brand.micasa3', '1');
+        this.cache = null;
+      } catch (e: any) { console.error('[Mi Casa] No se pudo aplicar el branding al diseño guardado:', e?.message); }
+    }, 5000).unref?.();
+  }
 
   private async get<T>(k: string, d: T): Promise<T> {
     const [r] = await this.db.query<any>('SELECT V FROM SiteSettings WHERE K=?', [k]);

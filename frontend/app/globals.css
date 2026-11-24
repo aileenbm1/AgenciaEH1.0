@@ -860,3 +860,20 @@ h1,h2{font-family:var(--font-title);color:var(--navy);font-weight:600;letter-spa
 .footer-brand .brand-lockup{height:118px}.footer-brand .brand-lockup .bl-name,.footer-brand .brand-lockup .bl-tag{fill:#F4ECDD}
 .site-preview-chrome .brand-lockup{height:38px}
 @media(max-width:760px){.site-header .brand-lockup{height:52px}}
+
+/* ---------- Branding Mi Casa ---------- */
+/* Variación clara del logotipo (encabezado): techo en el color principal; en el pie, dorado. */
+.site-header .brand-lockup .bl-roof,.site-preview-chrome .brand-lockup .bl-roof{fill:var(--navy)}
+.site-header .brand-lockup .bl-chimney,.site-preview-chrome .brand-lockup .bl-chimney{stroke:var(--navy)}
+/* Textura de líneas doradas (franjas oscuras y pie). Se puede apagar desde el editor. */
+.mc-pattern .owner-cta:not(.site-accent):not(.site-light),.mc-pattern .site-footer,.mc-pattern .site-dark{background-image:
+  repeating-linear-gradient(35deg,transparent 0 46px,color-mix(in srgb,var(--gold) 22%,transparent) 46px 47px),
+  repeating-linear-gradient(-35deg,transparent 0 46px,color-mix(in srgb,var(--gold) 14%,transparent) 46px 47px);background-color:var(--navy)}
+/* Íconos con texto (valores, servicios) */
+.site-values{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:18px;margin-top:28px}
+.site-value{display:grid;gap:8px;align-content:start}
+.site-values.is-cards .site-value{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);padding:24px}
+.site-values.is-row{text-align:center}.site-values.is-row .site-value{justify-items:center}
+.site-value-ic{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;color:var(--gold-ink);border:1.5px solid var(--gold);background:color-mix(in srgb,var(--gold) 10%,transparent)}
+.site-value b{font:600 19px var(--font-title);color:var(--navy)}.site-value p{margin:0;font-size:14px;line-height:1.6;color:var(--muted)}
+.site-dark .site-values.is-cards .site-value{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14)}.site-dark .site-value b{color:#fff}.site-dark .site-value-ic{color:var(--gold)}

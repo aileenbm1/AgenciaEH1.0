@@ -6,14 +6,14 @@ import { FONTS as FP_FONTS } from './fanpage';
 export type SiteFont = 'original' | 'clasica' | 'moderna' | 'elegante' | 'redonda';
 export type SiteBg = 'light' | 'soft' | 'dark' | 'accent';
 export type SiteLink = { label: string; href: string };
-export type SiteBlockType = 'hero' | 'paths' | 'cities' | 'featured' | 'banner' | 'text' | 'steps' | 'faq' | 'image' | 'gallery' | 'video' | 'contact';
+export type SiteBlockType = 'hero' | 'paths' | 'values' | 'cities' | 'featured' | 'banner' | 'text' | 'steps' | 'faq' | 'image' | 'gallery' | 'video' | 'contact';
 export type SiteBlock = { id: string; type: SiteBlockType; hidden?: boolean; bg: SiteBg; [k: string]: any };
 export type SitePageKey = 'home' | 'anunciar';
 export type ExtraPage = { slug: string; title: string; description: string; inHeader: boolean; inFooter: boolean; blocks: SiteBlock[] };
 export type FooterColumn = { title: string; links: SiteLink[]; auto: '' | 'municipios' };
 export type SiteConfig = {
   brand: { name: string; tagline: string; mark: string; logoUrl: string; logoOnly: boolean };
-  theme: { primary: string; accent: string; background: string; text: string; font: SiteFont };
+  theme: { primary: string; accent: string; secondary: string; background: string; text: string; font: SiteFont; pattern: boolean };
   header: { links: SiteLink[]; buttonText: string; buttonHref: string };
   contact: { email: string; phone: string; whatsapp: string; address: string };
   footer: { about: string; bottom: string; columns: FooterColumn[]; social: Partial<Record<Social, string>> };
@@ -28,13 +28,17 @@ export const SITE_FONTS: Record<SiteFont, { label: string; title: string; body: 
   ...FP_FONTS,
 };
 
-export const SITE_PALETTES: { name: string; theme: Omit<SiteConfig['theme'], 'font'> }[] = [
-  { name: 'Mi Casa', theme: { primary: '#172536', accent: '#C5A46D', background: '#F7F5F0', text: '#333A40' } },
-  { name: 'Mar', theme: { primary: '#0E4F5C', accent: '#F2A65A', background: '#FFFDF8', text: '#22313A' } },
-  { name: 'Bosque', theme: { primary: '#2F4A3A', accent: '#C9A227', background: '#F6F4EE', text: '#2E3430' } },
-  { name: 'Moderno', theme: { primary: '#1F2A44', accent: '#3FA796', background: '#FFFFFF', text: '#2B2F36' } },
-  { name: 'Terracota', theme: { primary: '#5B2E1F', accent: '#D98E5F', background: '#FBF6F1', text: '#3A2C26' } },
+export const SITE_PALETTES: { name: string; theme: Omit<SiteConfig['theme'], 'font' | 'pattern'> }[] = [
+  { name: 'Mi Casa', theme: { primary: '#0F172A', accent: '#C9A36A', secondary: '#E7E1D8', background: '#F6F5F2', text: '#2B3140' } },
+  { name: 'Mi Casa clásico', theme: { primary: '#172536', accent: '#C5A46D', secondary: '#EFECE6', background: '#F7F5F0', text: '#333A40' } },
+  { name: 'Mar', theme: { primary: '#0E4F5C', accent: '#F2A65A', secondary: '#E6EEEC', background: '#FFFDF8', text: '#22313A' } },
+  { name: 'Bosque', theme: { primary: '#2F4A3A', accent: '#C9A227', secondary: '#E7E9DF', background: '#F6F4EE', text: '#2E3430' } },
+  { name: 'Moderno', theme: { primary: '#1F2A44', accent: '#3FA796', secondary: '#E8EDF2', background: '#FFFFFF', text: '#2B2F36' } },
+  { name: 'Terracota', theme: { primary: '#5B2E1F', accent: '#D98E5F', secondary: '#F0E3D8', background: '#FBF6F1', text: '#3A2C26' } },
 ];
+
+/** Íconos de línea del bloque "Íconos con texto". */
+export const SITE_ICON_LABEL: Record<string, string> = { casa: 'Casa', escudo: 'Escudo (confianza)', personas: 'Personas (cercanía)', estrella: 'Estrella', saludo: 'Apretón de manos (asesoría)', documento: 'Documento (trámites)', ubicacion: 'Ubicación', llave: 'Llave', corazon: 'Corazón', edificio: 'Edificio', reloj: 'Reloj', brillo: 'Brillo' };
 
 export const PAGE_LABEL: Record<SitePageKey, { label: string; path: string }> = {
   home: { label: 'Inicio', path: '/' },
@@ -44,6 +48,7 @@ export const PAGE_LABEL: Record<SitePageKey, { label: string; path: string }> = 
 export const SITE_BLOCKS: Record<SiteBlockType, { icon: string; label: string; help: string; make: () => Omit<SiteBlock, 'id'> }> = {
   hero: { icon: '🖼', label: 'Portada', help: 'Foto grande con título, botones y buscador.', make: () => ({ type: 'hero', bg: 'dark', eyebrow: 'TU FRASE CORTA', title: 'Título principal', highlight: 'segunda línea', text: 'Texto de presentación.', imageUrl: '', button1: { label: 'Explorar propiedades ↗', href: '/propiedades' }, button2: { label: '', href: '' }, showSearch: false, searchTitle: 'Encuentra tu próximo espacio', searchNote: 'No necesitas cuenta para buscar' }) },
   paths: { icon: '🧭', label: 'Tarjetas con enlace', help: 'De 1 a 6 tarjetas que llevan a otra página.', make: () => ({ type: 'paths', bg: 'light', eyebrow: 'SECCIÓN', title: 'Título', copy: '', cards: [{ badge: 'Etiqueta', title: 'Tarjeta', text: 'Descripción breve.', linkText: 'Ver más →', href: '/propiedades' }] }) },
+  values: { icon: '✨', label: 'Íconos con texto', help: 'Valores, servicios o ventajas con íconos.', make: () => ({ type: 'values', bg: 'soft', layout: 'cards', eyebrow: '', title: 'Nuestros valores', copy: '', items: [{ icon: 'escudo', title: 'Confianza', text: '' }, { icon: 'personas', title: 'Cercanía', text: '' }, { icon: 'estrella', title: 'Profesionalismo', text: '' }] }) },
   cities: { icon: '📍', label: 'Municipios', help: 'Botones a cada municipio del catálogo.', make: () => ({ type: 'cities', bg: 'soft', eyebrow: 'EXPLORA GUANAJUATO', title: 'Encuentra el lugar ideal', copy: '' }) },
   featured: { icon: '🏠', label: 'Propiedades', help: 'Las propiedades publicadas más recientes.', make: () => ({ type: 'featured', bg: 'light', eyebrow: 'SELECCIÓN MI CASA', title: 'Propiedades recientes', copy: '', count: 4, operation: '', buttonText: 'Ver todas las propiedades', emptyText: '' }) },
   banner: { icon: '📣', label: 'Franja destacada', help: 'Título grande con botón sobre el color principal.', make: () => ({ type: 'banner', bg: 'dark', eyebrow: 'FRASE CORTA', title: 'Título del anuncio', highlight: '', text: '', button: { label: 'Contáctanos', href: '/anunciar' } }) },
@@ -61,7 +66,7 @@ export const BG_LABEL: Record<SiteBg, string> = { light: 'Claro', soft: 'Arena (
 /** Diseño original del sitio: lo que se ve mientras el administrador no publique cambios. */
 export const DEFAULT_SITE: SiteConfig = {
   brand: { name: 'Mi Casa', tagline: 'AGENCIA INMOBILIARIA', mark: '', logoUrl: '', logoOnly: false },
-  theme: { primary: '#172536', accent: '#C5A46D', background: '#F7F5F0', text: '#333A40', font: 'original' },
+  theme: { primary: '#0F172A', accent: '#C9A36A', secondary: '#E7E1D8', background: '#F6F5F2', text: '#2B3140', font: 'original', pattern: true },
   header: { links: [{ label: 'Explorar propiedades', href: '/propiedades' }, { label: 'Comparar', href: '/comparar' }], buttonText: 'Anunciar propiedad', buttonHref: '/anunciar' },
   contact: { email: '', phone: '', whatsapp: '', address: 'Guanajuato, México' },
   footer: {
@@ -83,12 +88,24 @@ export const DEFAULT_SITE: SiteConfig = {
         { badge: 'Agente / Asesor', title: 'Anunciar mis propiedades', text: 'Registra tus inmuebles; Mi Casa los revisa y, al aprobarlos, aparecen en el catálogo.', linkText: 'Solicitar cuenta de agente →', href: '/anunciar' },
         { badge: 'Agencia', title: 'Publicar como inmobiliaria', text: 'Publica a nombre de tu agencia con tu equipo de asesores; el administrador crea las cuentas.', linkText: 'Solicitar cuenta de agencia →', href: '/anunciar' },
       ] },
-      { id: 'municipios', type: 'cities', bg: 'soft', eyebrow: 'EXPLORA GUANAJUATO', title: 'Encuentra el lugar ideal', copy: 'Propiedades en las principales ciudades del Bajío.' },
+      { id: 'valores', type: 'values', bg: 'soft', layout: 'cards', eyebrow: '¿POR QUÉ MI CASA?', title: 'Te acompañamos hasta tu hogar ideal', copy: 'MI CASA es una agencia inmobiliaria que conecta personas con el hogar ideal, brindando confianza, cercanía y acompañamiento profesional.', items: [
+        { icon: 'escudo', title: 'Confianza', text: 'Cada propiedad se revisa antes de publicarse.' },
+        { icon: 'personas', title: 'Cercanía', text: 'Un asesor te acompaña en cada paso.' },
+        { icon: 'estrella', title: 'Profesionalismo', text: 'Procesos claros, contratos y pagos en orden.' },
+        { icon: 'casa', title: 'Hogares reales', text: 'Fotos y datos reales de cada inmueble.' },
+      ] },
+      { id: 'municipios', type: 'cities', bg: 'light', eyebrow: 'EXPLORA GUANAJUATO', title: 'Encuentra el lugar ideal', copy: 'Propiedades en las principales ciudades del Bajío.' },
       { id: 'recientes', type: 'featured', bg: 'light', eyebrow: 'SELECCIÓN MI CASA', title: 'Propiedades recientes', copy: 'Todas fueron revisadas por nuestro equipo antes de publicarse.', count: 4, operation: '', buttonText: 'Ver todas las propiedades', emptyText: 'Próximamente encontrarás aquí las propiedades publicadas y aprobadas por Mi Casa.' },
       { id: 'anunciantes', type: 'banner', bg: 'dark', eyebrow: '¿TIENES UNA PROPIEDAD?', title: 'Tu inmueble merece', highlight: 'la mejor vitrina.', text: 'Solicita tu cuenta de agente, agencia o desarrollador: el equipo de Mi Casa la crea y te envía tu enlace de activación. Después registra tus propiedades y envíalas a revisión.', button: { label: 'Anunciar mi propiedad ↗', href: '/anunciar' } },
     ],
     anunciar: [
       { id: 'intro', type: 'text', bg: 'light', eyebrow: 'ANUNCIA CON NOSOTROS', title: 'Solicita tu cuenta de anunciante', copy: '', body: 'Las cuentas de agentes, agencias y desarrolladoras las crea el administrador de Mi Casa. Escríbenos con tus datos y te enviaremos un enlace para activar tu cuenta y elegir tu contraseña.', align: 'left', button: { label: '', href: '' } },
+      { id: 'servicios', type: 'values', bg: 'light', layout: 'row', eyebrow: 'LO QUE HACEMOS POR TI', title: '', copy: '', items: [
+        { icon: 'casa', title: 'Propiedades', text: 'Publicamos y promovemos tus inmuebles.' },
+        { icon: 'saludo', title: 'Asesoría', text: 'Te orientamos en precio, renta o venta.' },
+        { icon: 'documento', title: 'Trámites', text: 'Contratos, reservas y pagos en orden.' },
+        { icon: 'ubicacion', title: 'Ubicación', text: 'Mapa y zona de cada propiedad.' },
+      ] },
       { id: 'pasos', type: 'steps', bg: 'light', eyebrow: '', title: '', copy: '', items: [
         { title: 'Solicítala', text: 'Por correo o WhatsApp con tu nombre, tipo de cuenta y empresa.' },
         { title: 'La creamos', text: 'Recibes un enlace de activación por correo.' },
@@ -128,10 +145,11 @@ export const rgba = (h: string, a: number) => /^#[0-9a-f]{6}$/i.test(h) ? `rgba(
 
 /** Variables de color y fuente del sitio. Los valores ya vienen validados (#RRGGBB y lista fija de fuentes). */
 export function themeCss(t: SiteConfig['theme']) {
-  const ok = (v: string, d: string) => (/^#[0-9a-f]{6}$/i.test(v) ? v : d);
-  const primary = ok(t.primary, '#172536'), accent = ok(t.accent, '#C5A46D'), bg = ok(t.background, '#F7F5F0'), text = ok(t.text, '#333A40');
+  const ok = (v: string | undefined, d: string) => (v && /^#[0-9a-f]{6}$/i.test(v) ? v : d);
+  const primary = ok(t.primary, '#0F172A'), accent = ok(t.accent, '#C9A36A'), bg = ok(t.background, '#F6F5F2'), text = ok(t.text, '#2B3140'), sec = ok(t.secondary, '#E7E1D8');
   const f = SITE_FONTS[t.font] || SITE_FONTS.original;
-  return `:root{--navy:${primary};--navy-hover:${shade(primary, 0.12)};--gold:${accent};--gold-ink:${shade(accent, -0.3)};--ivory:${bg};--ink:${text};--font-title:${f.title};--font-body:${f.body};--focus:0 0 0 4px ${rgba(primary, 0.14)}}`;
+  // Secundario: fondos suaves, tarjetas y bordes. El dorado claro y oscuro se calculan del acento.
+  return `:root{--navy:${primary};--navy-hover:${shade(primary, 0.12)};--gold:${accent};--gold-light:${shade(accent, 0.35)};--gold-ink:${shade(accent, -0.3)};--ivory:${bg};--ink:${text};--soft:${sec};--surface:${shade(sec, 0.45)};--line:${shade(sec, -0.07)};--sand:${shade(sec, -0.16)};--font-title:${f.title};--font-body:${f.body};--focus:0 0 0 4px ${rgba(primary, 0.14)}}`;
 }
 
 /** Sustituye {año} en los textos. */

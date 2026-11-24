@@ -2,7 +2,7 @@
    - Páginas: primero la red; sin conexión, la copia guardada o la página "Sin conexión".
    - Archivos estáticos (_next/static, íconos, fotos de ejemplo): se guardan en caché.
    - La API (/api/...) NUNCA se guarda en caché: datos personales y sesiones siempre frescos. */
-const VERSION = 'micasa-v3';
+const VERSION = 'micasa-v4';
 const OFFLINE = '/sin-conexion';
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll([OFFLINE, '/icons/icon-192.png'])).then(() => self.skipWaiting()));
