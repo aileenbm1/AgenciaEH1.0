@@ -3,6 +3,7 @@ import { BedDouble, Bath, Ruler, MapPin } from "lucide-react";
 import { Property, mxn } from "@/lib/data";
 import ShareButtons from "@/components/share-buttons";
 import CardCarousel from "@/components/card-carousel";
+import CompareToggle from "@/components/compare-toggle";
 
 export function PropertyCard({ p }: { p: Property }) {
   const isRent = p.operation === "Renta";
@@ -23,6 +24,7 @@ export function PropertyCard({ p }: { p: Property }) {
         <span title="Baños"><Bath size={17} strokeWidth={1.5} aria-hidden />{p.baths} baños</span>
         <span title="Superficie"><Ruler size={17} strokeWidth={1.5} aria-hidden />{p.area} m²</span>
       </div>
+      <CompareToggle slug={p.slug} />
     </div>
   </article>;
 }

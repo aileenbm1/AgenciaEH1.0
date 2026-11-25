@@ -6,7 +6,8 @@ import { authFetch, currentToken } from '@/lib/auth';
 export const COMPARE_KEY = 'eh_compare';
 export const MAX_COMPARE = 4;
 export function readCompare(): string[] { try { return JSON.parse(localStorage.getItem(COMPARE_KEY) || '[]'); } catch { return []; } }
-export function writeCompare(list: string[]) { try { localStorage.setItem(COMPARE_KEY, JSON.stringify(list.slice(0, MAX_COMPARE))); } catch { /* sin almacenamiento */ } }
+export const COMPARE_EVENT = 'compare:change';
+export function writeCompare(list: string[]) { try { localStorage.setItem(COMPARE_KEY, JSON.stringify(list.slice(0, MAX_COMPARE))); window.dispatchEvent(new Event(COMPARE_EVENT)); } catch { /* sin almacenamiento */ } }
 
 /** Botones de la ficha: guardar en favoritos y agregar a comparar. */
 export default function PropertyTools({ propertyId, slug }: { propertyId: string; slug: string }) {

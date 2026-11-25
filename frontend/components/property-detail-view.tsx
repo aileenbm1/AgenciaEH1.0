@@ -63,7 +63,7 @@ export default function PropertyDetailView({ raw, preview = false }: { raw: ApiP
         {!closed && <a className="button button-navy full" href="#reservar">{raw.operation === 'SALE' ? 'Apartar en línea' : 'Reservar en línea'}</a>}
         {preview ? <div className="fp-form-placeholder">Aquí aparecen los botones de guardar en favoritos y comparar, el formulario para escribirte y los botones para compartir.</div> : <>
           <PropertyTools propertyId={raw.id} slug={raw.slug} />
-          {!closed && <PropertyContact propertyId={raw.id} title={p.title} owner={raw.owner} />}
+          {!closed && <div id="contacto"><PropertyContact propertyId={raw.id} title={p.title} owner={raw.owner} /></div>}
           <ShareButtons path={`/propiedades/${raw.slug}`} title={p.title} />
           <p className="fp-links"><Link className="small-link" href={`/propiedades/${raw.slug}/fanpage`}>Ver fanpage de la propiedad →</Link> <FanpageEditLink propertyId={raw.id} /></p>
         </>}
