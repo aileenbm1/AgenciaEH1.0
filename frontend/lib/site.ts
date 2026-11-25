@@ -56,7 +56,7 @@ export const SITE_BLOCKS: Record<SiteBlockType, { icon: string; label: string; h
   steps: { icon: '🔢', label: 'Pasos', help: 'Lista numerada (cómo funciona).', make: () => ({ type: 'steps', bg: 'light', eyebrow: '', title: '¿Cómo funciona?', copy: '', items: [{ title: 'Paso 1', text: '' }, { title: 'Paso 2', text: '' }, { title: 'Paso 3', text: '' }] }) },
   faq: { icon: '❓', label: 'Preguntas frecuentes', help: 'Preguntas que se abren al tocarlas.', make: () => ({ type: 'faq', bg: 'light', eyebrow: '', title: 'Preguntas frecuentes', copy: '', items: [{ q: '¿Pregunta?', a: 'Respuesta.' }] }) },
   image: { icon: '🌄', label: 'Imagen', help: 'Una foto con texto al pie.', make: () => ({ type: 'image', bg: 'light', eyebrow: '', title: '', copy: '', imageUrl: '', caption: '', wide: false }) },
-  gallery: { icon: '📷', label: 'Galería', help: 'Varias fotos en cuadrícula.', make: () => ({ type: 'gallery', bg: 'light', eyebrow: '', title: 'Galería', copy: '', images: [] }) },
+  gallery: { icon: '📷', label: 'Galería', help: 'Varias fotos: cuadrícula, mosaico, tira, presentación y más.', make: () => ({ type: 'gallery', bg: 'light', eyebrow: '', title: 'Galería', copy: '', images: [], names: [], style: 'grid', cols: 3, gap: 's', ratio: '43', corners: 'round', lightbox: true, captions: false, autoplay: true, limit: 0, frame: false, zoom: false, mobileStrip: false }) },
   video: { icon: '▶️', label: 'Video', help: 'Enlace de YouTube o Vimeo.', make: () => ({ type: 'video', bg: 'light', eyebrow: '', title: 'Video', copy: '', url: '' }) },
   contact: { icon: '✉️', label: 'Botones de contacto', help: 'Correo y WhatsApp con mensaje listo.', make: () => ({ type: 'contact', bg: 'light', eyebrow: '', title: 'Escríbenos', copy: '', showEmail: true, showWhatsapp: true, emailText: 'Escribir por correo', whatsappText: 'Escribir por WhatsApp', subject: 'Información', message: 'Hola, quiero información.' }) },
 };
@@ -168,3 +168,49 @@ export function videoSrc(b: SiteBlock): string | null {
   return provider === 'vimeo' ? `https://player.vimeo.com/video/${id}` : `https://www.youtube-nocookie.com/embed/${id}`;
 }
 export const videoUrlOf = (b: SiteBlock) => b.url ?? (b.videoId ? (b.provider === 'vimeo' ? `https://vimeo.com/${b.videoId}` : `https://youtu.be/${b.videoId}`) : '');
+
+// ---------- Acomodo exacto de cada sección (lo mismo se valida en el servidor) ----------
+export type LayPos = 'tl' | 'tc' | 'tr' | 'ml' | 'mc' | 'mr' | 'bl' | 'bc' | 'br';
+export const LAY_POS: LayPos[] = ['tl', 'tc', 'tr', 'ml', 'mc', 'mr', 'bl', 'bc', 'br'];
+export const LAY_POS_LABEL: Record<LayPos, string> = { tl: 'Arriba · Izquierda', tc: 'Arriba · Centro', tr: 'Arriba · Derecha', ml: 'Centro · Izquierda', mc: 'Centro', mr: 'Centro · Derecha', bl: 'Abajo · Izquierda', bc: 'Abajo · Centro', br: 'Abajo · Derecha' };
+export const LAY_WIDTH = { narrow: 'Angosto', medium: 'Medio', wide: 'Ancho', full: 'Completo' } as const;
+export const LAY_SPACE = { none: 'Ninguno', s: 'Chico', m: 'Normal', l: 'Grande' } as const;
+export const LAY_ALIGN = { left: 'Izquierda', center: 'Centro', right: 'Derecha' } as const;
+/** Tipos de sección donde tiene sentido mover el contenido arriba/abajo (tienen alto propio). */
+export const LAY_VERTICAL: SiteBlockType[] = ['hero', 'banner', 'text', 'image', 'video', 'contact'];
+/** Secciones con foto de fondo o foto principal (se puede elegir qué parte no se recorta). */
+export const LAY_FOCUS: SiteBlockType[] = ['hero', 'image'];
+const FOCUS_XY: Record<LayPos, string> = { tl: '0% 0%', tc: '50% 0%', tr: '100% 0%', ml: '0% 50%', mc: '50% 50%', mr: '100% 50%', bl: '0% 100%', bc: '50% 100%', br: '100% 100%' };
+export const focusXY = (p?: string) => FOCUS_XY[p as LayPos] || '50% 50%';
+
+/** Clases y variables CSS del acomodo de una sección. Sin valores = se ve como siempre. */
+export function layoutOf(b: SiteBlock): { className: string; style: Record<string, string> } {
+  const c: string[] = [], style: Record<string, string> = {};
+  const pos = LAY_POS.includes(b.pos) ? b.pos as LayPos : null, posM = LAY_POS.includes(b.posM) ? b.posM as LayPos : null;
+  if (pos || posM || b.align || b.width || b.height || b.space) c.push('lay');
+  if (pos) c.push(`lay-v-${pos[0]}`, `lay-h-${pos[1]}`);
+  if (posM) c.push(`laym-v-${posM[0]}`, `laym-h-${posM[1]}`);
+  if (b.align && b.align in LAY_ALIGN) c.push(`lay-ta-${b.align}`);
+  if (b.width && b.width in LAY_WIDTH) c.push(`lay-w-${b.width}`);
+  if (b.space && b.space in LAY_SPACE) c.push(`lay-sp-${b.space}`);
+  const h = Number(b.height);
+  if (h > 0 && h <= 100) { c.push('lay-h'); style['--lay-minh'] = `${h}vh`; }
+  return { className: c.join(' '), style };
+}
+
+// ---------- Galería ----------
+export type GalleryStyle = 'grid' | 'mosaic' | 'strip' | 'masonry' | 'featured' | 'slideshow' | 'collage' | 'beforeafter';
+export const GALLERY_STYLES: Record<GalleryStyle, { label: string; help: string }> = {
+  grid: { label: 'Cuadrícula', help: 'Todas del mismo tamaño, ordenadas.' },
+  mosaic: { label: 'Mosaico', help: 'Una foto grande y las demás alrededor.' },
+  strip: { label: 'Tira (carrusel)', help: 'Fila que se desliza con el dedo o con flechas.' },
+  masonry: { label: 'Muro (estilo Pinterest)', help: 'Respeta si la foto es vertical u horizontal.' },
+  featured: { label: 'Destacada + miniaturas', help: 'Una grande y abajo las pequeñas para cambiarla.' },
+  slideshow: { label: 'Presentación', help: 'Una foto a la vez, a todo lo ancho.' },
+  collage: { label: 'Collage de 3', help: 'Una vertical y dos horizontales.' },
+  beforeafter: { label: 'Antes / después', help: 'Barra deslizable entre dos fotos (usa las 2 primeras).' },
+};
+export const GALLERY_RATIO = { original: 'Original', square: 'Cuadrada', '43': '4:3', '169': '16:9' } as const;
+export const GALLERY_GAP = { none: 'Sin', s: 'Chico', l: 'Grande' } as const;
+export const GALLERY_LIMITS = [0, 3, 6, 9, 12] as const;
+export const MAX_GALLERY = 40;

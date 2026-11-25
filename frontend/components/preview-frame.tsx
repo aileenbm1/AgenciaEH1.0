@@ -67,7 +67,7 @@ export default function PreviewFrame({ title, status, label, editHref, publish, 
       </div>
       <div className="pv-acts">
         <button type="button" className="pv-icon" onClick={reload} title="Actualizar con lo último que guardaste" aria-label="Actualizar"><RefreshCw size={16} aria-hidden /></button>
-        <button type="button" className="button pv-back" onClick={back}><X size={15} aria-hidden /> Volver<span>a editar</span></button>
+        <button type="button" className="button pv-back" onClick={back}><X size={15} aria-hidden /> <span>Volver<span className="pv-long"> a editar</span></span></button>
         {publish && <button type="button" className="button button-gold" disabled={busy} onClick={doPublish}>{busy ? 'Un momento…' : publish.label}</button>}
       </div>
       {msg && <p className={`pv-msg ${msg.ok ? 'ok' : 'bad'}`} role="status">{msg.text}</p>}

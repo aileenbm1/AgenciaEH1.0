@@ -50,6 +50,22 @@ const image = (v: unknown, where: string) => {
 const link = (l: any, where: string) => ({ label: str(l?.label, 40), href: safeHref(l?.href, where) });
 const links = (list: unknown, max: number, where: string) => (Array.isArray(list) ? list.slice(0, max).map((l) => link(l, where)).filter((l) => l.label && l.href) : []);
 
+const LAY_POS = ['tl', 'tc', 'tr', 'ml', 'mc', 'mr', 'bl', 'bc', 'br'] as const;
+const GALLERY_STYLES = ['grid', 'mosaic', 'strip', 'masonry', 'featured', 'slideshow', 'collage', 'beforeafter'] as const;
+export const MAX_GALLERY = 40;
+/** Acomodo de la sección: solo valores de listas fijas o números acotados (nunca CSS libre). Vacío = como siempre. */
+function cleanLayout(b: any) {
+  const out: Record<string, unknown> = {};
+  const opt = <T extends readonly string[]>(k: string, list: T) => { if (list.includes(b?.[k])) out[k] = b[k]; };
+  opt('pos', LAY_POS); opt('posM', LAY_POS); opt('focus', LAY_POS);
+  opt('align', ['left', 'center', 'right'] as const);
+  opt('width', ['narrow', 'medium', 'wide', 'full'] as const);
+  opt('space', ['none', 's', 'm', 'l'] as const);
+  const h = Math.round(Number(b?.height));
+  if (Number.isFinite(h) && h > 0) out.height = Math.min(100, Math.max(10, h));
+  return out;
+}
+
 export type SiteBlock = { id: string; type: SiteBlockType; hidden?: boolean; bg: typeof SITE_BGS[number]; [k: string]: unknown };
 
 /** Valida y normaliza los bloques de una página del sitio. */
@@ -66,7 +82,7 @@ export function cleanSiteBlocks(list: unknown, page: string): SiteBlock[] {
     seen.add(id);
     const where = `"${page}", bloque ${i + 1}`;
     const head = { eyebrow: str(b.eyebrow, 80), title: str(b.title, 160), copy: str(b.copy, 400) };
-    const base: SiteBlock = { id, type, ...(b.hidden ? { hidden: true } : {}), bg: pick(b.bg, SITE_BGS, type === 'hero' || type === 'banner' ? 'dark' : 'light') };
+    const base: SiteBlock = { id, type, ...(b.hidden ? { hidden: true } : {}), bg: pick(b.bg, SITE_BGS, type === 'hero' || type === 'banner' ? 'dark' : 'light'), ...cleanLayout(b) };
     switch (type) {
       case 'hero':
         return { ...base, eyebrow: head.eyebrow, title: head.title, highlight: str(b.highlight, 120), text: str(b.text, 400), imageUrl: image(b.imageUrl, where),
@@ -84,7 +100,7 @@ export function cleanSiteBlocks(list: unknown, page: string): SiteBlock[] {
         return { ...base, ...head, count: [4, 8, 12].includes(Number(b.count)) ? Number(b.count) : 4, operation: pick(b.operation, ['', 'RENT', 'SALE'] as const, ''), buttonText: str(b.buttonText, 50), emptyText: str(b.emptyText, 200) };
       case 'banner':
         return { ...base, eyebrow: head.eyebrow, title: head.title, highlight: str(b.highlight, 120), text: str(b.text, 500), button: link(b.button, where) };
-      case 'text': return { ...base, ...head, body: str(b.body, 6000), align: pick(b.align, ['left', 'center'] as const, 'left'), button: link(b.button, where) };
+      case 'text': return { ...base, ...head, body: str(b.body, 6000), align: pick(b.align, ['left', 'center', 'right'] as const, 'left'), button: link(b.button, where) };
       case 'steps': {
         const items = Array.isArray(b.items) ? b.items.slice(0, 10).map((x: any) => ({ title: str(x?.title, 80), text: str(x?.text, 300) })).filter((x: any) => x.title || x.text) : [];
         return { ...base, ...head, items };
@@ -95,8 +111,15 @@ export function cleanSiteBlocks(list: unknown, page: string): SiteBlock[] {
       }
       case 'image': return { ...base, ...head, imageUrl: image(b.imageUrl, where), caption: str(b.caption, 200), wide: bool(b.wide, false) };
       case 'gallery': {
-        const images = Array.isArray(b.images) ? b.images.slice(0, 16).map((u: unknown) => image(u, where)).filter(Boolean) : [];
-        return { ...base, ...head, images };
+        const raw = Array.isArray(b.images) ? b.images.slice(0, MAX_GALLERY) : [];
+        const rawNames = Array.isArray(b.names) ? b.names : [];
+        const images: string[] = [], names: string[] = [];
+        raw.forEach((u: unknown, k: number) => { const v = image(u, where); if (v) { images.push(v); names.push(str(rawNames[k], 60)); } });
+        const cols = Math.round(Number(b.cols));
+        return { ...base, ...head, images, names, style: pick(b.style, GALLERY_STYLES, 'grid'), cols: cols >= 2 && cols <= 5 ? cols : 3,
+          gap: pick(b.gap, ['none', 's', 'l'] as const, 's'), ratio: pick(b.ratio, ['original', 'square', '43', '169'] as const, '43'), corners: pick(b.corners, ['square', 'round'] as const, 'round'),
+          lightbox: bool(b.lightbox, true), captions: bool(b.captions, false), autoplay: bool(b.autoplay, true), limit: [0, 3, 6, 9, 12].includes(Number(b.limit)) ? Number(b.limit) : 0,
+          frame: bool(b.frame, false), zoom: bool(b.zoom, false), mobileStrip: bool(b.mobileStrip, false) };
       }
       case 'video': {
         const url = str(b.url, 300);

@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 /** Dentro del panel de administración no se muestran el encabezado ni el pie del sitio público (el panel tiene su propio menú). */
 export default function HideOnAdmin({ children }: { children: ReactNode }) {
   const p = usePathname() || '';
-  if (p.startsWith('/panel/admin') && !p.startsWith('/panel/admin/sitio')) return null;
+  if (p.startsWith('/panel/admin')) return null;
   // Vista previa del sitio: dibuja su propio encabezado y pie con el borrador.
   if (p.startsWith('/vista-previa/sitio')) return null;
   // Paneles de agentes, agencias y desarrolladoras (tienen su propio menú).
