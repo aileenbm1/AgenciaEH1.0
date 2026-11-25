@@ -54,7 +54,7 @@ const LAY_POS = ['tl', 'tc', 'tr', 'ml', 'mc', 'mr', 'bl', 'bc', 'br'] as const;
 const GALLERY_STYLES = ['grid', 'mosaic', 'strip', 'masonry', 'featured', 'slideshow', 'collage', 'beforeafter'] as const;
 export const MAX_GALLERY = 40;
 /** Acomodo de la sección: solo valores de listas fijas o números acotados (nunca CSS libre). Vacío = como siempre. */
-function cleanLayout(b: any) {
+export function cleanLayout(b: any) {
   const out: Record<string, unknown> = {};
   const opt = <T extends readonly string[]>(k: string, list: T) => { if (list.includes(b?.[k])) out[k] = b[k]; };
   opt('pos', LAY_POS); opt('posM', LAY_POS); opt('focus', LAY_POS);
@@ -64,6 +64,15 @@ function cleanLayout(b: any) {
   const h = Math.round(Number(b?.height));
   if (Number.isFinite(h) && h > 0) out.height = Math.min(100, Math.max(10, h));
   return out;
+}
+
+/** Opciones de la galería (estilo y presentación): solo valores de listas fijas. */
+export function cleanGalleryOptions(b: any, legacyStyle: (typeof GALLERY_STYLES)[number] = 'grid') {
+  const cols = Math.round(Number(b?.cols));
+  return { style: pick(b?.style, GALLERY_STYLES, legacyStyle), cols: cols >= 2 && cols <= 5 ? cols : 3,
+    gap: pick(b?.gap, ['none', 's', 'l'] as const, 's'), ratio: pick(b?.ratio, ['original', 'square', '43', '169'] as const, '43'), corners: pick(b?.corners, ['square', 'round'] as const, 'round'),
+    lightbox: bool(b?.lightbox, true), captions: bool(b?.captions, false), autoplay: bool(b?.autoplay, true), limit: [0, 3, 6, 9, 12].includes(Number(b?.limit)) ? Number(b.limit) : 0,
+    frame: bool(b?.frame, false), zoom: bool(b?.zoom, false), mobileStrip: bool(b?.mobileStrip, false) };
 }
 
 export type SiteBlock = { id: string; type: SiteBlockType; hidden?: boolean; bg: typeof SITE_BGS[number]; [k: string]: unknown };
@@ -115,11 +124,7 @@ export function cleanSiteBlocks(list: unknown, page: string): SiteBlock[] {
         const rawNames = Array.isArray(b.names) ? b.names : [];
         const images: string[] = [], names: string[] = [];
         raw.forEach((u: unknown, k: number) => { const v = image(u, where); if (v) { images.push(v); names.push(str(rawNames[k], 60)); } });
-        const cols = Math.round(Number(b.cols));
-        return { ...base, ...head, images, names, style: pick(b.style, GALLERY_STYLES, 'grid'), cols: cols >= 2 && cols <= 5 ? cols : 3,
-          gap: pick(b.gap, ['none', 's', 'l'] as const, 's'), ratio: pick(b.ratio, ['original', 'square', '43', '169'] as const, '43'), corners: pick(b.corners, ['square', 'round'] as const, 'round'),
-          lightbox: bool(b.lightbox, true), captions: bool(b.captions, false), autoplay: bool(b.autoplay, true), limit: [0, 3, 6, 9, 12].includes(Number(b.limit)) ? Number(b.limit) : 0,
-          frame: bool(b.frame, false), zoom: bool(b.zoom, false), mobileStrip: bool(b.mobileStrip, false) };
+        return { ...base, ...head, images, names, ...cleanGalleryOptions(b) };
       }
       case 'video': {
         const url = str(b.url, 300);

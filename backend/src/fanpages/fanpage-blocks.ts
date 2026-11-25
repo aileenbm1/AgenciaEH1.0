@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { DEMO_PATH_RE, MEDIA_PATH_RE } from '../uploads/media';
+import { cleanGalleryOptions, cleanLayout } from '../site/site-config';
 
 /**
  * Fanpage por bloques. SEGURIDAD: nadie (ni el admin) escribe HTML, CSS ni scripts.
@@ -52,7 +53,7 @@ export function cleanBlocks(list: any): Block[] {
     if (!BLOCK_TYPES.includes(type)) throw new BadRequestException(`Tipo de bloque no permitido: ${String(b.type).slice(0, 20)}.`);
     let id = typeof b.id === 'string' && ID.test(b.id) ? b.id : `b${i}-${Math.random().toString(36).slice(2, 8)}`;
     if (seen.has(id)) id = `${id}-${i}`; seen.add(id);
-    const base: Block = { id, type, ...(b.hidden ? { hidden: true } : {}), bg: pick(b.bg, BACKGROUNDS, type === 'hero' || type === 'cta' ? 'dark' : 'light') };
+    const base: Block = { id, type, ...(b.hidden ? { hidden: true } : {}), bg: pick(b.bg, BACKGROUNDS, type === 'hero' || type === 'cta' ? 'dark' : 'light'), ...cleanLayout(b) };
     const button = () => ({ buttonText: str(b.buttonText, 40), target: pick(b.target, TARGETS, 'contact') });
     switch (type) {
       case 'hero': {
@@ -60,11 +61,12 @@ export function cleanBlocks(list: any): Block[] {
         if (img && !imageOk(img)) throw new BadRequestException('La foto de portada debe ser una foto subida al sitio.');
         return { ...base, title: str(b.title, 140), subtitle: str(b.subtitle, 300), imageUrl: img, ...button() };
       }
-      case 'text': return { ...base, title: str(b.title, 140), body: str(b.body, 4000), align: pick(b.align, ['left', 'center'] as const, 'left') };
+      case 'text': return { ...base, title: str(b.title, 140), body: str(b.body, 4000), align: pick(b.align, ['left', 'center', 'right'] as const, 'left') };
       case 'gallery': {
-        const images = Array.isArray(b.images) ? b.images.map((u: unknown) => str(u, 500)).filter(Boolean).slice(0, 24) : [];
+        const images = Array.isArray(b.images) ? b.images.map((u: unknown) => str(u, 500)).filter(Boolean).slice(0, 40) : [];
         for (const u of images) if (!imageOk(u)) throw new BadRequestException('Las fotos de la galería deben estar subidas al sitio.');
-        return { ...base, title: str(b.title, 140), images, useProperty: images.length === 0 || !!b.useProperty, layout: pick(b.layout, ['grid', 'mosaic'] as const, 'grid') };
+        const layout = pick(b.layout, ['grid', 'mosaic'] as const, 'grid');
+        return { ...base, title: str(b.title, 140), images, useProperty: images.length === 0 || !!b.useProperty, layout, ...cleanGalleryOptions(b, layout) };
       }
       case 'features': {
         const items = Array.isArray(b.items) ? b.items.map((x: unknown) => str(x, 120)).filter(Boolean).slice(0, 30) : [];

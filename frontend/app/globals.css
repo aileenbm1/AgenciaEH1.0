@@ -1313,3 +1313,17 @@ div.se-inline:empty,p.se-inline:empty{display:block}
   .se-tools{left:6px;top:-16px!important;max-width:calc(100% - 12px);overflow-x:auto}
   .se-insert-grid{grid-template-columns:repeat(2,1fr)}
 }
+
+/* Acomodo en la fanpage */
+.fp-hero-in.lay>*{width:auto}.fp-hero-in.lay.lay-h{min-height:var(--lay-minh)}
+.fp-block.lay-h-l>.fp-inner,.fp-block.lay-h-c>.fp-inner,.fp-block.lay-h-r>.fp-inner{margin-left:0;margin-right:0}
+.fp-block.lay-h-c>.fp-inner{margin:0 auto}
+.fp-text.right{text-align:right}
+.lay-ta-center .fp-features,.lay-ta-center .fp-agent-card{justify-content:center}
+.fp-acc{margin-top:6px;border:1px solid var(--line);border-radius:10px}.fp-acc>summary{padding:10px 12px}.fp-acc>.se-lay{padding:0 12px 12px}
+.fp-device-phone .laym-h-l{align-items:flex-start}.fp-device-phone .laym-h-c{align-items:center}.fp-device-phone .laym-h-r{align-items:flex-end}
+.fp-device-phone .laym-v-t{justify-content:flex-start}.fp-device-phone .laym-v-m{justify-content:center}.fp-device-phone .laym-v-b{justify-content:flex-end}
+.fp-device-phone .sg-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.fp-device-phone .sg-masonry{column-count:2!important}.fp-device-phone .sg-mosaic{grid-template-columns:repeat(2,minmax(0,1fr))}.fp-device-phone .sg-strip .sg-it{flex-basis:78%}
+.fanpage .sg{margin-top:16px}
+section.fp-block.fp-gallery{display:block}section.fp-block.fp-gallery.lay{display:flex}
+.fp-hero-in.lay .fp-button{align-self:auto}

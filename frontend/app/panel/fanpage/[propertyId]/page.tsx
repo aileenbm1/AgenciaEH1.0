@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import ProtectedPanel from '@/components/protected-panel';
 import FanpageView from '@/components/fanpage-view';
 import LocationPicker from '@/components/location-picker';
+import { GalleryStyleFields, LayoutFields } from '@/components/block-design-fields';
 import { authJson, SessionUser } from '@/lib/auth';
 import { ApiProperty } from '@/lib/properties';
 import { mxn } from '@/lib/data';
@@ -34,11 +35,12 @@ function BlockFields({ b, set, images, loc, onLoc, hint }: { b: Block; set: (pat
     case 'hero': return <>{text('title', 'Título', 140)}{text('subtitle', 'Subtítulo', 300)}
       <label>Foto de portada<select value={b.imageUrl || ''} onChange={e => set({ imageUrl: e.target.value })}><option value="">Primera foto de la propiedad</option>{images.map((i, n) => <option key={i.url} value={i.url}>Foto {n + 1}{i.label ? ` · ${i.label}` : ''}</option>)}</select></label>{btn}</>;
     case 'text': return <>{text('title', 'Título', 140)}{text('body', 'Texto (deja una línea en blanco entre párrafos)', 4000, true)}
-      <label>Alineación<select value={b.align || 'left'} onChange={e => set({ align: e.target.value })}><option value="left">Izquierda</option><option value="center">Centrado</option></select></label></>;
+      <p className="muted small">La alineación del texto se elige abajo, en “Acomodo”.</p></>;
     case 'gallery': return <>{text('title', 'Título', 140)}
       <label className="check"><input type="checkbox" checked={!!b.useProperty} onChange={e => set({ useProperty: e.target.checked })} /> Usar todas las fotos de la propiedad</label>
       {!b.useProperty && <div className="fp-pick">{images.map((i, n) => { const on = (b.images || []).includes(i.url); return <label key={i.url} className={on ? 'on' : ''}><input type="checkbox" checked={on} onChange={() => set({ images: on ? b.images.filter((u: string) => u !== i.url) : [...(b.images || []), i.url] })} /><img src={i.url} alt={`Foto ${n + 1}`} /></label>; })}</div>}
-      <label>Acomodo<select value={b.layout || 'grid'} onChange={e => set({ layout: e.target.value })}><option value="grid">Cuadrícula</option><option value="mosaic">Mosaico (primera foto grande)</option></select></label></>;
+      <GalleryStyleFields b={{ ...b, style: b.style || (b.layout === 'mosaic' ? 'mosaic' : 'grid') }} set={set} />
+      <p className="muted small">El nombre de cada foto es su etiqueta en la propiedad (Sala, Cocina…); se cambia en “Editar propiedad”.</p></>;
     case 'features': return <>{text('title', 'Título', 140)}
       <label className="check"><input type="checkbox" checked={b.auto !== false} onChange={e => set({ auto: e.target.checked })} /> Incluir datos de la propiedad (recámaras, baños, m², características)</label>
       <label>Puntos adicionales (uno por línea)<textarea rows={4} value={(b.items || []).join('\n')} onChange={e => set({ items: e.target.value.split('\n').slice(0, 30) })} /></label></>;
@@ -226,6 +228,9 @@ function FanpageEditor({ user }: { user: SessionUser }) {
             {open === b.id && <div className="fp-block-form">
               <BlockFields b={b} set={patch => edit(i, patch)} images={d.images} hint={[d.property.neighborhood, d.property.municipality, 'Guanajuato'].filter(Boolean).join(', ')}
                 loc={{ latitude: d.property.latitude ?? null, longitude: d.property.longitude ?? null, showExactLocation: !!d.property.showExactLocation }} onLoc={setLoc} />
+              <details className="se-acc fp-acc" open={b.type === 'hero'}><summary>Acomodo (posición, alineación, alto…)</summary>
+                <LayoutFields b={b} set={patch => edit(i, patch)} vertical={['hero', 'cta', 'text', 'video', 'price'].includes(b.type)} focus={b.type === 'hero'} photo={b.type === 'hero' ? (b.imageUrl || d.images[0]?.url) : undefined} defaultPos={b.type === 'hero' ? 'bl' : undefined} />
+              </details>
               <label>Fondo de la sección<select value={b.bg || 'light'} onChange={e => edit(i, { bg: e.target.value as Block['bg'] })}><option value="light">Claro (fondo)</option><option value="dark">Oscuro (color principal)</option><option value="accent">Acento</option></select></label>
             </div>}
           </li>)}
