@@ -6,6 +6,8 @@ import { usePathname } from 'next/navigation';
 export default function HideOnAdmin({ children }: { children: ReactNode }) {
   const p = usePathname() || '';
   if (p.startsWith('/panel/admin') && !p.startsWith('/panel/admin/sitio')) return null;
+  // Vista previa del sitio: dibuja su propio encabezado y pie con el borrador.
+  if (p.startsWith('/vista-previa/sitio')) return null;
   // Paneles de agentes, agencias y desarrolladoras (tienen su propio menú).
   if (/^\/panel\/(agente|agencia|desarrollador|perfil-publico|estadisticas|membresia|datos-de-pago|equipo|ayuda)(\/|$)/.test(p)) return null;
   return <>{children}</>;

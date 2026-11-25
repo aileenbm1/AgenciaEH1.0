@@ -1083,3 +1083,20 @@ h1,h2{font-family:var(--font-title);color:var(--navy);font-weight:600;letter-spa
   .buyer-quick{grid-template-columns:1fr 1fr}
   .receipt-row{grid-template-columns:1fr}
 }
+
+/* ---------- Vista previa a pantalla completa ---------- */
+.pv-bar{position:fixed;top:0;left:0;right:0;z-index:70;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:10px 4vw;background:#1d2a3a;color:#fff;box-shadow:0 2px 12px rgba(0,0,0,.18)}
+.pv-info{display:flex;align-items:center;gap:10px;flex:1 1 280px;min-width:0}.pv-info svg{color:#e8c77a;flex:none}
+.pv-info b{display:block;font-size:14px}.pv-info small{display:block;font-size:12.5px;opacity:.8;line-height:1.35}
+.pv-devices{display:inline-flex;background:rgba(255,255,255,.1);border-radius:999px;padding:3px}
+.pv-devices button{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:#fff;font:inherit;font-size:13px;padding:6px 12px;border-radius:999px;cursor:pointer}
+.pv-devices button.on{background:#fff;color:#1d2a3a;font-weight:600}
+.pv-acts{display:flex;align-items:center;gap:8px}.pv-acts .button{min-height:38px;padding:0 14px;font-size:13.5px;gap:6px}
+.pv-icon{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:none;color:#fff;cursor:pointer}
+.pv-msg{flex-basis:100%;margin:0;font-size:13.5px;padding:8px 12px;border-radius:8px}.pv-msg.ok{background:#e3f4e8;color:#17502c}.pv-msg.bad{background:#fde7e4;color:#8a2216}
+.pv-mode{padding-top:var(--pv-h,60px)}.pv-mode .site-header{top:var(--pv-h,60px)}
+.pv-acts .pv-back{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.45)}.pv-acts .pv-back:hover{background:rgba(255,255,255,.12)}
+.pv-phone-wrap{padding:28px 16px 48px;display:flex;justify-content:center;background:repeating-linear-gradient(45deg,#eceae4 0 12px,#e6e3dc 12px 24px)}
+.pv-phone{width:390px;max-width:100%;height:min(844px,calc(100vh - var(--pv-h,60px) - 76px));border:10px solid #1d2a3a;border-radius:36px;overflow:hidden;background:#fff;box-shadow:0 18px 40px rgba(0,0,0,.25)}
+.pv-phone iframe{width:100%;height:100%;border:0;display:block}
+@media(max-width:640px){.pv-bar{padding:8px 12px;gap:8px}.pv-info{flex-basis:100%}.pv-info small{display:none}.pv-back span,.pv-icon{display:none}.pv-devices button{padding:6px 10px}.pv-acts .button{padding:0 12px}.pv-devices button span{display:none}.pv-acts{flex:1;justify-content:flex-end}.pv-phone{border-width:6px;border-radius:24px}}

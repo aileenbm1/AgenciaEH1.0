@@ -183,6 +183,12 @@ function SiteEditor() {
     setBusy(true); setError(''); setOk('');
     try { apply(await fn()); setOk(done); } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo completar.'); } finally { setBusy(false); }
   }
+  const openPreview = async () => {
+    const w = window.open('', '_blank');
+    if (dirty && !(await saveNow(false))) { w?.close(); return; }
+    const url = `/vista-previa/sitio?pagina=${encodeURIComponent(pageKey)}`;
+    if (w) w.location.href = url; else window.location.href = url;
+  };
   const publish = () => call(() => authJson<EditorState>('/admin/site/publish', { method: 'POST', body: JSON.stringify({ config: cfg }) }), '¡Listo! Los cambios ya se ven en el sitio público.');
 
   // Historial para deshacer/rehacer (los tecleos seguidos cuentan como un cambio).
@@ -383,6 +389,7 @@ function SiteEditor() {
       <button type="button" className="button button-ghost" onClick={undo} disabled={!hist.current.past.length} title="Deshacer (Ctrl+Z)">↶ Deshacer</button>
       <button type="button" className="button button-ghost" onClick={redo} disabled={!hist.current.future.length} title="Rehacer (Ctrl+Mayús+Z)">↷ Rehacer</button>
       <button type="button" className="button button-outline" disabled={busy || !dirty} onClick={() => saveNow(false)}>Guardar ahora</button>
+      <button type="button" className="button button-outline" disabled={busy} onClick={openPreview} title="Ver la página completa con tus cambios, antes de publicar">Vista previa ↗</button>
       <button type="button" className="button button-gold" disabled={busy || (!dirty && !state.unpublishedChanges && state.hasPublished)} onClick={publish}>Publicar</button>
       <a className="button button-outline light" href={publicPath} target="_blank" rel="noopener noreferrer">Ver sitio ↗</a>
     </div>

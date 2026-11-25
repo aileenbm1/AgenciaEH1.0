@@ -82,7 +82,7 @@ function MyProperties({ user }: { user: SessionUser }) {
     {ok && <div className="notice ok" role="status">{ok}</div>}
 
     {editing && <section id="formulario" className="dashboard-card form-card">
-      <div className="section-heading"><h2>{editing === 'new' ? 'Nueva propiedad' : `Editar · ${editing.title}`}</h2><button type="button" className="inline-link" onClick={() => setEditing(null)}>Cancelar</button></div>
+      <div className="section-heading"><h2>{editing === 'new' ? 'Nueva propiedad' : `Editar · ${editing.title}`}</h2><span className="adm-top-acts">{editing !== 'new' && <a className="button button-outline" href={`/vista-previa/propiedad/${editing.id}`} target="_blank" rel="opener" title="Guarda tus cambios y ábrela para ver cómo queda"><Eye size={15} aria-hidden /> Vista previa ↗</a>}<button type="button" className="inline-link" onClick={() => setEditing(null)}>Cancelar</button></span></div>
       <p className="muted lead">{admin ? (editing === 'new' ? <>Se guarda como <b>borrador</b>; después presiona “Publicar”.</> : <>Como administrador, tus cambios no sacan la propiedad del catálogo.</>) : editing === 'new' ? <>Se guardará como <b>borrador</b>. Nadie más la verá hasta que la envíes a revisión y sea aprobada.</> : <>Al guardar, la propiedad vuelve a <b>borrador</b> y tendrás que enviarla de nuevo a revisión.</>}</p>
       <PropertyForm admin={admin} key={editing === 'new' ? 'new' : editing.id} property={editing === 'new' ? undefined : editing}
         onCancel={() => setEditing(null)} onDone={async msg => { setEditing(null); await done(msg); }} />
@@ -121,6 +121,7 @@ function MyProperties({ user }: { user: SessionUser }) {
                 <button type="button" className="adm-dots" aria-label={`Más acciones para ${p.title}`} aria-expanded={menu === p.id} onClick={() => setMenu(menu === p.id ? '' : p.id)}><Ellipsis size={18} /></button>
                 {menu === p.id && <div className="adm-menu" role="menu">
                   {editable && <button type="button" role="menuitem" onClick={() => open(p)}><Pencil size={16} aria-hidden />Editar datos y fotos</button>}
+                  <a role="menuitem" href={`/vista-previa/propiedad/${p.id}`} target="_blank" rel="opener" onClick={() => setMenu('')}><Eye size={16} aria-hidden />Vista previa de la ficha ↗</a>
                   <button type="button" role="menuitem" onClick={() => { setMenu(''); setReserving(reserving === p.id ? '' : p.id); }}><CalendarDays size={16} aria-hidden />Reservas y calendario</button>
                   <Link role="menuitem" href={`/panel/fanpage/${p.id}`}><LayoutTemplate size={16} aria-hidden />Fanpage para redes</Link>
                   {p.status === 'REJECTED' && !admin && <button type="button" role="menuitem" onClick={() => submit(p)}><Send size={16} aria-hidden />Reenviar sin cambios</button>}

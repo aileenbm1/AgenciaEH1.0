@@ -112,6 +112,13 @@ function FanpageEditor({ user }: { user: SessionUser }) {
     const t = setTimeout(() => { saveNow(true); }, 2500);
     return () => clearTimeout(t);
   }, [dirty, blocks, theme]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Vista previa a pantalla completa: la pestaña se abre al instante (para que el navegador no la bloquee) y se carga cuando el borrador ya está guardado.
+  const openPreview = async () => {
+    const w = window.open('', '_blank');
+    if (dirty && !(await saveNow(false))) { w?.close(); return; }
+    const url = `/vista-previa/fanpage/${propertyId}`;
+    if (w) w.location.href = url; else window.location.href = url;
+  };
   const publish = async () => {
     if ((dirty || d?.status === 'NEW') && !(await saveNow(false))) return;
     await call(() => authJson<Editor>(`/fanpages/${propertyId}/publish`, { method: 'POST' }), d?.requireApproval ? 'Enviada a aprobación del administrador.' : '¡Fanpage publicada!');
@@ -293,6 +300,7 @@ function FanpageEditor({ user }: { user: SessionUser }) {
       <button type="button" className="button button-ghost" onClick={undo} disabled={!hist.current.past.length} title="Deshacer (Ctrl+Z)">↶ Deshacer</button>
       <button type="button" className="button button-ghost" onClick={redo} disabled={!hist.current.future.length} title="Rehacer (Ctrl+Mayús+Z)">↷ Rehacer</button>
       <button type="button" className="button button-outline" disabled={busy || !dirty} onClick={save}>Guardar ahora</button>
+      <button type="button" className="button button-outline" disabled={busy} onClick={openPreview} title="Ver la fanpage completa como la verá el público">Vista previa ↗</button>
       <button type="button" className="button button-gold" disabled={busy || (d.status === 'PENDING' && !dirty) || (!dirty && !d.unpublishedChanges && d.hasPublished)} onClick={publish}>{d.requireApproval ? 'Enviar a aprobación' : 'Publicar'}</button>
       {d.property.status === 'PUBLISHED' && <a className="button button-outline light" href={publicPath} target="_blank" rel="noopener noreferrer">Ver pública ↗</a>}
     </div>

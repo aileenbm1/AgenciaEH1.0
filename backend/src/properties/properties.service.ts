@@ -160,12 +160,28 @@ export class PropertiesService {
   /** Ficha pública. Las rentadas o vendidas siguen accesibles por enlace (con aviso), pero no salen en el catálogo. */
   async bySlug(slug: string) {
     const rows = await this.db.query(`${WITH_IMAGES} FROM Properties p LEFT JOIN PropertyImages i ON i.PropertyId=p.Id WHERE p.Slug=? AND p.Status='PUBLISHED' ORDER BY i.Position`, [slug]);
+    return this.publicDetail(rows);
+  }
+
+  /** Vista previa de la ficha (aunque no esté publicada): solo el anunciante, su agencia o el administrador. */
+  async preview(id: string, userId: string, role: string) {
+    const p = await this.getById(id);
+    if (!p) throw new NotFoundException('Propiedad no encontrada.');
+    if (role !== 'ADMIN' && p.OwnerId !== userId) {
+      const [team] = await this.db.query<any>('SELECT 1 AS x FROM AgentProfiles ap JOIN AgencyProfiles ag ON ag.Id=ap.AgencyId WHERE ap.UserId=? AND ag.UserId=?', [p.OwnerId, userId]);
+      if (!team) throw new ForbiddenException('No puedes ver esta propiedad.');
+    }
+    const rows = await this.db.query(`${WITH_IMAGES} FROM Properties p LEFT JOIN PropertyImages i ON i.PropertyId=p.Id WHERE p.Id=? ORDER BY i.Position`, [id]);
+    return { ...(await this.publicDetail(rows, true)), status: p.Status, reviewNote: p.ReviewNote ?? null };
+  }
+
+  private async publicDetail(rows: any[], exactLocation = false) {
     const items = await this.withCustom(this.group(rows));
     if (!items.length) throw new NotFoundException('Propiedad no encontrada.');
     // Contacto público del anunciante (nombre, teléfono para WhatsApp y agencia). El correo no se publica: los mensajes llegan por el formulario.
     const [o] = await this.db.query<any>(`SELECT u.FullName,u.Role,ap.Slug AS AgentSlug,ap.PhotoUrl AS AgentPhoto,COALESCE(u.Phone,ap.Phone,own.Phone,ag.Phone) AS Phone,COALESCE(own.Name,ag.Name) AS AgencyName,COALESCE(own.Slug,ag.Slug) AS AgencySlug
       FROM Users u LEFT JOIN AgentProfiles ap ON ap.UserId=u.Id LEFT JOIN AgencyProfiles ag ON ag.Id=ap.AgencyId LEFT JOIN AgencyProfiles own ON own.UserId=u.Id WHERE u.Id=? LIMIT 1`, [items[0].ownerId]);
-    const { ownerId, ...pub } = this.publicLocation(items[0]);
+    const { ownerId, ...pub } = exactLocation ? items[0] : this.publicLocation(items[0]);
     const fields = (await this.fields.list()).map((f) => ({ key: f.key, label: f.label, type: f.type }));
     return {
       ...pub, customFields: fields,

@@ -26,7 +26,7 @@ export default async function FanpagePage({ params, searchParams }: Params) {
   if (!p || !fp) return <main className="page-wrap fp-unpublished"><div className="adm-card adm-pad">
     <h1>Esta página todavía no está disponible</h1>
     <p className="muted">La propiedad aún no está publicada o dejó de estarlo. Su fanpage se verá aquí en cuanto el administrador de Mi Casa la apruebe.</p>
-    <p className="muted">Si eres el anunciante: revisa su estado en <a className="inline-link" href="/panel/agente/propiedades">Mis propiedades</a>. Mientras tanto puedes ver cómo queda en la vista previa del editor.</p>
+    <p className="muted">Si eres el anunciante: revisa su estado en <a className="inline-link" href="/panel/agente/propiedades">Mis propiedades</a>. Mientras tanto, en el editor de la fanpage usa el botón <b>Vista previa ↗</b> para verla completa.</p>
     <a className="button button-navy" href="/propiedades">Ver otras propiedades</a>
   </div></main>;
   return <main className="fanpage-wrap">

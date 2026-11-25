@@ -13,6 +13,7 @@ export class PropertiesController {
   @Get() list(@Query() q: any) { return this.service.publicList(q); }
   @Get('mine') @UseGuards(JwtAuthGuard) mine(@Req() r: any) { return this.service.mine(r.user.sub, r.user.role); }
   @Get('review') @UseGuards(JwtAuthGuard, RolesGuard) @Roles('ADMIN') review() { return this.service.reviewQueue(); }
+  @Get('preview/:id') @UseGuards(JwtAuthGuard) preview(@Req() r: any, @Param('id', ParseUUIDPipe) id: string) { return this.service.preview(id, r.user.sub, r.user.role); }
   @Get(':slug') detail(@Param('slug') slug: string) { return this.service.bySlug(slug); }
   @Post() @UseGuards(JwtAuthGuard, RolesGuard) @Roles('AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN') create(@Req() r: any, @Body() d: CreatePropertyDto) { return this.service.create(r.user.sub, r.user.role, d); }
   @Patch(':id') @UseGuards(JwtAuthGuard) update(@Req() r: any, @Param('id') id: string, @Body() d: UpdatePropertyDto) { return this.service.update(id, r.user.sub, r.user.role, d); }
