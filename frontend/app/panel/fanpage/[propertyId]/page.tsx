@@ -173,7 +173,7 @@ function FanpageEditor({ user }: { user: SessionUser }) {
     <div className="page-heading panel-heading"><div>
       <span className="eyebrow">FANPAGE DE LA PROPIEDAD</span><h1>{d.property.title}</h1>
       <p><i className={`status-pill ${stTone}`}>{stLabel}</i> {d.publishedAt && <small className="muted">Publicada el {when(d.publishedAt)}</small>} {!dirty && d.unpublishedChanges && d.status !== 'PENDING' ? <i className="status-pill warn">Borrador con cambios sin publicar</i> : null}</p>
-      {d.property.status !== 'PUBLISHED' && <p className="muted">La propiedad aún no está publicada: su fanpage será pública cuando el administrador apruebe la propiedad.</p>}
+      {d.property.status !== 'PUBLISHED' && <div className="notice">Tu fanpage <b>todavía no es pública</b> porque la propiedad está {d.property.status === 'REVIEW' ? 'en revisión' : d.property.status === 'REJECTED' ? 'con cambios pendientes' : 'como borrador'}. Puedes diseñarla y publicarla aquí; se verá en internet cuando el administrador apruebe la propiedad.</div>}
       {d.status === 'REJECTED' && d.reviewNote && <div className="notice">Nota del administrador: {d.reviewNote}</div>}
     </div>
     </div>
@@ -276,8 +276,8 @@ function FanpageEditor({ user }: { user: SessionUser }) {
           <label>Medio<select value={utm.medium} onChange={e => setUtm({ ...utm, medium: e.target.value })}><option value="social">Publicación orgánica</option><option value="paid">Anuncio pagado</option><option value="email">Correo</option><option value="message">Mensaje directo</option></select></label>
         </div>
         <label>Nombre de la campaña<input maxLength={60} value={utm.campaign} onChange={e => setUtm({ ...utm, campaign: e.target.value.replace(/[^\w-]/g, '-').toLowerCase() })} placeholder="ej. lanzamiento-noviembre" /></label>
-        <div className="fp-url"><code>{utmUrl}</code><button className="button button-outline" onClick={() => copy(utmUrl, 'Enlace copiado.')}>Copiar</button></div>
-        {d.property.status !== 'PUBLISHED' && <p className="notice">La propiedad aún no está publicada; el enlace funcionará cuando se apruebe.</p>}
+        {d.property.status === 'PUBLISHED' ? <div className="fp-url"><code>{utmUrl}</code><button className="button button-outline" onClick={() => copy(utmUrl, 'Enlace copiado.')}>Copiar</button></div>
+          : <div className="notice"><b>El enlace aún no funciona:</b> la propiedad está {d.property.status === 'REVIEW' ? 'en revisión' : d.property.status === 'REJECTED' ? 'con cambios pendientes' : 'como borrador'}. La fanpage será pública cuando el administrador apruebe la propiedad; mientras tanto usa la vista previa de la pestaña “Diseño”.</div>}
       </section>
       <section className="dashboard-card"><h3>Kit para redes</h3>
         <p className="muted">Texto listo para pegar en Facebook, Instagram o WhatsApp (incluye el enlace con campaña) y las fotos para subirlas a mano.</p>

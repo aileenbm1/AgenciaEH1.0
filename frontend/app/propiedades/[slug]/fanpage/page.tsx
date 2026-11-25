@@ -1,4 +1,3 @@
-import { notFound } from 'next/navigation';
 import { getJson } from '@/lib/api-transport';
 import { getPublicProperty } from '@/lib/properties';
 import { FanpageData } from '@/lib/fanpage';
@@ -23,7 +22,13 @@ export default async function FanpagePage({ params, searchParams }: Params) {
   const sp = await searchParams;
   const one = (k: string) => { const v = sp[k]; return (Array.isArray(v) ? v[0] : v)?.slice(0, 80); };
   const [p, fp] = await Promise.all([getPublicProperty(slug), getJson<FanpageData>(`fanpages/public/${encodeURIComponent(slug)}`).then(r => r.data)]);
-  if (!p || !fp) notFound();
+  // Si la propiedad aún no está publicada (borrador, en revisión o con cambios pendientes) se explica en lugar de un 404 seco.
+  if (!p || !fp) return <main className="page-wrap fp-unpublished"><div className="adm-card adm-pad">
+    <h1>Esta página todavía no está disponible</h1>
+    <p className="muted">La propiedad aún no está publicada o dejó de estarlo. Su fanpage se verá aquí en cuanto el administrador de Mi Casa la apruebe.</p>
+    <p className="muted">Si eres el anunciante: revisa su estado en <a className="inline-link" href="/panel/agente/propiedades">Mis propiedades</a>. Mientras tanto puedes ver cómo queda en la vista previa del editor.</p>
+    <a className="button button-navy" href="/propiedades">Ver otras propiedades</a>
+  </div></main>;
   return <main className="fanpage-wrap">
     <FanpageView property={p} theme={fp.theme} blocks={fp.blocks} campaign={one('utm_campaign')} source={one('utm_source')?.toLowerCase().replace(/[^a-z0-9_.-]/g, '')} />
   </main>;

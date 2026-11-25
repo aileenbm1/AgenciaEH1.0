@@ -6,7 +6,8 @@ import { authJson } from '@/lib/auth';
 type Agency = { name: string; slug: string; description?: string | null; phone?: string | null };
 
 /** La agencia edita su perfil público (/agencias/[slug]). */
-export default function AgencyProfileEditor() {
+export default function AgencyProfileEditor({ developer = false }: { developer?: boolean }) {
+  const org = developer ? 'desarrolladora' : 'agencia';
   const [a, setA] = useState<Agency | null>(null);
   const [f, setF] = useState({ name: '', description: '', phone: '' });
   const [busy, setBusy] = useState(false); const [ok, setOk] = useState(''); const [error, setError] = useState('');
@@ -17,11 +18,11 @@ export default function AgencyProfileEditor() {
     catch (err) { setError(err instanceof Error ? err.message : 'No se pudo guardar.'); } finally { setBusy(false); }
   }
   return <section id="perfil-agencia" className="admin-section">
-    <h2 className="panel-subtitle">Perfil público de la agencia</h2>
-    <p className="muted lead">Así te ven los compradores: tu descripción, tu WhatsApp y todas las propiedades publicadas por ti y tus vendedores. {a && <Link className="inline-link" href={`/agencias/${a.slug}`}>Ver mi perfil público →</Link>}</p>
+    <h2 className="panel-subtitle">Perfil público de la {org}</h2>
+    <p className="muted lead">Así te ven los compradores: tu descripción, tu WhatsApp y todas las propiedades publicadas por ti y tus asesores. {a && <Link className="inline-link" href={`/agencias/${a.slug}`}>Ver mi perfil público →</Link>}</p>
     <form onSubmit={save} className="dashboard-card property-form team-form">
       <div className="form-grid">
-        <label>Nombre de la agencia<input required minLength={2} maxLength={140} value={f.name} onChange={e => setF({ ...f, name: e.target.value })} /></label>
+        <label>Nombre de la {org}<input required minLength={2} maxLength={140} value={f.name} onChange={e => setF({ ...f, name: e.target.value })} /></label>
         <label>WhatsApp / teléfono<input type="tel" maxLength={25} value={f.phone} onChange={e => setF({ ...f, phone: e.target.value })} placeholder="10 dígitos" /></label>
       </div>
       <label>Descripción<textarea rows={3} maxLength={1000} value={f.description} onChange={e => setF({ ...f, description: e.target.value })} placeholder="Quiénes son, zonas donde trabajan, años de experiencia…" /></label>

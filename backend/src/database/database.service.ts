@@ -27,7 +27,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
   /** Cambios en tablas existentes (idempotentes). */
   private async migrate() {
-    const cols = await this.query<any>("SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('Users','Leads','Properties','PropertyImages','AgentProfiles','AgencyProfiles','RentalSettings','Reservations')");
+    const cols = await this.query<any>("SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('Users','Leads','Properties','PropertyImages','AgentProfiles','AgencyProfiles','RentalSettings','Reservations','ReservationDocuments')");
     const has = (t: string, c: string) => cols.some((r) => r.t === t && r.c === c);
     const tables = new Set(cols.map((r) => r.t));
     const changes: [string, string, string][] = [
@@ -48,6 +48,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       ['AgentProfiles', 'Views', 'ALTER TABLE AgentProfiles ADD COLUMN Views INT NOT NULL DEFAULT 0'],
       ['AgencyProfiles', 'Views', 'ALTER TABLE AgencyProfiles ADD COLUMN Views INT NOT NULL DEFAULT 0'],
       ['Properties', 'Latitude', 'ALTER TABLE Properties ADD COLUMN Latitude DECIMAL(9,6) NULL, ADD COLUMN Longitude DECIMAL(9,6) NULL'],
+      ['ReservationDocuments', 'ReviewedAt', 'ALTER TABLE ReservationDocuments ADD COLUMN Amount DECIMAL(12,2) NULL, ADD COLUMN ReviewedAt DATETIME NULL, ADD COLUMN ReviewedById CHAR(36) NULL'],
       ['Properties', 'ReviewNote', 'ALTER TABLE Properties ADD COLUMN ReviewNote VARCHAR(500) NULL'],
       ['Properties', 'ShowExactLocation', 'ALTER TABLE Properties ADD COLUMN ShowExactLocation TINYINT(1) NOT NULL DEFAULT 0'],
       ['RentalSettings', 'Modes', 'ALTER TABLE RentalSettings ADD COLUMN Modes VARCHAR(40) NULL, ADD COLUMN WeekPrice DECIMAL(12,2) NULL, ADD COLUMN MonthPrice DECIMAL(12,2) NULL, ADD COLUMN MinWeeks INT NOT NULL DEFAULT 1, ADD COLUMN MaxWeeks INT NULL, ADD COLUMN MinMonths INT NOT NULL DEFAULT 1, ADD COLUMN MaxMonths INT NULL'],
@@ -138,7 +139,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
    * Así no hace falta importar el esquema a mano en phpMyAdmin.
    */
   private async ensureSchema() {
-    const required = ['Users', 'AgencyProfiles', 'AgentProfiles', 'Properties', 'PropertyImages', 'Leads', 'Favorites', 'Payments', 'SavedSearches', 'CustomFields', 'PropertyCustomValues', 'RentalSettings', 'Reservations', 'ReservationMessages', 'ReservationDocuments', 'BlockedDates', 'Fanpages', 'FanpageVersions', 'FanpageTemplates', 'FanpageEvents', 'SiteSettings', 'ReservationPayments', 'SiteVersions'];
+    const required = ['Users', 'AgencyProfiles', 'AgentProfiles', 'Properties', 'PropertyImages', 'Leads', 'Favorites', 'Payments', 'SavedSearches', 'CustomFields', 'PropertyCustomValues', 'RentalSettings', 'Reservations', 'ReservationMessages', 'ReservationDocuments', 'BlockedDates', 'Fanpages', 'FanpageVersions', 'FanpageTemplates', 'FanpageEvents', 'SiteSettings', 'ReservationPayments', 'SiteVersions', 'PayoutAccounts', 'MembershipNotices'];
     try {
       const before = await this.tableNames();
       const missingBefore = required.filter((t) => !before.includes(t));

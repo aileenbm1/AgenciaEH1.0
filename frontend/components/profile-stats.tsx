@@ -18,7 +18,7 @@ export default function ProfileStats({ team }: { team: boolean }) {
     ['Fanpages', s.fanpages.views, `visitas · ${s.fanpages.shares} compartidas · ${s.fanpages.cta} clics · ${s.fanpages.leads} prospectos`],
   ];
   return <section className="admin-section">
-    <h2 className="panel-subtitle">Estadísticas {team ? `del equipo${s.team ? ` (${s.team} vendedor(es))` : ''}` : 'de mi perfil'}</h2>
+    <h2 className="panel-subtitle">Estadísticas {team ? `del equipo${s.team ? ` (${s.team} asesor${s.team === 1 ? '' : 'es'})` : ''}` : 'de mi perfil'}</h2>
     <div className="metric-grid">{tiles.map(([t, v, h]) => <div className="metric-card" key={t}><span>{t}</span><b>{v.toLocaleString('es-MX')}</b><small>{h}</small></div>)}</div>
   </section>;
 }

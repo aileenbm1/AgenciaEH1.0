@@ -364,7 +364,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
   async detail(userId: string, role: string, id: string) {
     const { r, isGuest, isManager } = await this.access(userId, role, id);
     const messages = await this.db.query<any>('SELECT m.Id, m.UserId, m.Body, m.CreatedAt, u.FullName FROM ReservationMessages m JOIN Users u ON u.Id=m.UserId WHERE m.ReservationId=? ORDER BY m.Seq, m.CreatedAt', [id]);
-    const docs = await this.db.query<any>('SELECT d.Id, d.UserId, d.Kind, d.FileName, d.Mime, d.Size, d.CreatedAt, u.FullName FROM ReservationDocuments d JOIN Users u ON u.Id=d.UserId WHERE d.ReservationId=? ORDER BY d.CreatedAt', [id]);
+    const docs = await this.db.query<any>('SELECT d.Id, d.UserId, d.Kind, d.FileName, d.Mime, d.Size, d.Amount, d.ReviewedAt, d.CreatedAt, u.FullName FROM ReservationDocuments d JOIN Users u ON u.Id=d.UserId WHERE d.ReservationId=? ORDER BY d.CreatedAt', [id]);
     const [contact] = await this.db.query<any>(`SELECT g.Email AS GuestEmail, g.Phone AS GuestPhone, o.Phone AS OwnerPhone, o.Email AS OwnerEmail FROM Users g JOIN Users o ON o.Id=? WHERE g.Id=?`, [r.OwnerId, r.GuestId]);
     const [s] = await this.db.query<any>('SELECT CancellationPolicy, Rules FROM RentalSettings WHERE PropertyId=?', [r.PropertyId]);
     const base = this.row(r);
@@ -372,6 +372,8 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     const rule = cancelRule(r);
     // Trato directo: el anunciante ve los datos del interesado; el interesado ve los del anunciante al aprobarse.
     const approved = ['APPROVED', 'DEPOSIT_PAID', 'COMPLETED'].includes(r.Status);
+    // Datos para pagar por transferencia: los del anunciante o, si no los capturó, los de su agencia.
+    const payTo = (isManager || (isGuest && approved)) ? await this.payoutFor(r.OwnerId) : null;
     return {
       ...base, viewer: { isGuest, isManager }, cancel: { guestCanCancel: rule.allowed, until: rule.until, reason: rule.reason },
       payDue: base.payBy ? { date: base.payBy, overdue: base.remaining > 0 && todayMx() > base.payBy, today: todayMx() === base.payBy } : null,
@@ -380,7 +382,8 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       guest: { ...base.guest, ...(isManager ? { email: contact?.GuestEmail, phone: contact?.GuestPhone } : {}) },
       owner: { ...base.owner, ...(isGuest && approved ? { phone: contact?.OwnerPhone, email: contact?.OwnerEmail } : {}) },
       messages: messages.map((m: any) => ({ id: m.Id, userId: m.UserId, fullName: m.FullName, body: m.Body, createdAt: m.CreatedAt, mine: m.UserId === userId })),
-      documents: docs.map((d: any) => ({ id: d.Id, kind: d.Kind, fileName: d.FileName, mime: d.Mime, size: d.Size, createdAt: d.CreatedAt, uploadedBy: d.FullName, mine: d.UserId === userId })),
+      documents: docs.map((d: any) => ({ id: d.Id, kind: d.Kind, fileName: d.FileName, mime: d.Mime, size: d.Size, amount: d.Amount != null ? Number(d.Amount) : null, reviewed: !!d.ReviewedAt, createdAt: d.CreatedAt, uploadedBy: d.FullName, mine: d.UserId === userId })),
+      payTo: payTo ? { ...payTo, reference: `MC-${String(r.Id).slice(0, 6).toUpperCase()}` } : null,
     };
   }
 
@@ -460,6 +463,8 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         if (first && r.AdvanceRequired != null && amount < left) need(amount >= Number(r.AdvanceRequired) - 0.005, `El anticipo acordado es de ${fmtMoney(Number(r.AdvanceRequired))}.`);
         await this.db.execute('INSERT INTO ReservationPayments(Id,ReservationId,Amount,Method,Kind,Notes,CreatedById) VALUES(?,?,?,?,?,?,?)',
           [randomUUID(), id, amount, m, first ? 'ADVANCE' : 'PAYMENT', String(d.notes || '').slice(0, 500) || null, userId]);
+        // Si el pago viene de un comprobante subido por el huésped, el comprobante queda revisado.
+        if (d.receiptId) await this.db.execute("UPDATE ReservationDocuments SET ReviewedAt=UTC_TIMESTAMP(), ReviewedById=? WHERE Id=? AND ReservationId=? AND Kind='COMPROBANTE'", [userId, String(d.receiptId), id]);
         const newPaid = money(paid + amount), newLeft = Math.max(0, money(Number(r.Total) - newPaid));
         if (first) await this.db.execute("UPDATE Reservations SET AdvanceAmount=?, AdvanceMethod=?, AdvancePaidAt=UTC_TIMESTAMP() WHERE Id=?", [amount, m, id]);
         const how = m === 'CASH' ? 'efectivo' : 'transferencia';
@@ -475,6 +480,17 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
           this.mail.notify(guestEmail, `${first ? 'Anticipo' : 'Abono'} registrado · ${title}`, first ? 'Tu apartado quedó registrado' : 'Registramos tu abono',
             `Se registró tu ${first ? 'anticipo' : 'abono'} de ${fmtMoney(amount)} (${how}) para "${title}". Llevas ${fmtMoney(newPaid)} de ${fmtMoney(Number(r.Total))}; te faltan ${fmtMoney(newLeft)}.${due ? ` Liquida a más tardar el ${fmtDay(due)}.` : ''}`, 'Ver reserva', path);
         }
+        break;
+      }
+      case 'dismiss_receipt': {
+        // El comprobante no corresponde (monto o cuenta equivocados): se marca revisado y se avisa en el chat.
+        manager();
+        const [doc] = await this.db.query<any>("SELECT Id FROM ReservationDocuments WHERE Id=? AND ReservationId=? AND Kind='COMPROBANTE' AND ReviewedAt IS NULL", [String(d.receiptId || ''), id]);
+        need(!!doc, 'Comprobante no encontrado.');
+        await this.db.execute('UPDATE ReservationDocuments SET ReviewedAt=UTC_TIMESTAMP(), ReviewedById=? WHERE Id=?', [userId, doc.Id]);
+        const why = String(d.reason || '').trim().slice(0, 300) || 'no coincide con un pago recibido';
+        await this.db.execute('INSERT INTO ReservationMessages(Id,ReservationId,UserId,Body,Seq) SELECT ?,?,?,?,COALESCE(MAX(Seq),0)+1 FROM ReservationMessages WHERE ReservationId=?', [randomUUID(), id, userId, `No pudimos validar tu comprobante: ${why}. Revisa los datos de pago y vuelve a subirlo.`, id]);
+        this.mail.notify(guestEmail, `Revisa tu comprobante · ${title}`, 'No pudimos validar tu comprobante', `El anunciante revisó tu comprobante para "${title}": ${why}.`, 'Ver reserva', path);
         break;
       }
       case 'void_payment': {
@@ -512,8 +528,17 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     return this.detail(userId, role, id);
   }
 
-  async upload(userId: string, role: string, id: string, file: Express.Multer.File | undefined, kind?: string) {
-    const { r } = await this.access(userId, role, id);
+  /** Datos bancarios del anunciante; si no tiene, los de la agencia o desarrolladora a la que pertenece. */
+  private async payoutFor(ownerId: string) {
+    const [own] = await this.db.query<any>('SELECT Bank, Clabe, Holder, Notes FROM PayoutAccounts WHERE UserId=? AND Clabe IS NOT NULL', [ownerId]);
+    const [ag] = own ? [null] : await this.db.query<any>(`SELECT pa.Bank, pa.Clabe, pa.Holder, pa.Notes FROM AgentProfiles ap JOIN AgencyProfiles ag ON ag.Id=ap.AgencyId
+      JOIN PayoutAccounts pa ON pa.UserId=ag.UserId WHERE ap.UserId=? AND pa.Clabe IS NOT NULL`, [ownerId]);
+    const x = own || ag;
+    return x ? { bank: x.Bank || null, clabe: x.Clabe, holder: x.Holder || null, notes: x.Notes || null } : null;
+  }
+
+  async upload(userId: string, role: string, id: string, file: Express.Multer.File | undefined, kind?: string, amount?: string) {
+    const { r, isGuest } = await this.access(userId, role, id);
     if (['REJECTED', 'CANCELLED'].includes(r.Status)) throw new BadRequestException('La reserva está cerrada.');
     if (!file?.buffer?.length) throw new BadRequestException('Selecciona un archivo.');
     const b = file.buffer;
@@ -526,7 +551,15 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     const stored = `${randomUUID()}.${type[0]}`;
     writeFileSync(join(privateRoot(), stored), b, { mode: 0o600 });
     const name = String(file.originalname || `documento.${type[0]}`).replace(/[^\w.\- áéíóúñÁÉÍÓÚÑ()]/g, '_').slice(0, 200);
-    await this.db.execute('INSERT INTO ReservationDocuments(Id,ReservationId,UserId,Kind,FileName,StoredName,Mime,Size) VALUES(?,?,?,?,?,?,?,?)', [randomUUID(), id, userId, String(kind || '').slice(0, 40) || null, name, stored, type[1], b.length]);
+    // Comprobante de pago: el huésped indica el monto; el anunciante lo revisa y registra el pago.
+    const receipt = String(kind || '') === 'COMPROBANTE';
+    const amt = receipt ? Number(amount) : NaN;
+    if (receipt && !(amt > 0)) throw new BadRequestException('Indica el monto que pagaste.');
+    await this.db.execute('INSERT INTO ReservationDocuments(Id,ReservationId,UserId,Kind,FileName,StoredName,Mime,Size,Amount) VALUES(?,?,?,?,?,?,?,?,?)', [randomUUID(), id, userId, String(kind || '').slice(0, 40) || null, name, stored, type[1], b.length, receipt ? money(amt) : null]);
+    if (receipt && isGuest) {
+      const [o] = await this.db.query<any>('SELECT Email FROM Users WHERE Id=?', [r.OwnerId]);
+      if (o) this.mail.notify(o.Email, `Comprobante de pago · ${r.Title}`, 'Recibiste un comprobante de pago', `${r.GuestName} subió un comprobante por ${fmtMoney(money(amt))} para "${r.Title}". Revísalo y registra el pago desde la reserva.`, 'Revisar comprobante', `/panel/reservas/${id}`);
+    }
     return this.detail(userId, role, id);
   }
 

@@ -28,7 +28,7 @@ export class ReservationsController {
   @Post(':id/messages') @UseGuards(JwtAuthGuard) message(@Req() r: any, @Param('id', ParseUUIDPipe) id: string, @Body('body') body: string) { return this.svc.message(r.user.sub, r.user.role, id, body); }
   @Post(':id/documents') @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1 } }))
-  upload(@Req() r: any, @Param('id', ParseUUIDPipe) id: string, @UploadedFile() file?: Express.Multer.File, @Body('kind') kind?: string) { return this.svc.upload(r.user.sub, r.user.role, id, file, kind); }
+  upload(@Req() r: any, @Param('id', ParseUUIDPipe) id: string, @UploadedFile() file?: Express.Multer.File, @Body('kind') kind?: string, @Body('amount') amount?: string) { return this.svc.upload(r.user.sub, r.user.role, id, file, kind, amount); }
   @Get(':id/documents/:docId') @UseGuards(JwtAuthGuard)
   async document(@Req() r: any, @Param('id', ParseUUIDPipe) id: string, @Param('docId', ParseUUIDPipe) docId: string, @Res({ passthrough: true }) res: Response) {
     const d = await this.svc.document(r.user.sub, r.user.role, id, docId);

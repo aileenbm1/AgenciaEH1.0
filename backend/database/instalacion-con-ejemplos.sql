@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS Properties (
   CONSTRAINT UQ_Properties_Slug UNIQUE (Slug),
   CONSTRAINT FK_Properties_Users FOREIGN KEY (OwnerId) REFERENCES Users(Id),
   CONSTRAINT CK_Properties_Operation CHECK (Operation IN ('RENT','SALE','BOTH')),
+  ReviewNote VARCHAR(500) NULL,
   CONSTRAINT CK_Properties_Status CHECK (Status IN ('DRAFT','REVIEW','PUBLISHED','RENTED','SOLD','REJECTED')),
   CONSTRAINT CK_Properties_Price CHECK (Price > 0),
   INDEX IX_Properties_PublicSearch (Status, Operation, Municipality, Price),
@@ -324,6 +325,9 @@ CREATE TABLE IF NOT EXISTS ReservationDocuments (
   StoredName VARCHAR(80) NOT NULL,
   Mime VARCHAR(60) NOT NULL,
   Size INT NOT NULL,
+  Amount DECIMAL(12,2) NULL,
+  ReviewedAt DATETIME NULL,
+  ReviewedById CHAR(36) NULL,
   CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT PK_ReservationDocuments PRIMARY KEY (Id),
   CONSTRAINT FK_ResDocs_Reservations FOREIGN KEY (ReservationId) REFERENCES Reservations(Id) ON DELETE CASCADE,
@@ -418,6 +422,27 @@ CREATE TABLE IF NOT EXISTS SiteVersions (
   INDEX IX_SiteVersions_Created (CreatedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Datos para recibir pagos (transferencia) de cada anunciante. Se muestran al huésped en su reserva aprobada.
+CREATE TABLE IF NOT EXISTS PayoutAccounts (
+  UserId CHAR(36) NOT NULL,
+  Bank VARCHAR(80) NULL,
+  Clabe VARCHAR(18) NULL,
+  Holder VARCHAR(120) NULL,
+  Notes VARCHAR(300) NULL,
+  UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT PK_PayoutAccounts PRIMARY KEY (UserId),
+  CONSTRAINT FK_PayoutAccounts_Users FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Avisos de membresía por vencer ya enviados (30 y 7 días antes), para no repetirlos.
+CREATE TABLE IF NOT EXISTS MembershipNotices (
+  UserId CHAR(36) NOT NULL,
+  PeriodEnd DATE NOT NULL,
+  Days INT NOT NULL,
+  SentAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT PK_MembershipNotices PRIMARY KEY (UserId, PeriodEnd, Days)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Historial de pagos de cada reserva (anticipo y abonos). El saldo = Total − suma de pagos vigentes.
 CREATE TABLE IF NOT EXISTS ReservationPayments (
   Id CHAR(36) NOT NULL,
@@ -460,12 +485,12 @@ SET NAMES utf8mb4;
 SET @admin := (SELECT Id FROM Users WHERE Role='ADMIN' ORDER BY CreatedAt LIMIT 1);
 
 -- Usuarios
-INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00001-0000-4000-8000-000000000001','agencia.demo@example.com','Laura Méndez','4770000001','$2a$12$jxd4xJ6I7eECmPxKNpDfvOfcE8l0FXn8toK9EJvM2holC3IKfDdVq','AGENCY',1,UTC_TIMESTAMP(),@admin,UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
-INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00002-0000-4000-8000-000000000002','agente.demo@example.com','Ana Vendedora','4770000002','$2a$12$jxd4xJ6I7eECmPxKNpDfvOfcE8l0FXn8toK9EJvM2holC3IKfDdVq','AGENT',1,UTC_TIMESTAMP(),'d3e00001-0000-4000-8000-000000000001',UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
-INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00003-0000-4000-8000-000000000003','asesor.demo@example.com','Carlos Asesor','4770000003','$2a$12$jxd4xJ6I7eECmPxKNpDfvOfcE8l0FXn8toK9EJvM2holC3IKfDdVq','AGENT',1,UTC_TIMESTAMP(),@admin,UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
-INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00004-0000-4000-8000-000000000004','comprador.demo@example.com','Beto Comprador','4770000004','$2a$12$jxd4xJ6I7eECmPxKNpDfvOfcE8l0FXn8toK9EJvM2holC3IKfDdVq','BUYER',1,UTC_TIMESTAMP(),'d3e00002-0000-4000-8000-000000000002',UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
-INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00005-0000-4000-8000-000000000005','compradora.demo@example.com','Sofía Compradora',NULL,'$2a$12$jxd4xJ6I7eECmPxKNpDfvOfcE8l0FXn8toK9EJvM2holC3IKfDdVq','BUYER',1,UTC_TIMESTAMP(),'d3e00001-0000-4000-8000-000000000001',UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
-INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00007-0000-4000-8000-000000000007','desarrolladora.demo@example.com','Marco Desarrollos','4770000007','$2a$12$jxd4xJ6I7eECmPxKNpDfvOfcE8l0FXn8toK9EJvM2holC3IKfDdVq','DEVELOPER',1,UTC_TIMESTAMP(),@admin,UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
+INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00001-0000-4000-8000-000000000001','agencia.demo@example.com','Laura Méndez','4770000001','$2a$12$DTq6x471.B/4Cuta3V354O/V6kABMk/vzvKdB8AaUgwBaDAtR7vCm','AGENCY',1,UTC_TIMESTAMP(),@admin,UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
+INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00002-0000-4000-8000-000000000002','agente.demo@example.com','Ana Vendedora','4770000002','$2a$12$DTq6x471.B/4Cuta3V354O/V6kABMk/vzvKdB8AaUgwBaDAtR7vCm','AGENT',1,UTC_TIMESTAMP(),'d3e00001-0000-4000-8000-000000000001',UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
+INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00003-0000-4000-8000-000000000003','asesor.demo@example.com','Carlos Asesor','4770000003','$2a$12$DTq6x471.B/4Cuta3V354O/V6kABMk/vzvKdB8AaUgwBaDAtR7vCm','AGENT',1,UTC_TIMESTAMP(),@admin,UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
+INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00004-0000-4000-8000-000000000004','comprador.demo@example.com','Beto Comprador','4770000004','$2a$12$DTq6x471.B/4Cuta3V354O/V6kABMk/vzvKdB8AaUgwBaDAtR7vCm','BUYER',1,UTC_TIMESTAMP(),'d3e00002-0000-4000-8000-000000000002',UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
+INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00005-0000-4000-8000-000000000005','compradora.demo@example.com','Sofía Compradora',NULL,'$2a$12$DTq6x471.B/4Cuta3V354O/V6kABMk/vzvKdB8AaUgwBaDAtR7vCm','BUYER',1,UTC_TIMESTAMP(),'d3e00001-0000-4000-8000-000000000001',UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
+INSERT IGNORE INTO Users(Id,Email,FullName,Phone,PasswordHash,Role,IsActive,EmailVerifiedAt,CreatedById,CreatedAt,UpdatedAt) VALUES('d3e00007-0000-4000-8000-000000000007','desarrolladora.demo@example.com','Marco Desarrollos','4770000007','$2a$12$DTq6x471.B/4Cuta3V354O/V6kABMk/vzvKdB8AaUgwBaDAtR7vCm','DEVELOPER',1,UTC_TIMESTAMP(),@admin,UTC_TIMESTAMP() - INTERVAL 20 DAY,UTC_TIMESTAMP());
 
 -- Perfiles de agencia y agentes (Ana pertenece a la agencia)
 INSERT IGNORE INTO AgencyProfiles(Id,UserId,Name,Slug,Description,Phone) VALUES('d3e00011-0000-4000-8000-000000000011','d3e00001-0000-4000-8000-000000000001','Inmobiliaria Demo Bajío','inmobiliaria-demo-bajio','Agencia de ejemplo para pruebas: casas, departamentos y locales en León, Irapuato y Silao.','4770000001');

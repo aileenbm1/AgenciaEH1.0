@@ -29,3 +29,20 @@ export type ReviewProperty = { title: string; image?: string | null; place: stri
 /** Datos de la propiedad que se muestran en la ventana. */
 export const reviewProperty = (x: { title: string; images?: { url: string }[]; neighborhood?: string | null; municipality: string; latitude?: number | null; longitude?: number | null; showExactLocation?: boolean }): ReviewProperty =>
   ({ title: x.title, image: x.images?.[0]?.url || null, place: [x.neighborhood, x.municipality].filter(Boolean).join(', '), lat: x.latitude ?? null, lng: x.longitude ?? null, exact: !!x.showExactLocation });
+
+const todayLocal = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' }).format(new Date());
+const fmtMx = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n);
+/** En qué va la reserva, en palabras simples para el huésped o comprador. urgent = hay que pagar hoy o ya venció. */
+export function guestStatus(r: ResRow): { text: string; urgent: boolean } {
+  const today = todayLocal();
+  if (r.status === 'PENDING') return { text: `Esperando que ${r.owner.fullName.split(' ')[0]} apruebe tu solicitud`, urgent: false };
+  if (r.status === 'REJECTED') return { text: 'No fue aprobada', urgent: false };
+  if (r.status === 'CANCELLED') return { text: 'Cancelada', urgent: false };
+  if (r.status === 'COMPLETED') return { text: 'Pagada por completo ✓', urgent: false };
+  if (r.remaining > 0 && r.payBy) {
+    if (r.payBy < today) return { text: `La fecha para liquidar era el ${fmtDay(r.payBy)} · faltan ${fmtMx(r.remaining)}`, urgent: true };
+    if (r.payBy === today) return { text: `Liquida hoy · faltan ${fmtMx(r.remaining)}`, urgent: true };
+  }
+  if (r.status === 'APPROVED') return { text: r.advanceRequired ? `Aprobada · paga el anticipo de ${fmtMx(r.advanceRequired)} para apartar` : 'Aprobada · acuerda el pago con el anunciante', urgent: false };
+  return { text: `Apartada · faltan ${fmtMx(r.remaining)}${r.payBy ? `, liquida antes del ${fmtDay(r.payBy)}` : ''}`, urgent: false };
+}

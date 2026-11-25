@@ -2,10 +2,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import AdminShell from '@/components/admin/admin-shell';
+import PublisherShell from '@/components/publisher/publisher-shell';
 import ProtectedPanel from '@/components/protected-panel';
 import { authJson, roleHome, SessionUser } from '@/lib/auth';
 import { mxn } from '@/lib/data';
-import { RES_KIND, RES_STATUS, ResRow, resWhen } from '@/lib/reservations';
+import { guestStatus, RES_KIND, RES_STATUS, ResRow, resWhen } from '@/lib/reservations';
 
 function Reservations({ user }: { user: SessionUser }) {
   const publisher = user.role !== 'BUYER';
@@ -25,14 +26,14 @@ function Reservations({ user }: { user: SessionUser }) {
     <div className="page-heading panel-heading"><div><span className="eyebrow">RENTAS Y APARTADOS EN LÍNEA</span>
       <h1>{as === 'guest' ? 'Mis reservas' : user.role === 'ADMIN' ? 'Todas las reservas' : 'Reservas de mis propiedades'}</h1>
       <p>{as === 'guest' ? 'Tus solicitudes de renta y de apartado. Todo el trato es en línea; solo el pago se hace por transferencia o en persona.' : 'Aprueba o rechaza solicitudes, agenda la cita de pago, registra el anticipo (queda apartada) y cierra la operación.'}</p></div></div>
-    <ol className="flow-steps res-flow">{['Solicitud', 'Aprobación', 'Cita de pago', 'Anticipo → apartada', 'Pago → cerrada'].map((t, i) => <li key={t}><span className="step-num">{i + 1}</span><div><b>{t}</b></div></li>)}</ol>
-    <div className="filters-row">
+    {as === 'owner' && <ol className="flow-steps res-flow">{['Solicitud', 'Aprobación', 'Cita de pago', 'Anticipo → apartada', 'Pago → cerrada'].map((t, i) => <li key={t}><span className="step-num">{i + 1}</span><div><b>{t}</b></div></li>)}</ol>}
+    {(as === 'owner' || items.length > 4 || status) && <div className="filters-row">
       {publisher && user.role !== 'ADMIN' && <div className="auth-tabs" role="tablist">
         <button role="tab" aria-selected={as === 'owner'} className={as === 'owner' ? 'selected' : ''} onClick={() => setAs('owner')}>De mis propiedades</button>
         <button role="tab" aria-selected={as === 'guest'} className={as === 'guest' ? 'selected' : ''} onClick={() => setAs('guest')}>Las que yo pedí</button></div>}
       <label>Estado<select value={status} onChange={e => setStatus(e.target.value)}><option value="">Todos</option>{Object.entries(RES_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label>
       <button className="button button-outline" onClick={load} disabled={loading}>Actualizar</button>
-    </div>
+    </div>}
     {error && <div className="notice" role="alert">{error}</div>}
     {!status && pending > 0 && as === 'owner' && <div className="notice" role="status">Tienes <b>{pending}</b> solicitud(es) por aprobar.</div>}
     {loading ? <p className="muted">Cargando…</p> : items.length === 0
@@ -43,7 +44,8 @@ function Reservations({ user }: { user: SessionUser }) {
           <div><i className={`status-pill ${st.tone}`}>{st.label}</i> <small className="muted">{RES_KIND[r.kind]}</small>
             <h3>{r.property.title}</h3>
             <p className="meta">{resWhen(r)}</p>
-            <p className="meta">{as === 'guest' ? `Anunciante: ${r.owner.fullName}` : `Interesado: ${r.guest.fullName}`}{r.appointmentAt ? ' · cita agendada' : ''}</p>
+            {as === 'guest' ? (() => { const g = guestStatus(r); return <p className={`meta guest-st${g.urgent ? ' urgent' : ''}`}>{g.urgent ? '⚠ ' : ''}{g.text} · con {r.owner.fullName}</p>; })()
+              : <p className="meta">Interesado: {r.guest.fullName}{r.appointmentAt ? ' · cita agendada' : ''}</p>}
           </div>
           <div className="res-money"><strong>{mxn(r.total)}</strong>{r.paid > 0 && r.remaining > 0 && <small>Pagado {mxn(r.paid)} · falta {mxn(r.remaining)}</small>}{r.status === 'COMPLETED' && <small>Liquidado ✓</small>}</div>
         </Link>; })}</div>}
@@ -51,5 +53,5 @@ function Reservations({ user }: { user: SessionUser }) {
 }
 
 export default function Page() {
-  return <ProtectedPanel allowed={['BUYER', 'AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN']}>{user => user.role === 'ADMIN' ? <AdminShell user={user} active="reservas"><Reservations user={user} /></AdminShell> : <Reservations user={user} />}</ProtectedPanel>;
+  return <ProtectedPanel allowed={['BUYER', 'AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN']}>{user => user.role === 'ADMIN' ? <AdminShell user={user} active="reservas"><Reservations user={user} /></AdminShell> : user.role === 'BUYER' ? <Reservations user={user} /> : <PublisherShell user={user} active="reservas"><Reservations user={user} /></PublisherShell>}</ProtectedPanel>;
 }

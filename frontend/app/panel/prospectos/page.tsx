@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import AdminShell from '@/components/admin/admin-shell';
+import PublisherShell from '@/components/publisher/publisher-shell';
 import ProtectedPanel from '@/components/protected-panel';
 import { authJson, roleHome, SessionUser } from '@/lib/auth';
 
@@ -76,4 +77,4 @@ function Leads({ user }: { user: SessionUser }) {
   </main>;
 }
 
-export default function Page() { return <ProtectedPanel allowed={['AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN']}>{user => user.role === 'ADMIN' ? <AdminShell user={user} active="mensajes"><Leads user={user} /></AdminShell> : <Leads user={user} />}</ProtectedPanel>; }
+export default function Page() { return <ProtectedPanel allowed={['AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN']}>{user => user.role === 'ADMIN' ? <AdminShell user={user} active="mensajes"><Leads user={user} /></AdminShell> : <PublisherShell user={user} active="mensajes"><Leads user={user} /></PublisherShell>}</ProtectedPanel>; }

@@ -314,6 +314,9 @@ CREATE TABLE IF NOT EXISTS ReservationDocuments (
   StoredName VARCHAR(80) NOT NULL,
   Mime VARCHAR(60) NOT NULL,
   Size INT NOT NULL,
+  Amount DECIMAL(12,2) NULL,
+  ReviewedAt DATETIME NULL,
+  ReviewedById CHAR(36) NULL,
   CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT PK_ReservationDocuments PRIMARY KEY (Id),
   CONSTRAINT FK_ResDocs_Reservations FOREIGN KEY (ReservationId) REFERENCES Reservations(Id) ON DELETE CASCADE,
@@ -406,6 +409,27 @@ CREATE TABLE IF NOT EXISTS SiteVersions (
   CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT PK_SiteVersions PRIMARY KEY (Id),
   INDEX IX_SiteVersions_Created (CreatedAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Datos para recibir pagos (transferencia) de cada anunciante. Se muestran al huésped en su reserva aprobada.
+CREATE TABLE IF NOT EXISTS PayoutAccounts (
+  UserId CHAR(36) NOT NULL,
+  Bank VARCHAR(80) NULL,
+  Clabe VARCHAR(18) NULL,
+  Holder VARCHAR(120) NULL,
+  Notes VARCHAR(300) NULL,
+  UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT PK_PayoutAccounts PRIMARY KEY (UserId),
+  CONSTRAINT FK_PayoutAccounts_Users FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Avisos de membresía por vencer ya enviados (30 y 7 días antes), para no repetirlos.
+CREATE TABLE IF NOT EXISTS MembershipNotices (
+  UserId CHAR(36) NOT NULL,
+  PeriodEnd DATE NOT NULL,
+  Days INT NOT NULL,
+  SentAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT PK_MembershipNotices PRIMARY KEY (UserId, PeriodEnd, Days)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Historial de pagos de cada reserva (anticipo y abonos). El saldo = Total − suma de pagos vigentes.

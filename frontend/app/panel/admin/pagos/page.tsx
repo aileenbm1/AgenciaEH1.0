@@ -6,6 +6,7 @@ import AdminShell from '@/components/admin/admin-shell';
 import AdminPayments from '@/components/admin/admin-payments';
 import AdminMetrics from '@/components/admin/admin-metrics';
 import RegisterPayment from '@/components/admin/register-payment';
+import PayoutForm from '@/components/payout-form';
 import { refreshPending } from '@/components/admin/use-pending';
 import { SessionUser } from '@/lib/auth';
 
@@ -17,6 +18,9 @@ function Pagos({ user }: { user: SessionUser }) {
       <div className="adm-top-acts"><button type="button" className="button button-navy" onClick={() => setReg(true)}><BadgeDollarSign size={16} aria-hidden /> Registrar pago</button></div></div>
     <AdminPayments refreshKey={key} />
     <AdminMetrics refreshKey={key} />
+    <section className="adm-sec"><div className="adm-sec-h"><h2>Datos para cobrar membresías</h2></div>
+      <p className="muted" style={{ marginTop: -6 }}>Los ven los agentes, agencias y desarrolladoras en “Mi membresía” y en los avisos de vencimiento (30 y 7 días antes).</p>
+      <PayoutForm endpoint="/admin/membership-payinfo" membership /></section>
     {reg && <RegisterPayment onClose={() => setReg(false)} onSaved={() => { setKey(k => k + 1); refreshPending(); }} />}
   </AdminShell>;
 }
