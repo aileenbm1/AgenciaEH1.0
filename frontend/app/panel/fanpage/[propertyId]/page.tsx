@@ -169,7 +169,7 @@ function FanpageEditor({ user }: { user: SessionUser }) {
   const [stLabel, stTone] = STATUS[d.status] || STATUS.DRAFT;
 
   return <main className="page-wrap fp-editor-page">
-    <Link href={user.role === 'ADMIN' ? '/panel/admin#fanpages' : '/panel/agente/propiedades'} className="back-link">← Volver</Link>
+    <Link href={user.role === 'ADMIN' ? '/panel/admin/fanpages' : '/panel/agente/propiedades'} className="back-link">← Volver</Link>
     <div className="page-heading panel-heading"><div>
       <span className="eyebrow">FANPAGE DE LA PROPIEDAD</span><h1>{d.property.title}</h1>
       <p><i className={`status-pill ${stTone}`}>{stLabel}</i> {d.publishedAt && <small className="muted">Publicada el {when(d.publishedAt)}</small>} {!dirty && d.unpublishedChanges && d.status !== 'PENDING' ? <i className="status-pill warn">Borrador con cambios sin publicar</i> : null}</p>

@@ -4,6 +4,9 @@ import { authJson } from '@/lib/auth';
 import { mxn } from '@/lib/data';
 import { METHOD_LABEL, Payment, fmtDate, today } from './admin-types';
 
+/** Últimos 24 meses con su nombre en español (el selector del navegador los mostraba en inglés). */
+const months = () => { const [y, m] = today().slice(0, 7).split('-').map(Number); return Array.from({ length: 24 }, (_, i) => { const d = new Date(Date.UTC(y, m - 1 - i, 1)); const label = d.toLocaleDateString('es-MX', { month: 'long', year: 'numeric', timeZone: 'UTC' }); return { value: d.toISOString().slice(0, 7), label: label.charAt(0).toUpperCase() + label.slice(1) }; }); };
+
 /** Pagos registrados en un mes, con totales por forma de pago. */
 export default function AdminPayments({ refreshKey }: { refreshKey: number }) {
   const [month, setMonth] = useState(today().slice(0, 7));
@@ -17,10 +20,9 @@ export default function AdminPayments({ refreshKey }: { refreshKey: number }) {
 
   return <section id="pagos" className="admin-section">
     <div className="section-heading">
-      <h2 className="panel-subtitle">Pagos del mes</h2>
-      <label className="month-pick">Mes <input type="month" value={month} max={today().slice(0, 7)} onChange={e => e.target.value && setMonth(e.target.value)} /></label>
+      <h2 className="panel-subtitle">Pagos de membresías</h2>
+      <label className="month-pick">Mes <select value={month} onChange={e => setMonth(e.target.value)}>{months().map(m => <option key={m.value} value={m.value}>{m.label}</option>)}</select></label>
     </div>
-    <p className="muted lead">Para registrar un pago, busca al usuario en <a href="#usuarios">Usuarios y membresías</a> y presiona "Membresía y pagos".</p>
     {error && <div className="notice" role="alert">{error}</div>}
     {!data ? <p className="muted">Cargando pagos…</p> : <>
       <div className="metric-grid compact">

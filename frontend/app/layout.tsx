@@ -3,6 +3,7 @@ import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import Pwa from "@/components/pwa";
+import HideOnAdmin from "@/components/hide-on-admin";
 import { getSite } from "@/lib/site-server";
 import { themeCss } from "@/lib/site";
 
@@ -22,5 +23,5 @@ export const viewport: Viewport = { themeColor: "#0F172A" };
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const site = await getSite();
   // Colores y fuente elegidos por el administrador (solo #RRGGBB y fuentes de una lista fija).
-  return <html lang="es-MX"><head><style id="site-theme">{themeCss(site.theme)}</style></head><body className={site.theme.pattern !== false ? "mc-pattern" : undefined}><SiteHeader site={site} />{children}<SiteFooter site={site} /><Pwa /></body></html>;
+  return <html lang="es-MX"><head><style id="site-theme">{themeCss(site.theme)}</style></head><body className={site.theme.pattern !== false ? "mc-pattern" : undefined}><HideOnAdmin><SiteHeader site={site} /></HideOnAdmin>{children}<HideOnAdmin><SiteFooter site={site} /></HideOnAdmin><Pwa /></body></html>;
 }

@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import AdminShell from '@/components/admin/admin-shell';
 import ProtectedPanel from '@/components/protected-panel';
 import { authJson, roleHome, SessionUser } from '@/lib/auth';
 import { mxn } from '@/lib/data';
@@ -50,5 +51,5 @@ function Reservations({ user }: { user: SessionUser }) {
 }
 
 export default function Page() {
-  return <ProtectedPanel allowed={['BUYER', 'AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN']}>{user => <Reservations user={user} />}</ProtectedPanel>;
+  return <ProtectedPanel allowed={['BUYER', 'AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN']}>{user => user.role === 'ADMIN' ? <AdminShell user={user} active="reservas"><Reservations user={user} /></AdminShell> : <Reservations user={user} />}</ProtectedPanel>;
 }

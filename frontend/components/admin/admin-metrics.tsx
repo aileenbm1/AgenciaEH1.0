@@ -21,7 +21,7 @@ export default function AdminMetrics({ refreshKey }: { refreshKey: number }) {
   const diff = m.payments.monthTotal - m.payments.prevMonthTotal;
   const st = m.properties.byStatus;
   return <section id="resumen" className="admin-section">
-    <h2 className="panel-subtitle">Resumen</h2>
+    <h2 className="panel-subtitle">Cuentas y cobros</h2>
     <div className="metric-grid">
       <article className="metric-card"><span>Usuarios</span><b>{m.users.total}</b><small>+{m.users.new30} en los últimos 30 días{m.users.pending ? ` · ${m.users.pending} por aprobar` : ''}{m.users.inactive ? ` · ${m.users.inactive} desactivados` : ''}</small></article>
       <article className="metric-card"><span>Membresías activas</span><b>{m.memberships.active}</b><small>{m.memberships.expiring7} vencen en 7 días · {m.memberships.expired} vencidas</small></article>

@@ -98,7 +98,7 @@ export class MailService {
   sendApprovalNeeded(to: string, name: string, role: string) {
     const label = ({ AGENT: 'agente', AGENCY: 'agencia', DEVELOPER: 'desarrolladora' } as any)[role] || role;
     this.send(to, `Cuenta por aprobar · ${name}`, 'Hay una cuenta por aprobar', `${name} se registró como ${label}. Revísala y apruébala o recházala desde tu panel.`,
-      'Revisar cuentas', '/panel/admin#usuarios', 'Recibes este aviso porque eres administrador de Mi Casa.');
+      'Revisar cuentas', '/panel/admin/personas?filtro=pendientes', 'Recibes este aviso porque eres administrador de Mi Casa.');
   }
 
   sendApprovalResult(to: string, approved: boolean) {

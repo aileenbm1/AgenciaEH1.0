@@ -1,3 +1,4 @@
+import { MailService } from '../mail/mail.service';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { removeMedia } from '../uploads/media';
@@ -18,7 +19,7 @@ const dateOnly = (v: any) => (v instanceof Date ? v.toISOString().slice(0, 10) :
 
 @Injectable()
 export class PropertiesService {
-  constructor(private db: DatabaseService, private engagement: EngagementService, private fields: CustomFieldsService) {}
+  constructor(private db: DatabaseService, private engagement: EngagementService, private fields: CustomFieldsService, private mail: MailService) {}
 
   private slug(title: string) {
     return `${title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 65)}-${Date.now().toString(36)}`;
@@ -58,7 +59,7 @@ export class PropertiesService {
           availability: row.Availability || 'AVAILABLE', availableFrom: dateOnly(row.AvailableFrom),
           municipality: row.Municipality, neighborhood: row.Neighborhood, propertyType: row.PropertyType, bedrooms: row.Bedrooms, bathrooms: row.Bathrooms,
           landArea: row.LandArea, builtArea: row.BuiltArea, ownerId: row.OwnerId, createdAt: row.CreatedAt, updatedAt: row.UpdatedAt, images: [],
-          latitude: row.Latitude != null ? Number(row.Latitude) : null, longitude: row.Longitude != null ? Number(row.Longitude) : null, showExactLocation: !!row.ShowExactLocation,
+          latitude: row.Latitude != null ? Number(row.Latitude) : null, longitude: row.Longitude != null ? Number(row.Longitude) : null, showExactLocation: !!row.ShowExactLocation, reviewNote: row.Status === 'REJECTED' ? row.ReviewNote ?? null : null,
         };
         map.set(row.Id, p);
       }
@@ -244,11 +245,19 @@ export class PropertiesService {
     return this.detailInternal(id);
   }
 
-  async moderate(id: string, status: string) {
+  async moderate(id: string, status: string, note?: string) {
     if (!['PUBLISHED', 'REJECTED', 'DRAFT'].includes(status)) throw new BadRequestException('Estado de moderación no válido.');
     const p = await this.getById(id);
     if (!p) throw new NotFoundException('Propiedad no encontrada.');
-    await this.db.execute('UPDATE Properties SET Status=?,UpdatedAt=UTC_TIMESTAMP() WHERE Id=?', [status, id]);
+    // Al rechazar se guarda el motivo para que el anunciante sepa qué corregir; al publicar se borra.
+    const reason = status === 'REJECTED' ? String(note || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 500) || null : null;
+    await this.db.execute('UPDATE Properties SET Status=?,ReviewNote=?,UpdatedAt=UTC_TIMESTAMP() WHERE Id=?', [status, reason, id]);
+    if (status === 'REJECTED' && p.Status !== 'REJECTED') {
+      const [o] = await this.db.query<any>('SELECT Email, FullName FROM Users WHERE Id=?', [p.OwnerId]);
+      if (o?.Email) this.mail.notify(o.Email, `Tu propiedad necesita cambios · ${p.Title}`, 'Revisa tu propiedad',
+        `Revisamos "${p.Title}" y necesita algunos cambios antes de publicarse.${reason ? ` Motivo: ${reason}` : ''} Corrígela y vuelve a enviarla a revisión.`,
+        'Ver mis propiedades', '/panel/agente/propiedades', 'Recibes este aviso porque enviaste esta propiedad a revisión en Mi Casa.');
+    }
     if (status === 'PUBLISHED' && p.Status !== 'PUBLISHED') this.engagement.notifySearches(id);
     return this.detailInternal(id);
   }

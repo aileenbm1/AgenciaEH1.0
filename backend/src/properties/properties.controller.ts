@@ -20,7 +20,7 @@ export class PropertiesController {
     return this.service.setAvailability(id, r.user.sub, r.user.role, String(b?.availability || ''), b?.availableFrom);
   }
   @Post(':id/submit') @UseGuards(JwtAuthGuard) submit(@Req() r: any, @Param('id') id: string) { return this.service.submit(id, r.user.sub, r.user.role); }
-  @Patch(':id/moderate') @UseGuards(JwtAuthGuard, RolesGuard) @Roles('ADMIN') moderate(@Param('id') id: string, @Body('status') status: string) { return this.service.moderate(id, status); }
+  @Patch(':id/moderate') @UseGuards(JwtAuthGuard, RolesGuard) @Roles('ADMIN') moderate(@Param('id') id: string, @Body('status') status: string, @Body('note') note?: string) { return this.service.moderate(id, status, note); }
   @Delete(':id') @UseGuards(JwtAuthGuard) remove(@Req() r: any, @Param('id') id: string) { return this.service.remove(id, r.user.sub, r.user.role); }
 }
 

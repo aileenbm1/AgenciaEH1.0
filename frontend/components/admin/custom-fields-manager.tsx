@@ -34,8 +34,7 @@ export default function CustomFieldsManager() {
   }
 
   return <section id="campos" className="admin-section">
-    <h2 className="panel-subtitle">Campos personalizados {items && <em className="count">{items.length}</em>}</h2>
-    <p className="muted lead">Datos extra para las propiedades (por ejemplo: "Acepta mascotas", "Amueblado", "Cajones de estacionamiento"). Aparecen en el formulario del anunciante, en la ficha y, si los marcas como filtro, en la búsqueda.</p>
+    <div className="adm-top"><div><h1>Campos de propiedades {items && <em className="count">{items.length}</em>}</h1><p className="adm-date">Datos extra para las propiedades (por ejemplo: “Acepta mascotas”, “Amueblado”, “Cajones de estacionamiento”). Aparecen en el formulario del anunciante, en la ficha y, si los marcas como filtro, en la búsqueda.</p></div></div>
     <form onSubmit={create} className="dashboard-card property-form team-form">
       <h3>Nuevo campo</h3>
       <div className="form-grid">
@@ -43,8 +42,8 @@ export default function CustomFieldsManager() {
         <label>Tipo<select value={f.type} onChange={e => setF({ ...f, type: e.target.value as keyof typeof TYPES })}>{Object.entries(TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
         {f.type === 'SELECT' && <label>Opciones (separadas por coma)<input required value={f.options} onChange={e => setF({ ...f, options: e.target.value })} placeholder="Sí, No, Semi" /></label>}
       </div>
-      <label className="switch"><input type="checkbox" checked={f.filterable} onChange={e => setF({ ...f, filterable: e.target.checked })} /> Mostrar como filtro en la búsqueda</label>
-      <label className="switch"><input type="checkbox" checked={f.required} onChange={e => setF({ ...f, required: e.target.checked })} /> Obligatorio para enviar a revisión</label>
+      <label className="adm-switch"><input type="checkbox" checked={f.filterable} onChange={e => setF({ ...f, filterable: e.target.checked })} /> Mostrar como filtro en la búsqueda</label>
+      <label className="adm-switch"><input type="checkbox" checked={f.required} onChange={e => setF({ ...f, required: e.target.checked })} /> Obligatorio para enviar a revisión</label>
       {error && <div className="notice" role="alert">{error}</div>}
       {ok && <div className="notice ok" role="status">{ok}</div>}
       <button className="button button-navy" disabled={busy === 'new'}>{busy === 'new' ? 'Creando…' : 'Crear campo'}</button>

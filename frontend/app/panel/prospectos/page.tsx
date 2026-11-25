@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import AdminShell from '@/components/admin/admin-shell';
 import ProtectedPanel from '@/components/protected-panel';
 import { authJson, roleHome, SessionUser } from '@/lib/auth';
 
@@ -59,7 +60,7 @@ function Leads({ user }: { user: SessionUser }) {
   const count = (s: string) => (items || []).filter(l => l.status === s).length;
   return <main className="page-wrap">
     <Link href={roleHome[user.role]} className="back-link">← Volver a mi panel</Link>
-    <div className="page-heading"><span className="eyebrow">SEGUIMIENTO</span><h1>Prospectos y visitas</h1>
+    <div className="page-heading"><span className="eyebrow">SEGUIMIENTO</span><h1>Mensajes de interesados</h1>
       <p>Mensajes y solicitudes de visita que llegan desde tus propiedades. Cambia el estado conforme avanzas y anota lo importante.</p></div>
     <div className="filterbar admin-filters lead-filters">
       {(user.role === 'AGENCY' || user.role === 'DEVELOPER') && <select value={scope} onChange={e => setScope(e.target.value)}><option value="team">Míos y de mi equipo</option><option value="mine">Solo míos</option></select>}
@@ -75,4 +76,4 @@ function Leads({ user }: { user: SessionUser }) {
   </main>;
 }
 
-export default function Page() { return <ProtectedPanel allowed={['AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN']}>{user => <Leads user={user} />}</ProtectedPanel>; }
+export default function Page() { return <ProtectedPanel allowed={['AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN']}>{user => user.role === 'ADMIN' ? <AdminShell user={user} active="mensajes"><Leads user={user} /></AdminShell> : <Leads user={user} />}</ProtectedPanel>; }

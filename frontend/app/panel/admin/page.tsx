@@ -1,110 +1,80 @@
 "use client";
-import { useCallback, useEffect, useState } from 'react';
-import AdminMetrics from '@/components/admin/admin-metrics';
-import AdminUsers from '@/components/admin/admin-users';
-import AdminPayments from '@/components/admin/admin-payments';
-import TeamManager from '@/components/team-manager';
-import CustomFieldsManager from '@/components/admin/custom-fields-manager';
-import FanpageAdmin from '@/components/admin/fanpage-admin';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { ArrowRight, BadgeDollarSign, CircleCheck, Plus } from 'lucide-react';
 import ProtectedPanel from '@/components/protected-panel';
-import { PanelShell, PublishFlow } from '@/components/panel-shell';
+import AdminShell from '@/components/admin/admin-shell';
+import ModerationQueue from '@/components/admin/moderation-queue';
+import { usePending } from '@/components/admin/use-pending';
 import { authJson, SessionUser } from '@/lib/auth';
 import { ROLES } from '@/lib/roles';
 import { mxn } from '@/lib/data';
 
-type ReviewItem = {
-  id: string; title: string; description: string; municipality: string; neighborhood?: string | null;
-  price: number | string; operation: 'SALE' | 'RENT'; propertyType: string; bedrooms?: number | null; bathrooms?: number | null;
-  builtArea?: number | string | null; updatedAt: string; images: { url: string }[];
-  owner?: { fullName: string; email: string; role: keyof typeof ROLES };
-};
+type Metrics = { users: { total: number; new30: number }; properties: { byStatus: Record<string, number> }; memberships: { active: number; expiring7: number }; payments: { monthTotal: number; monthCount: number } };
+const shortDay = (d: string) => new Date(d + 'T12:00:00Z').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+const list = (xs: string[], total: number) => xs.slice(0, 2).join(' · ') + (total > 2 ? ` y ${total - 2} más` : '');
 
-function ModerationQueue() {
-  const [items, setItems] = useState<ReviewItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState('');
-  const [error, setError] = useState(''); const [done, setDone] = useState('');
-
-  const load = useCallback(async () => {
-    setLoading(true); setError('');
-    try { setItems(await authJson<ReviewItem[]>('/properties/review')); }
-    catch (e) { setError(e instanceof Error ? e.message : 'No se pudo cargar la cola de revisión.'); }
-    finally { setLoading(false); }
-  }, []);
-  useEffect(() => { load(); }, [load]);
-
-  async function decide(p: ReviewItem, status: 'PUBLISHED' | 'REJECTED') {
-    if (status === 'REJECTED' && !confirm(`¿Rechazar "${p.title}"? El anunciante podrá corregirla y reenviarla.`)) return;
-    setBusy(p.id); setError(''); setDone('');
-    try {
-      await authJson(`/properties/${p.id}/moderate`, { method: 'PATCH', body: JSON.stringify({ status }) });
-      setItems(list => list.filter(x => x.id !== p.id));
-      setDone(status === 'PUBLISHED' ? `"${p.title}" ya está publicada en el catálogo.` : `"${p.title}" fue rechazada y regresó al anunciante.`);
-    } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo completar la acción.'); }
-    finally { setBusy(''); }
-  }
-
-  return <section id="revision" className="queue">
-    <div className="section-heading">
-      <h2 className="panel-subtitle">Propiedades por revisar {!loading && <em className="count">{items.length}</em>}</h2>
-      <button className="button button-outline" onClick={load} disabled={loading}>Actualizar</button>
-    </div>
-    <p className="muted lead">Nada se publica sin tu aprobación. Revisa que datos, precio y fotos sean correctos.</p>
-    {error && <div className="notice" role="alert">{error}</div>}
-    {done && <div className="notice ok" role="status">{done}</div>}
-    {loading ? <p className="muted">Cargando…</p> : items.length === 0
-      ? <div className="empty-start">No hay propiedades esperando revisión. Cuando un agente o agencia envíe una, aparecerá aquí.</div>
-      : <div className="property-management-list">{items.map(p => <article key={p.id} className="dashboard-card property-management-card">
-        {p.images[0]?.url ? <img src={p.images[0].url} alt="" /> : <div className="img-missing">Sin fotos</div>}
-        <div>
-          <h3>{p.title}</h3>
-          <p className="meta">{p.propertyType} · {p.operation === 'SALE' ? 'Venta' : 'Renta'} · {p.neighborhood ? `${p.neighborhood}, ` : ''}{p.municipality}</p>
-          <strong>{mxn(Number(p.price))}{p.operation === 'RENT' ? ' / mes' : ''}</strong>
-          <p className="meta">{p.bedrooms ?? 0} rec · {p.bathrooms ?? 0} baños{p.builtArea ? ` · ${Number(p.builtArea)} m²` : ''} · {p.images.length} foto(s)</p>
-          {p.owner && <p className="meta">Enviada por <b>{p.owner.fullName}</b> ({ROLES[p.owner.role]?.label || p.owner.role}) · {p.owner.email}</p>}
-          <details><summary>Ver descripción</summary><p>{p.description}</p></details>
-          <div className="property-actions">
-            <button className="button button-navy" disabled={busy === p.id} onClick={() => decide(p, 'PUBLISHED')}>Aprobar y publicar</button>
-            <button className="button button-outline" disabled={busy === p.id} onClick={() => decide(p, 'REJECTED')}>Rechazar</button>
-          </div>
-        </div>
-      </article>)}</div>}
-  </section>;
+function Todo({ n, tone, title, detail, href, action, primary, urgent }: { n: number | null; tone: 'urg' | 'warn' | 'info' | 'ok'; title: string; detail: string; href?: string; action?: string; primary?: boolean; urgent?: boolean }) {
+  return <div className={`adm-todo${tone === 'ok' ? ' done' : ''}`}>
+    <span className={`adm-cnt ${tone}`}>{n === null ? <CircleCheck size={20} aria-hidden /> : n}</span>
+    <div><b>{title}{urgent && <span className="adm-tag">URGENTE</span>}</b><small>{detail}</small></div>
+    {href && action && <Link className={`button ${primary ? 'button-navy' : 'button-outline'} adm-todo-btn`} href={href}>{action} <ArrowRight size={16} aria-hidden /></Link>}
+  </div>;
 }
 
-function AdminPanel({ user }: { user: SessionUser }) {
-  // Al cambiar usuarios o pagos se refrescan las métricas y la lista de pagos.
-  const [refreshKey, setRefreshKey] = useState(0);
-  const changed = useCallback(() => setRefreshKey(k => k + 1), []);
-  return <PanelShell user={user}
-    intro="Revisas cada propiedad antes de que sea pública y administras usuarios, membresías y pagos."
-    actions={[
-      { title: 'Revisar propiedades', text: 'Aprueba o rechaza lo que está en revisión.', href: '#revision', primary: true },
-      { title: 'Editar el sitio', text: 'Inicio, menú, pie de página, logotipo, colores, textos y páginas nuevas.', href: '/panel/admin/sitio' },
-      { title: 'Agregar propiedad', text: 'Publica a nombre de la agencia, desarrolladora o agente que elijas.', href: '/panel/agente/propiedades#nueva' },
-      { title: 'Todas las propiedades', text: 'Edita, publica, cambia disponibilidad o elimina cualquier propiedad.', href: '/panel/agente/propiedades' },
-      { title: 'Cuentas por aprobar', text: 'Agentes, agencias y desarrolladores registrados que esperan tu aprobación.', href: '#usuarios' },
-      { title: 'Crear cuentas', text: 'Agencias, desarrolladoras, vendedores, compradores y administradores.', href: '#cuentas' },
-      { title: 'Campos personalizados', text: 'Datos extra para las propiedades y filtros de búsqueda.', href: '#campos' },
-      { title: 'Fanpages', text: 'Quién las diseña, aprobación y plantillas.', href: '#fanpages' },
-      { title: 'Cómo funciona', text: 'Guía interna de roles y flujos (solo administradores).', href: '/como-funciona' },
-      { title: 'Usuarios y membresías', text: 'Roles, cuentas activas y registro de pagos.', href: '#usuarios' },
-      { title: 'Pagos del mes', text: 'Ingresos por efectivo y transferencia.', href: '#pagos' },
-      { title: 'Reservas', text: 'Todas las reservas y apartados; puedes intervenir en cualquiera.', href: '/panel/reservas' },
-      { title: 'Prospectos y visitas', text: 'Todos los mensajes y visitas del sitio.', href: '/panel/prospectos' },
-      { title: 'Ver catálogo público', text: 'Comprueba cómo se ven las propiedades publicadas.', href: '/propiedades' },
-    ]}>
-    <AdminMetrics refreshKey={refreshKey} />
-    <ModerationQueue />
-    <TeamManager roles={['AGENCY', 'DEVELOPER', 'AGENT', 'BUYER', 'ADMIN']} title="Crear cuentas" intro="Solo tú creas las cuentas de agencias, desarrolladoras, agentes y administradores (los compradores también pueden registrarse solos). Al crear un agente puedes ligarlo a su agencia. Las cuentas que creas quedan aprobadas de inmediato." />
-    <AdminUsers me={user} onChanged={changed} />
-    <AdminPayments refreshKey={refreshKey} />
-    <CustomFieldsManager />
-    <FanpageAdmin />
-    <PublishFlow />
-  </PanelShell>;
+function Inicio({ user }: { user: SessionUser }) {
+  const { data: p, total } = usePending();
+  const [m, setM] = useState<Metrics | null>(null);
+  useEffect(() => { authJson<Metrics>('/admin/metrics').then(setM).catch(() => {}); }, []);
+  const h = new Date().getHours();
+  const hello = h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
+  const today = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+  const s = m?.properties.byStatus || {};
+
+  return <AdminShell user={user} active="inicio">
+    <div className="adm-top">
+      <div><h1>{hello}, {user.fullName.trim().split(' ')[0]}</h1>
+        <p className="adm-date">{today.charAt(0).toUpperCase() + today.slice(1)}{p ? ` · ${total ? `Tienes ${total} pendiente${total === 1 ? '' : 's'}` : 'Todo al día'}` : ''}</p></div>
+      <div className="adm-top-acts">
+        <Link className="button button-navy" href="/panel/agente/propiedades#nueva"><Plus size={16} aria-hidden /> Nueva propiedad</Link>
+        <Link className="button button-outline" href="/panel/admin/personas?crear=1"><Plus size={16} aria-hidden /> Crear cuenta</Link>
+        <Link className="button button-outline" href="/panel/admin/pagos?registrar=1"><BadgeDollarSign size={16} aria-hidden /> Registrar pago</Link>
+      </div>
+    </div>
+
+    <section className="adm-sec first">
+      <div className="adm-sec-h"><h2>Pendientes de hoy</h2></div>
+      {!p ? <p className="muted">Cargando pendientes…</p> : <div className="adm-card">
+        {p.payDue.map(d => <Todo key={d.id} n={1} tone="urg" urgent={d.payBy <= p.today} title={d.payBy < p.today ? 'Pago vencido' : d.payBy === p.today ? 'Pago por liquidar hoy' : `Pago por liquidar el ${shortDay(d.payBy)}`}
+          detail={`${d.guest} · ${d.title} · faltan ${mxn(d.remaining)} · llega el ${shortDay(d.checkIn)}`} href={`/panel/reservas/${d.id}`} action="Ver reserva" primary />)}
+        {p.review.count > 0 && <Todo n={p.review.count} tone="warn" title={p.review.count === 1 ? 'Propiedad por revisar' : 'Propiedades por revisar'} detail={list(p.review.items.map(x => x.title), p.review.count)} href="/panel/admin/propiedades" action="Revisar" primary />}
+        {p.reservations.count > 0 && <Todo n={p.reservations.count} tone="warn" title={p.reservations.count === 1 ? 'Reserva por aceptar' : 'Reservas por aceptar'}
+          detail={p.reservations.items[0] ? `${p.reservations.items[0].title} · ${p.reservations.items[0].guest}${p.reservations.items[0].checkIn ? ` · ${shortDay(p.reservations.items[0].checkIn)}${p.reservations.items[0].checkOut ? ` → ${shortDay(p.reservations.items[0].checkOut)}` : ''}` : ''} · ${mxn(p.reservations.items[0].total)}${p.reservations.count > 1 ? ` y ${p.reservations.count - 1} más` : ''}` : ''}
+          href={p.reservations.count === 1 ? `/panel/reservas/${p.reservations.items[0].id}` : '/panel/reservas'} action="Ver" />}
+        {p.accounts.count > 0 && <Todo n={p.accounts.count} tone="info" title={p.accounts.count === 1 ? 'Cuenta por aprobar' : 'Cuentas por aprobar'}
+          detail={p.accounts.items.map(a => `${a.fullName} (${ROLES[a.role as keyof typeof ROLES]?.label || a.role})`).slice(0, 2).join(' · ')} href="/panel/admin/personas?filtro=pendientes" action="Ver" />}
+        {p.leads.count > 0 && <Todo n={p.leads.count} tone="info" title={p.leads.count === 1 ? 'Mensaje sin responder' : 'Mensajes sin responder'} detail={p.leads.titles.length ? `De interesados en ${p.leads.titles.slice(0, 2).join(' y ')}` : 'De interesados en tus propiedades'} href="/panel/prospectos" action="Responder" />}
+        {p.memberships.count > 0
+          ? <Todo n={p.memberships.count} tone="warn" title={p.memberships.count === 1 ? 'Membresía por vencer' : 'Membresías por vencer'} detail={p.memberships.items.map(x => `${x.fullName} · ${shortDay(x.periodEnd)}`).join(' · ')} href="/panel/admin/pagos" action="Ver" />
+          : <Todo n={null} tone="ok" title="Membresías" detail="Ninguna vence esta semana" />}
+        {total === 0 && <Todo n={null} tone="ok" title="Todo al día" detail="No hay propiedades, cuentas, reservas ni mensajes pendientes." />}
+      </div>}
+    </section>
+
+    <section className="adm-sec">
+      <div className="adm-sec-h"><h2>Resumen del mes</h2></div>
+      <div className="adm-kpis">
+        <div className="adm-kpi"><span>PROPIEDADES PUBLICADAS</span><b>{m ? s.PUBLISHED || 0 : '—'}</b><small>{m ? `${s.REVIEW || 0} en revisión · ${s.DRAFT || 0} borrador${(s.DRAFT || 0) === 1 ? '' : 'es'}` : ''}</small></div>
+        <div className="adm-kpi"><span>INGRESOS DEL MES</span><b>{m ? mxn(m.payments.monthTotal) : '—'}</b><small>{m ? `${m.payments.monthCount} pago${m.payments.monthCount === 1 ? '' : 's'} de membresía` : ''}</small></div>
+        <div className="adm-kpi"><span>MEMBRESÍAS ACTIVAS</span><b>{m ? m.memberships.active : '—'}</b><small>{m ? `${m.memberships.expiring7} vence${m.memberships.expiring7 === 1 ? '' : 'n'} en 7 días` : ''}</small></div>
+        <div className="adm-kpi"><span>USUARIOS</span><b>{m ? m.users.total : '—'}</b><small>{m ? `${m.users.new30} nuevos en 30 días` : ''}</small></div>
+      </div>
+    </section>
+
+    <ModerationQueue limit={3} showAllLink />
+  </AdminShell>;
 }
 
 export default function Page() {
-  return <ProtectedPanel allowed={['ADMIN']}>{user => <AdminPanel user={user} />}</ProtectedPanel>;
+  return <ProtectedPanel allowed={['ADMIN']}>{user => <Inicio user={user} />}</ProtectedPanel>;
 }

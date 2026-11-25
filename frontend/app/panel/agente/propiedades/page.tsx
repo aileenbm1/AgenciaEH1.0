@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import AdminShell from '@/components/admin/admin-shell';
 import ProtectedPanel from '@/components/protected-panel';
 import { authJson, roleHome, SessionUser } from '@/lib/auth';
 import { AVAILABILITY, PROPERTY_STATUS } from '@/lib/roles';
@@ -9,7 +10,7 @@ import { OPERATION_LABEL } from '@/lib/properties';
 import PropertyForm, { EditableProperty } from '@/components/property-form';
 import RentalSettings from '@/components/rental-settings';
 
-type Property = EditableProperty & { slug: string; availability: keyof typeof AVAILABILITY; owner?: { fullName: string; role: string } | null };
+type Property = EditableProperty & { reviewNote?: string | null; slug: string; availability: keyof typeof AVAILABILITY; owner?: { fullName: string; role: string } | null };
 
 function MyProperties({ user }: { user: SessionUser }) {
   const admin = user.role === 'ADMIN';
@@ -90,6 +91,7 @@ function MyProperties({ user }: { user: SessionUser }) {
               <strong>{mxn(Number(p.price))}{p.operation === 'RENT' ? ' / mes' : ''}{p.operation === 'BOTH' && p.rentPrice ? ` · renta ${mxn(Number(p.rentPrice))} / mes` : ''}</strong>
               {admin && <p className="meta">Anunciante: <b>{p.owner?.fullName || '—'}</b></p>}
               <p className="meta next-step">{p.status === 'PUBLISHED' ? av.help : st.help}</p>
+              {p.status === 'REJECTED' && p.reviewNote && <div className="notice review-note"><b>Qué corregir:</b> {p.reviewNote}</div>}
               <div className="property-actions">
                 {(p.status === 'DRAFT' || p.status === 'REJECTED' || (admin && p.status === 'REVIEW')) && <button className="button button-navy" disabled={busy === p.id} onClick={() => action(p, 'submit')}>{admin ? 'Publicar' : p.status === 'REJECTED' ? 'Reenviar a revisión' : 'Enviar a revisión'}</button>}
                 {p.status === 'PUBLISHED' && <label className="availability-pick">Disponibilidad
@@ -109,5 +111,5 @@ function MyProperties({ user }: { user: SessionUser }) {
 }
 
 export default function Page() {
-  return <ProtectedPanel allowed={['AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN']}>{user => <MyProperties user={user} />}</ProtectedPanel>;
+  return <ProtectedPanel allowed={['AGENT', 'AGENCY', 'DEVELOPER', 'ADMIN']}>{user => user.role === 'ADMIN' ? <AdminShell user={user} active="propiedades"><MyProperties user={user} /></AdminShell> : <MyProperties user={user} />}</ProtectedPanel>;
 }

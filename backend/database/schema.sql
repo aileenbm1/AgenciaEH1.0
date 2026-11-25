@@ -89,6 +89,7 @@ CREATE TABLE IF NOT EXISTS Properties (
   CONSTRAINT UQ_Properties_Slug UNIQUE (Slug),
   CONSTRAINT FK_Properties_Users FOREIGN KEY (OwnerId) REFERENCES Users(Id),
   CONSTRAINT CK_Properties_Operation CHECK (Operation IN ('RENT','SALE','BOTH')),
+  ReviewNote VARCHAR(500) NULL,
   CONSTRAINT CK_Properties_Status CHECK (Status IN ('DRAFT','REVIEW','PUBLISHED','RENTED','SOLD','REJECTED')),
   CONSTRAINT CK_Properties_Price CHECK (Price > 0),
   INDEX IX_Properties_PublicSearch (Status, Operation, Municipality, Price),

@@ -47,6 +47,40 @@ export class AdminService {
     };
   }
 
+  /** Pendientes del administrador para la página de Inicio (en orden de urgencia). */
+  async pending() {
+    const n = (v: any) => Number(v || 0);
+    const todayMx = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' }).format(new Date());
+    // Pagos por liquidar: rentas cortas aprobadas con saldo y fecha límite (un día antes de llegar) en las próximas 48 h o vencida.
+    const due = await this.db.query<any>(`SELECT r.Id, r.CheckIn, r.Total, p.Title, g.FullName AS Guest,
+        r.Total - COALESCE((SELECT SUM(x.Amount) FROM ReservationPayments x WHERE x.ReservationId=r.Id AND x.VoidedAt IS NULL),0) AS Remaining
+      FROM Reservations r JOIN Properties p ON p.Id=r.PropertyId JOIN Users g ON g.Id=r.GuestId
+      WHERE r.Kind IN ('NIGHTLY','WEEKLY') AND r.Status IN ('APPROVED','DEPOSIT_PAID') AND r.CheckIn IS NOT NULL
+        AND r.CheckIn <= DATE_ADD(?, INTERVAL 3 DAY) AND r.CheckIn >= DATE_SUB(?, INTERVAL 1 DAY)
+      HAVING Remaining > 0 ORDER BY r.CheckIn LIMIT 5`, [todayMx, todayMx]);
+    const review = await this.db.query<any>(`SELECT Id, Title FROM Properties WHERE Status='REVIEW' ORDER BY UpdatedAt LIMIT 3`);
+    const [reviewN] = await this.db.query<any>(`SELECT COUNT(*) AS n FROM Properties WHERE Status='REVIEW'`);
+    const resv = await this.db.query<any>(`SELECT r.Id, r.Kind, r.CheckIn, r.CheckOut, r.Guests, r.Total, p.Title, g.FullName AS Guest FROM Reservations r
+      JOIN Properties p ON p.Id=r.PropertyId JOIN Users g ON g.Id=r.GuestId WHERE r.Status='PENDING' ORDER BY r.CreatedAt LIMIT 3`);
+    const [resvN] = await this.db.query<any>(`SELECT COUNT(*) AS n FROM Reservations WHERE Status='PENDING'`);
+    const accounts = await this.db.query<any>(`SELECT Id, FullName, Role FROM Users WHERE ApprovalStatus='PENDING' ORDER BY CreatedAt LIMIT 3`);
+    const [accountsN] = await this.db.query<any>(`SELECT COUNT(*) AS n FROM Users WHERE ApprovalStatus='PENDING'`);
+    const leads = await this.db.query<any>(`SELECT DISTINCT p.Title FROM Leads l LEFT JOIN Properties p ON p.Id=l.PropertyId WHERE l.Status='NEW' ORDER BY p.Title LIMIT 3`);
+    const [leadsN] = await this.db.query<any>(`SELECT COUNT(*) AS n FROM Leads WHERE Status='NEW'`);
+    const expiring = await this.db.query<any>(`SELECT u.FullName, l.PeriodEnd FROM (${LAST_PAYMENT}) l JOIN Users u ON u.Id = l.UserId
+      WHERE l.PeriodEnd >= UTC_DATE() AND l.PeriodEnd <= UTC_DATE() + INTERVAL 7 DAY ORDER BY l.PeriodEnd LIMIT 3`);
+    const [expN] = await this.db.query<any>(`SELECT COUNT(*) AS n FROM (SELECT UserId, MAX(PeriodEnd) AS MaxEnd FROM Payments GROUP BY UserId) t WHERE MaxEnd >= UTC_DATE() AND MaxEnd <= UTC_DATE() + INTERVAL 7 DAY`);
+    return {
+      today: todayMx,
+      payDue: due.map((r: any) => ({ id: r.Id, checkIn: dateOnly(r.CheckIn), payBy: dateOnly(new Date(new Date(dateOnly(r.CheckIn) + 'T00:00:00Z').getTime() - 864e5)), title: r.Title, guest: r.Guest, remaining: n(r.Remaining) })),
+      review: { count: n(reviewN.n), items: review.map((r: any) => ({ id: r.Id, title: r.Title })) },
+      reservations: { count: n(resvN.n), items: resv.map((r: any) => ({ id: r.Id, kind: r.Kind, checkIn: dateOnly(r.CheckIn), checkOut: dateOnly(r.CheckOut), guests: r.Guests, total: n(r.Total), title: r.Title, guest: r.Guest })) },
+      accounts: { count: n(accountsN.n), items: accounts.map((r: any) => ({ id: r.Id, fullName: r.FullName, role: r.Role })) },
+      leads: { count: n(leadsN.n), titles: leads.map((r: any) => r.Title).filter(Boolean) },
+      memberships: { count: n(expN.n), items: expiring.map((r: any) => ({ fullName: r.FullName, periodEnd: dateOnly(r.PeriodEnd) })) },
+    };
+  }
+
   async users(q: any) {
     const page = Math.max(1, Number(q.page) || 1), take = Math.min(50, Math.max(5, Number(q.take) || 20));
     const where: string[] = ['1=1'], params: any[] = [];

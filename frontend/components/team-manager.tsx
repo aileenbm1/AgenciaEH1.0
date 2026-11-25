@@ -7,7 +7,8 @@ type Created = { id: string; fullName: string; email: string; phone?: string | n
 type Invite = { activationLink: string; emailSent: boolean; expiresInDays: number };
 
 /** El administrador crea las cuentas (agentes, agencias, desarrolladoras, compradores y admins) y ve las que creó. */
-export default function TeamManager({ roles, title, intro }: { roles: UserRole[]; title: string; intro: string }) {
+/** compact: solo el formulario y el enlace de activación (para usarlo dentro de una ventana). */
+export default function TeamManager({ roles, title, intro, compact = false, onCreated }: { roles: UserRole[]; title: string; intro: string; compact?: boolean; onCreated?: () => void }) {
   const empty = { fullName: '', email: '', phone: '', role: roles[0], agencyName: '', agencyId: '' };
   const [agencies, setAgencies] = useState<{ id: string; name: string; kind: string }[]>([]);
   const [form, setForm] = useState(empty);
@@ -24,7 +25,7 @@ export default function TeamManager({ roles, title, intro }: { roles: UserRole[]
     try {
       const r = await authJson<Invite>('/users', { method: 'POST', body: JSON.stringify({ ...form, phone: form.phone || undefined, agencyName: form.role === 'AGENCY' || form.role === 'DEVELOPER' ? form.agencyName : undefined, agencyId: form.role === 'AGENT' && form.agencyId ? form.agencyId : undefined }) });
       setInvite({ ...r, name: form.fullName, email: form.email });
-      setForm({ ...empty, role: form.role }); await load(); if (form.role === 'AGENCY' || form.role === 'DEVELOPER') authJson<{ id: string; name: string; kind: string }[]>('/users/agencies').then(setAgencies).catch(() => {});
+      setForm({ ...empty, role: form.role }); await load(); onCreated?.(); if (form.role === 'AGENCY' || form.role === 'DEVELOPER') authJson<{ id: string; name: string; kind: string }[]>('/users/agencies').then(setAgencies).catch(() => {});
     } catch (err) { setError(err instanceof Error ? err.message : 'No se pudo crear la cuenta.'); }
     finally { setBusy(''); }
   }
@@ -39,12 +40,12 @@ export default function TeamManager({ roles, title, intro }: { roles: UserRole[]
   async function copy() { try { await navigator.clipboard.writeText(invite!.activationLink); setCopied(true); } catch { setCopied(false); } }
   const waText = invite ? encodeURIComponent(`Hola ${invite.name.split(' ')[0]}, te creé una cuenta en Mi Casa. Activa tu cuenta y elige tu contraseña aquí (vence en ${invite.expiresInDays} días): ${invite.activationLink}`) : '';
 
-  return <section id="cuentas" className="admin-section">
-    <h2 className="panel-subtitle">{title} {items && <em className="count">{items.length}</em>}</h2>
-    <p className="muted lead">{intro}</p>
+  return <section id="cuentas" className={`admin-section${compact ? ' team-compact' : ''}`}>
+    {!compact && <><h2 className="panel-subtitle">{title} {items && <em className="count">{items.length}</em>}</h2>
+    <p className="muted lead">{intro}</p></>}
 
     <form onSubmit={create} className="dashboard-card property-form team-form">
-      <h3>Crear cuenta</h3>
+      {!compact && <h3>Crear cuenta</h3>}
       <div className="form-grid">
         {roles.length > 1 && <label>Tipo de cuenta<select value={form.role} onChange={e => setForm({ ...form, role: e.target.value as UserRole })}>{roles.map(r => <option key={r} value={r}>{ROLES[r].label}</option>)}</select></label>}
         <label>Nombre completo<input required minLength={2} maxLength={100} value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} /></label>
@@ -68,7 +69,7 @@ export default function TeamManager({ roles, title, intro }: { roles: UserRole[]
       </div>
     </div>}
 
-    {items === null ? <p className="muted">Cargando…</p> : items.length === 0 ? <div className="empty-start">Aún no has creado cuentas.</div>
+    {compact ? null : items === null ? <p className="muted">Cargando…</p> : items.length === 0 ? <div className="empty-start">Aún no has creado cuentas.</div>
       : <div className="table-wrap"><table className="admin-table">
         <thead><tr><th>Nombre</th><th>Tipo</th><th>Estado</th><th /></tr></thead>
         <tbody>{items.map(u => <tr key={u.id}>

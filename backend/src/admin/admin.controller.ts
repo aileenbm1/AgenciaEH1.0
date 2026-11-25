@@ -12,6 +12,7 @@ export class AdminController {
   constructor(private readonly admin: AdminService) {}
   @Get('access-check') check() { return { success: true, message: 'Acceso administrativo autorizado.' }; }
   @Get('metrics') metrics() { return this.admin.metrics(); }
+  @Get('pending') pending() { return this.admin.pending(); }
   @Get('users') users(@Query() q: any) { return this.admin.users(q); }
   @Patch('users/:id') updateUser(@Req() r: any, @Param('id', ParseUUIDPipe) id: string, @Body() d: UpdateUserDto) { return this.admin.updateUser(r.user.sub, id, d); }
   @Post('users/:id/password') setPassword(@Param('id', ParseUUIDPipe) id: string, @Body() d: SetPasswordDto) { return this.admin.setPassword(id, d.password); }

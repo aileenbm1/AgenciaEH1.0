@@ -27,16 +27,15 @@ export default function FanpageAdmin() {
   }
   const saveSettings = (next: Settings) => run(() => authJson<Settings>('/admin/fanpages/settings', { method: 'PUT', body: JSON.stringify(next) }), 'Ajustes guardados.', setS);
 
-  return <section id="fanpages" className="admin-section">
-    <h2 className="panel-subtitle">Fanpages</h2>
-    <p className="muted lead">Cada propiedad publicada tiene una fanpage en <code>/propiedades/…/fanpage</code>. Se diseña por bloques (sin código). Aquí decides quién puede editarlas y si necesitan tu aprobación.</p>
+  return <section id="fanpages" className="admin-section adm-fanpages">
+    <div className="adm-top"><div><h1>Fanpages</h1><p className="adm-date">Cada propiedad publicada tiene su propia página para compartir en redes (su “fanpage”), que se diseña con bloques, sin código. Aquí decides quién puede diseñarlas y si necesitan tu aprobación.</p></div></div>
     {err && <div className="notice" role="alert">{err}</div>}
     {msg && <div className="notice ok" role="status">{msg}</div>}
     {s && <div className="dashboard-card">
       <b>Pueden diseñar fanpages:</b>
       <div className="property-actions">{Object.entries(ROLE_LABEL).map(([k, l]) => <label key={k} className="check"><input type="checkbox" checked={s.roles.includes(k)} onChange={e => saveSettings({ ...s, roles: e.target.checked ? [...s.roles, k] : s.roles.filter(r => r !== k) })} /> {l}</label>)}</div>
-      <label className="check"><input type="checkbox" checked={s.requireApproval} onChange={e => saveSettings({ ...s, requireApproval: e.target.checked })} /> Requieren mi aprobación antes de publicarse</label>
-      <small className="muted">El administrador siempre puede editar cualquier fanpage.</small>
+      <label className="check adm-block-check"><input type="checkbox" checked={s.requireApproval} onChange={e => saveSettings({ ...s, requireApproval: e.target.checked })} /> Requieren mi aprobación antes de publicarse</label>
+      <small className="muted adm-block-note">Tú, como administrador, siempre puedes editar cualquier fanpage.</small>
     </div>}
     <h3>Por aprobar ({pending.length})</h3>
     {pending.length === 0 ? <p className="muted">No hay fanpages pendientes.</p> : <ul className="doc-list">{pending.map(p => <li key={p.propertyId} className="dashboard-card">
