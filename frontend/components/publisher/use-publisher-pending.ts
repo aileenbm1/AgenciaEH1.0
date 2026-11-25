@@ -12,6 +12,7 @@ export type PublisherPending = {
   visits: { id: string; name: string; title: string | null; visitAt: string | null }[];
   drafts: { id: string; title: string; missing: string[] }[];
   rejected: { id: string; title: string; note: string | null }[];
+  waitlist: { id: string; title: string; availability: string; availableFrom: string | null; daysLeft: number | null; watchers: number; shared: number; soon: boolean }[];
   membership: { status: 'none' | 'active' | 'expiring' | 'expired'; periodEnd: string | null; daysLeft: number | null; plan: string | null };
   steps: Step[] | null;
   kpis: { profileViews: number; published: number; drafts: number; review: number; leads30: number; visits30: number; activeReservations: number; collectedMonth: number };
@@ -36,7 +37,7 @@ export function usePublisherPending() {
   const counts = data ? {
     reservas: data.reservations.length + data.receipts.length + data.payDue.length,
     mensajes: data.messages.length + data.visits.length,
-    propiedades: data.drafts.length + data.rejected.length,
+    propiedades: data.drafts.length + data.rejected.length + (data.waitlist || []).filter(w => w.soon).length,
     membresia: data.membership.status === 'expiring' || data.membership.status === 'expired' || data.membership.status === 'none' ? 1 : 0,
   } : { reservas: 0, mensajes: 0, propiedades: 0, membresia: 0 };
   const total = counts.reservas + counts.mensajes + counts.propiedades + counts.membresia;

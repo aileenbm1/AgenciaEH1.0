@@ -1,11 +1,11 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { CalendarDays, Ellipsis, Eye, ImagePlus, LayoutTemplate, Pencil, Plus, Send, Share2, ToggleLeft, Trash2 } from 'lucide-react';
+import { BellRing, CalendarDays, Ellipsis, UsersRound, Eye, ImagePlus, LayoutTemplate, Pencil, Plus, Send, Share2, ToggleLeft, Trash2 } from 'lucide-react';
 import AdminShell from '@/components/admin/admin-shell';
 import Modal from '@/components/admin/modal';
 import PublisherShell from '@/components/publisher/publisher-shell';
-import { refreshPublisherPending } from '@/components/publisher/use-publisher-pending';
+import { refreshPublisherPending, usePublisherPending } from '@/components/publisher/use-publisher-pending';
 import ProtectedPanel from '@/components/protected-panel';
 import { authJson, SessionUser } from '@/lib/auth';
 import { AVAILABILITY, PROPERTY_STATUS } from '@/lib/roles';
@@ -16,7 +16,7 @@ import RentalSettings from '@/components/rental-settings';
 import { missingFor } from '@/lib/publisher';
 
 type Property = EditableProperty & { reviewNote?: string | null; slug: string; availability: keyof typeof AVAILABILITY; owner?: { fullName: string; role: string } | null };
-type Confirm = { kind: 'delete'; p: Property } | { kind: 'availability'; p: Property; value: keyof typeof AVAILABILITY };
+type Confirm = { kind: 'delete'; p: Property } | { kind: 'availability'; p: Property; value: keyof typeof AVAILABILITY; from?: string };
 const STATUS_TABS: [string, string][] = [['', 'Todas'], ['PUBLISHED', 'Publicadas'], ['DRAFT', 'Borradores'], ['REJECTED', 'Requieren cambios'], ['REVIEW', 'En revisión']];
 
 function MyProperties({ user }: { user: SessionUser }) {
@@ -30,6 +30,18 @@ function MyProperties({ user }: { user: SessionUser }) {
   const [menu, setMenu] = useState('');
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const { data: pend } = usePublisherPending();
+  const [wl, setWl] = useState<{ id: string; title: string; count: number; shared: { name: string; email: string; phone: string | null; since: string }[]; anonymous: number } | null>(null);
+  const [hideSoon, setHideSoon] = useState<string[]>([]);
+  useEffect(() => { try { setHideSoon(JSON.parse(localStorage.getItem('mc-wl-hide') || '[]')); } catch { /* sin almacenamiento */ } }, []);
+  const waitOf = (id: string) => (pend?.waitlist || []).find(w => w.id === id);
+  const openWait = async (id: string, title: string) => { try { const d = await authJson<{ count: number; shared: any[]; anonymous: number }>(`/watches/waitlist/${id}`); setWl({ id, title, ...d }); } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo abrir la lista.'); } };
+  const keepRented = (key: string) => { const n = [...hideSoon, key]; setHideSoon(n); try { localStorage.setItem('mc-wl-hide', JSON.stringify(n)); } catch { /* sin almacenamiento */ } };
+  const freeAndNotify = async (w: { id: string; title: string; availableFrom: string | null }) => {
+    setBusy(w.id); setError('');
+    try { await authJson(`/properties/${w.id}/availability`, { method: 'PATCH', body: JSON.stringify({ availability: 'AVAILABLE', availableFrom: w.availableFrom }) }); await done(`Listo: “${w.title}” queda disponible${w.availableFrom ? ` desde el ${new Date(w.availableFrom + 'T12:00:00Z').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', timeZone: 'UTC' })}` : ''} y avisamos a quienes la esperan.`); }
+    catch (e) { setError(e instanceof Error ? e.message : 'No se pudo actualizar.'); } finally { setBusy(''); }
+  };
   // null = sin formulario; 'new' = nueva; o la propiedad que se edita.
   const [editing, setEditing] = useState<Property | 'new' | null>(null);
 
@@ -59,7 +71,11 @@ function MyProperties({ user }: { user: SessionUser }) {
     setBusy(p.id); setError(''); setOk('');
     try {
       if (confirm.kind === 'delete') { await authJson(`/properties/${p.id}`, { method: 'DELETE' }); await done(`“${p.title}” se eliminó.`); }
-      else { await authJson(`/properties/${p.id}/availability`, { method: 'PATCH', body: JSON.stringify({ availability: confirm.value }) }); await done(`“${p.title}” ahora está: ${AVAILABILITY[confirm.value].label}.`); }
+      else {
+        const from = confirm.value === 'RENTED' || confirm.value === 'RESERVED' ? (confirm.from || null) : undefined;
+        await authJson(`/properties/${p.id}/availability`, { method: 'PATCH', body: JSON.stringify({ availability: confirm.value, ...(from !== undefined ? { availableFrom: from } : confirm.value === 'AVAILABLE' ? { availableFrom: null } : {}) }) });
+        await done(`“${p.title}” ahora está: ${AVAILABILITY[confirm.value].label}.${confirm.value === 'AVAILABLE' && waitOf(p.id) ? ' Avisamos a quienes la esperaban.' : ''}`);
+      }
       setConfirm(null);
     } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo completar la acción.'); }
     finally { setBusy(''); }
@@ -88,6 +104,14 @@ function MyProperties({ user }: { user: SessionUser }) {
         onCancel={() => setEditing(null)} onDone={async msg => { setEditing(null); await done(msg); }} />
     </section>}
 
+    {(pend?.waitlist || []).filter(w => w.soon && !hideSoon.includes(`${w.id}:${w.availableFrom}`)).map(w => { const p = items.find(x => x.id === w.id); return <div key={'soon' + w.id} className="wl-alert">
+      {p?.images[0]?.url ? <img src={p.images[0].url} alt="" /> : null}
+      <div><b>{w.title} se libera en {w.daysLeft} día{w.daysLeft === 1 ? '' : 's'}{w.availableFrom ? ` (${new Date(w.availableFrom + 'T12:00:00Z').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', timeZone: 'UTC' })})` : ''}</b>
+        <p><b>{w.watchers} persona{w.watchers === 1 ? '' : 's'}</b> esperan que se libere{w.shared ? ` · ${w.shared} te ${w.shared === 1 ? 'compartió sus' : 'compartieron sus'} datos` : ''}. <button type="button" className="inline-link" onClick={() => openWait(w.id, w.title)}>Ver lista de espera</button></p></div>
+      <div className="wl-acts"><button type="button" className="button button-outline" onClick={() => keepRented(`${w.id}:${w.availableFrom}`)}>Sigue {w.availability === 'RESERVED' ? 'apartada' : 'rentada'}</button>
+        <button type="button" className="button button-navy" disabled={busy === w.id} onClick={() => freeAndNotify(w)}><BellRing size={15} aria-hidden /> Disponible{w.availableFrom ? ' desde esa fecha' : ''} y avisarles</button></div>
+    </div>; })}
+
     {!loading && items.length > 0 && <div className="adm-chips">{STATUS_TABS.map(([k, l]) => (k === '' || count(k) > 0) && <button key={k} type="button" className={`adm-chip${tab === k ? ' on' : ''}`} aria-pressed={tab === k} onClick={() => setTab(k)}>{l}<i>{count(k)}</i></button>)}</div>}
 
     {loading ? <p className="muted">Cargando propiedades…</p> : items.length === 0
@@ -107,7 +131,8 @@ function MyProperties({ user }: { user: SessionUser }) {
           <div className="pub-row-main">
             {p.images[0]?.url ? <img src={p.images[0].url} alt="" /> : <div className="img-missing">Sin fotos</div>}
             <div className="pub-row-info">
-              <div className="pub-row-pills"><i className={`status-pill ${st.tone}`}>{p.status === 'REJECTED' ? 'Requiere cambios' : st.label}</i>{p.status === 'PUBLISHED' && <i className={`status-pill ${av.tone}`}>{av.label}</i>}</div>
+              <div className="pub-row-pills"><i className={`status-pill ${st.tone}`}>{p.status === 'REJECTED' ? 'Requiere cambios' : st.label}</i>{p.status === 'PUBLISHED' && <i className={`status-pill ${av.tone}`}>{av.label}</i>}
+                {waitOf(p.id) && <button type="button" className="wl-pill" onClick={() => openWait(p.id, p.title)} title="Ver lista de espera"><UsersRound size={13} aria-hidden /> {waitOf(p.id)!.watchers} en lista de espera</button>}</div>
               <b className="pub-row-title">{p.title}</b>
               <small>{p.neighborhood ? `${p.neighborhood}, ` : ''}{p.municipality} · {OPERATION_LABEL[p.operation]} · {mxn(Number(p.price))}{p.operation === 'RENT' ? ' / mes' : ''}{p.operation === 'BOTH' && p.rentPrice ? ` · renta ${mxn(Number(p.rentPrice))} / mes` : ''}</small>
               {admin && <small>Anunciante: <b>{p.owner?.fullName || '—'}</b></small>}
@@ -136,6 +161,13 @@ function MyProperties({ user }: { user: SessionUser }) {
         </article>;
       })}</div>}
 
+    {wl && <Modal title={`Lista de espera · ${wl.title}`} onClose={() => setWl(null)}>
+      <p className="muted">{wl.count} persona{wl.count === 1 ? '' : 's'} pidieron que les avisemos cuando esté disponible. Solo ves los datos de quien aceptó compartirlos.</p>
+      {wl.shared.length > 0 && <ul className="wl-list">{wl.shared.map((x, i) => <li key={i}><span className="wl-av">{x.name.split(' ').map(w => w[0]).slice(0, 2).join('')}</span><div><b>{x.name}</b><small>{[x.email, x.phone].filter(Boolean).join(' · ')}</small></div>
+        <span className="wl-acts-i">{x.phone && <a className="inline-link" href={`https://wa.me/${x.phone.replace(/\D/g, '').length === 10 ? '52' + x.phone.replace(/\D/g, '') : x.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>}<a className="inline-link" href={`mailto:${x.email}`}>Correo</a></span></li>)}</ul>}
+      {wl.anonymous > 0 && <p className="wl-anon">+ {wl.anonymous} persona{wl.anonymous === 1 ? '' : 's'} más esperando (no compartieron sus datos). Recibirán el aviso automáticamente.</p>}
+      <div className="adm-modal-acts"><button type="button" className="button button-outline" onClick={() => setWl(null)}>Cerrar</button></div>
+    </Modal>}
     {confirm?.kind === 'delete' && <Modal title={`Eliminar “${confirm.p.title}”`} onClose={() => setConfirm(null)}>
       <p className="muted">Se borran la propiedad, sus fotos y su fanpage. <b>No se puede deshacer.</b> Si solo ya no está disponible, mejor usa “Cambiar disponibilidad”.</p>
       <div className="adm-modal-acts"><button type="button" className="button button-outline" onClick={() => setConfirm(null)}>Cancelar</button>
@@ -144,8 +176,10 @@ function MyProperties({ user }: { user: SessionUser }) {
     {confirm?.kind === 'availability' && <Modal title={`Disponibilidad · ${confirm.p.title}`} onClose={() => setConfirm(null)}>
       <div className="adm-reasons">{(Object.keys(AVAILABILITY) as (keyof typeof AVAILABILITY)[]).filter(k => !(k === 'RENTED' && confirm.p.operation === 'SALE') && !(k === 'SOLD' && confirm.p.operation === 'RENT')).map(k =>
         <label key={k} className={confirm.value === k ? 'on' : ''}><input type="radio" name="disp" checked={confirm.value === k} onChange={() => setConfirm({ ...confirm, value: k })} /><span><b>{AVAILABILITY[k].label}</b><small>{AVAILABILITY[k].help}</small></span></label>)}</div>
+      {(confirm.value === 'RENTED' || confirm.value === 'RESERVED') && <label className="wl-date">¿Cuándo se libera? (opcional)<input type="date" min={new Date().toISOString().slice(0, 10)} value={confirm.from || ''} onChange={e => setConfirm({ ...confirm, from: e.target.value })} />
+        <small className="muted">Con la fecha, avisamos a los interesados unos días antes y a ti 14 días antes.</small></label>}
       <div className="adm-modal-acts"><button type="button" className="button button-outline" onClick={() => setConfirm(null)}>Cancelar</button>
-        <button type="button" className="button button-navy" disabled={confirm.value === confirm.p.availability || busy === confirm.p.id} onClick={confirmIt}>Guardar</button></div>
+        <button type="button" className="button button-navy" disabled={(confirm.value === confirm.p.availability && !confirm.from) || busy === confirm.p.id} onClick={confirmIt}>Guardar</button></div>
     </Modal>}
   </main>;
 }

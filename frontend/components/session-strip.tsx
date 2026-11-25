@@ -21,9 +21,10 @@ export default function SessionStrip() {
   const buyer = user.role === 'BUYER';
   return <div className="session-strip" role="region" aria-label="Tus pendientes">
     <span className="ss-hi">Hola, {first}</span>
+    {buyer && sum.alerts?.map(a => <Link key={a.href} className="ss-chip ss-new" href={a.href}><b>¡Nuevo!</b>{a.label}</Link>)}
     {buyer ? (sum.stay
       ? <Link className="ss-stay" href={`/panel/reservas/${sum.stay.id}`}>{sum.stay.cover ? <img src={sum.stay.cover} alt="" /> : null}<span><b>{sum.stay.title}{sum.stay.when ? ` · ${sum.stay.when.split(' · ')[0]}` : ''}</b><small>{sum.stay.urgent ? <em className="ss-due">{sum.stay.note}</em> : sum.stay.note}</small></span></Link>
-      : <span className="ss-quiet">¿Buscas tu próximo espacio? Guarda favoritos y te avisamos de lo nuevo.</span>)
+      : !sum.alerts?.length && <span className="ss-quiet">¿Buscas tu próximo espacio? Guarda favoritos y te avisamos de lo nuevo.</span>)
       : <div className="ss-chips">{sum.items.length ? sum.items.slice(0, 4).map(x => <Link key={x.label} className={`ss-chip${x.warn ? ' warn' : ''}`} href={x.href}><b>{x.n}</b>{x.label}</Link>)
         : <span className="ss-quiet">✓ Todo al día: no tienes pendientes.</span>}</div>}
     {buyer && <Link className="ss-sec" href="/panel/comprador#favoritos">♥ Favoritos{sum.favs ? ` (${sum.favs})` : ''}</Link>}

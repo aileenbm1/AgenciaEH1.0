@@ -146,6 +146,10 @@ export class PanelService implements OnModuleInit {
     const [act] = await this.db.query<any>(`SELECT COUNT(*) AS n FROM Reservations WHERE OwnerId IN ${sc.sql} AND Status IN ('APPROVED','DEPOSIT_PAID')`, sc.params);
     const [l30] = await this.db.query<any>(`SELECT COUNT(*) AS n, SUM(Kind='VISIT') AS v FROM Leads WHERE AssignedToId IN ${sc.sql} AND CreatedAt >= UTC_TIMESTAMP() - INTERVAL 30 DAY`, sc.params);
     const views = isOrg ? n((await this.db.query<any>(`SELECT COALESCE((SELECT Views FROM AgencyProfiles WHERE UserId=?),0) + COALESCE((SELECT SUM(ap.Views) FROM AgentProfiles ap JOIN AgencyProfiles ag ON ag.Id=ap.AgencyId WHERE ag.UserId=?),0) AS v`, [userId, userId]))[0]?.v) : n(prof?.Views);
+    // Lista de espera: propiedades con gente esperando (las que se liberan en 14 días o menos van primero).
+    const wait = await this.db.query<any>(`SELECT p.Id, p.Title, p.Availability, p.AvailableFrom, COUNT(w.UserId) AS n, SUM(w.ShareContact) AS shared
+      FROM Properties p JOIN PropertyWatches w ON w.PropertyId=p.Id WHERE p.OwnerId IN ${sc.sql} AND p.Status='PUBLISHED'
+      GROUP BY p.Id, p.Title, p.Availability, p.AvailableFrom ORDER BY (p.AvailableFrom IS NULL), p.AvailableFrom`, sc.params);
     const steps = [
       { key: 'perfil', done: !!(prof?.Phone && (isOrg ? String(prof?.Bio || '').length > 10 : prof?.PhotoUrl)), label: isOrg ? 'Completa el perfil: descripción y WhatsApp' : 'Sube tu foto y tu WhatsApp', href: '/panel/perfil-publico' },
       { key: 'publica', done: n(counts?.pub) > 0, label: 'Publica tu primera propiedad', href: '/panel/agente/propiedades#nueva' },
@@ -162,6 +166,9 @@ export class PanelService implements OnModuleInit {
       visits: leads.filter((l: any) => l.Kind === 'VISIT').map((l: any) => ({ id: l.Id, name: l.Name, title: l.Title, visitAt: l.VisitAt })),
       drafts: props.filter((p: any) => p.Status === 'DRAFT').map((p: any) => ({ id: p.Id, title: p.Title, missing: missing(p) })),
       rejected: props.filter((p: any) => p.Status === 'REJECTED').map((p: any) => ({ id: p.Id, title: p.Title, note: p.ReviewNote || null })),
+      waitlist: wait.map((w: any) => { const from = dateOnly(w.AvailableFrom); const days = from ? Math.round((Date.parse(from) - Date.parse(today)) / 86400000) : null;
+        return { id: w.Id, title: w.Title, availability: w.Availability, availableFrom: from, daysLeft: days, watchers: n(w.n), shared: n(w.shared),
+          soon: w.Availability !== 'AVAILABLE' && days !== null && days >= 0 && days <= 14 }; }),
       membership: { status: membership.status, periodEnd: membership.periodEnd, daysLeft: membership.daysLeft, plan: membership.plan },
       steps: steps.every((s) => s.done) ? null : steps,
       kpis: { profileViews: views, published: n(counts?.pub), drafts: n(counts?.draft), review: n(counts?.rev), leads30: n(l30?.n), visits30: n(l30?.v), activeReservations: n(act?.n), collectedMonth: n(money?.m) },

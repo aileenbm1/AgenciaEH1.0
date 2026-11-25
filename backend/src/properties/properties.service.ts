@@ -1,3 +1,4 @@
+import { WatchesService } from '../watches/watches.service';
 import { MailService } from '../mail/mail.service';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
@@ -19,7 +20,7 @@ const dateOnly = (v: any) => (v instanceof Date ? v.toISOString().slice(0, 10) :
 
 @Injectable()
 export class PropertiesService {
-  constructor(private db: DatabaseService, private engagement: EngagementService, private fields: CustomFieldsService, private mail: MailService) {}
+  constructor(private db: DatabaseService, private engagement: EngagementService, private fields: CustomFieldsService, private mail: MailService, private watches: WatchesService) {}
 
   private slug(title: string) {
     return `${title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 65)}-${Date.now().toString(36)}`;
@@ -233,8 +234,11 @@ export class PropertiesService {
     if (availability === 'RENTED' && p.Operation === 'SALE') throw new BadRequestException('Esta propiedad es solo de venta.');
     if (availability === 'SOLD' && p.Operation === 'RENT') throw new BadRequestException('Esta propiedad es solo de renta.');
     const sets = ['Availability=?', 'UpdatedAt=UTC_TIMESTAMP()'], params: any[] = [availability];
+    if (availableFrom && !/^\d{4}-\d{2}-\d{2}/.test(String(availableFrom))) throw new BadRequestException('La fecha no es válida.');
     if (availableFrom !== undefined) { sets.push('AvailableFrom=?'); params.push(availableFrom ? String(availableFrom).slice(0, 10) : null); }
     await this.db.execute(`UPDATE Properties SET ${sets.join(',')} WHERE Id=?`, [...params, id]);
+    // Avisa al instante a quienes esperan esta propiedad (si quedó disponible o se libera pronto).
+    this.watches.check(id).catch((e) => console.error('[Mi Casa] Avisos de disponibilidad:', e?.message));
     return this.detailInternal(id);
   }
 

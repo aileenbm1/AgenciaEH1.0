@@ -6,6 +6,7 @@ import { authJson, SessionUser } from '@/lib/auth';
 import { mxn } from '@/lib/data';
 import { guestStatus, RES_KIND, RES_STATUS, ResRow } from '@/lib/reservations';
 import BuyerSections from './buyer-sections';
+import MyWatches from './my-watches';
 
 const day = (d: string | null) => d ? new Date(d + 'T12:00:00Z').toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }) : '';
 
@@ -52,6 +53,7 @@ export default function BuyerHome({ user }: { user: SessionUser }) {
       <a className="adm-card bq" href="#solicitudes"><span className="bq-ic"><MessageCircle size={20} aria-hidden /></span><b>Mensajes y visitas · {counts.sent}</b><small>{counts.visits ? `${counts.visits} visita${counts.visits === 1 ? '' : 's'} confirmada${counts.visits === 1 ? '' : 's'}` : 'En qué va cada solicitud'}</small></a>
     </div></section>
 
+    <MyWatches />
     <BuyerSections />
   </main>;
 }

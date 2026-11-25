@@ -10,6 +10,7 @@ import PropertyGallery from '@/components/property-gallery';
 import ReservationWidget from '@/components/reservation-widget';
 import PropertyMap from '@/components/property-map';
 import FanpageEditLink from '@/components/fanpage-edit-link';
+import WatchBox from '@/components/watch-box';
 
 const fmtDate = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -59,10 +60,13 @@ export default function PropertyDetailView({ raw, preview = false }: { raw: ApiP
       <aside className="detail-aside">
         <div className="detail-price">{mxn(p.price)} <small>{isRent ? '/ mes' : 'MXN'}</small></div>
         {both && p.rentPrice ? <div className="detail-price rent">o renta {mxn(p.rentPrice)} <small>/ mes</small></div> : null}
-        {av === 'RESERVED' && <p className="notice">Esta propiedad está <b>apartada</b>. Aún puedes escribir al asesor por si se libera.</p>}
+        {(closed || av === 'RESERVED' || showFrom) && <div className="watch-state"><b>{av === 'RESERVED' ? 'Apartada por ahora' : closed ? `${AVAILABILITY[av].label} por ahora` : 'Disponible más adelante'}</b>
+          {raw.availableFrom && raw.availableFrom > new Date().toISOString().slice(0, 10) ? <>Se libera aproximadamente el <b className="inline">{fmtDate(raw.availableFrom)}</b>.</> : av === 'RESERVED' ? 'Aún puedes escribir al asesor por si se libera.' : 'Te avisamos si vuelve a estar disponible.'}</div>}
         {!closed && <a className="button button-navy full" href="#reservar">{raw.operation === 'SALE' ? 'Apartar en línea' : 'Reservar en línea'}</a>}
         {preview ? <div className="fp-form-placeholder">Aquí aparecen los botones de guardar en favoritos y comparar, el formulario para escribirte y los botones para compartir.</div> : <>
+          {(closed || av === 'RESERVED' || showFrom) && <WatchBox propertyId={raw.id} mode="unavailable" ownerName={raw.owner?.fullName} />}
           <PropertyTools propertyId={raw.id} slug={raw.slug} />
+          {!(closed || av === 'RESERVED' || showFrom) && <WatchBox propertyId={raw.id} mode="price" />}
           {!closed && <div id="contacto"><PropertyContact propertyId={raw.id} title={p.title} owner={raw.owner} /></div>}
           <ShareButtons path={`/propiedades/${raw.slug}`} title={p.title} />
           <p className="fp-links"><Link className="small-link" href={`/propiedades/${raw.slug}/fanpage`}>Ver fanpage de la propiedad →</Link> <FanpageEditLink propertyId={raw.id} /></p>

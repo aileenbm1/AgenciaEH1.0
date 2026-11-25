@@ -450,3 +450,30 @@ CREATE TABLE IF NOT EXISTS ReservationPayments (
   CONSTRAINT CK_ResPayments_Method CHECK (Method IN ('CASH','TRANSFER')),
   INDEX IX_ResPayments (ReservationId, CreatedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- "Avísame cuando esté disponible": quién espera cada propiedad y qué aviso recibió (uno por cambio).
+CREATE TABLE IF NOT EXISTS PropertyWatches (
+  UserId CHAR(36) NOT NULL,
+  PropertyId CHAR(36) NOT NULL,
+  ShareContact TINYINT(1) NOT NULL DEFAULT 0,
+  Source VARCHAR(10) NOT NULL DEFAULT 'manual',
+  LastKind VARCHAR(10) NULL,
+  LastPrice DECIMAL(14,2) NULL,
+  PrevPrice DECIMAL(14,2) NULL,
+  NoticeKind VARCHAR(10) NULL,
+  NoticeAt DATETIME NULL,
+  SeenAt DATETIME NULL,
+  CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT PK_PropertyWatches PRIMARY KEY (UserId, PropertyId),
+  INDEX IX_PropertyWatches_Property (PropertyId),
+  CONSTRAINT FK_PropertyWatches_User FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE,
+  CONSTRAINT FK_PropertyWatches_Property FOREIGN KEY (PropertyId) REFERENCES Properties(Id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Aviso al dueño de que su propiedad está por liberarse y hay gente esperando (una vez por fecha).
+CREATE TABLE IF NOT EXISTS WaitlistOwnerNotices (
+  PropertyId CHAR(36) NOT NULL,
+  ForDate DATE NOT NULL,
+  SentAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT PK_WaitlistOwnerNotices PRIMARY KEY (PropertyId, ForDate)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
