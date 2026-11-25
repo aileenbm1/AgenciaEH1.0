@@ -46,3 +46,11 @@ export function guestStatus(r: ResRow): { text: string; urgent: boolean } {
   if (r.status === 'APPROVED') return { text: r.advanceRequired ? `Aprobada · paga el anticipo de ${fmtMx(r.advanceRequired)} para apartar` : 'Aprobada · acuerda el pago con el anunciante', urgent: false };
   return { text: `Apartada · faltan ${fmtMx(r.remaining)}${r.payBy ? `, liquida antes del ${fmtDay(r.payBy)}` : ''}`, urgent: false };
 }
+
+/** Reservas activas del huésped y la más próxima (primero la que tiene pago urgente). */
+export function activeStays(res: ResRow[]) {
+  const today = new Date().toISOString().slice(0, 10);
+  const active = res.filter(r => ['PENDING', 'APPROVED', 'DEPOSIT_PAID'].includes(r.status) || (r.status === 'COMPLETED' && r.checkOut && r.checkOut >= today));
+  const next = [...active].sort((a, b) => Number(guestStatus(b).urgent) - Number(guestStatus(a).urgent) || String(a.checkIn || '9').localeCompare(String(b.checkIn || '9')))[0];
+  return { active, next };
+}

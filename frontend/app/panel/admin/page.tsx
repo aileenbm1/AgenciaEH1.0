@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, BadgeDollarSign, CircleCheck, Plus } from 'lucide-react';
+import { ArrowRight, BadgeDollarSign, CircleCheck, ClipboardCheck, Paintbrush, Plus, UserPlus } from 'lucide-react';
 import ProtectedPanel from '@/components/protected-panel';
 import AdminShell from '@/components/admin/admin-shell';
 import ModerationQueue from '@/components/admin/moderation-queue';
@@ -37,9 +37,22 @@ function Inicio({ user }: { user: SessionUser }) {
         <p className="adm-date">{today.charAt(0).toUpperCase() + today.slice(1)}{p ? ` · ${total ? `Tienes ${total} pendiente${total === 1 ? '' : 's'}` : 'Todo al día'}` : ''}</p></div>
       <div className="adm-top-acts">
         <Link className="button button-navy" href="/panel/agente/propiedades#nueva"><Plus size={16} aria-hidden /> Nueva propiedad</Link>
-        <Link className="button button-outline" href="/panel/admin/personas?crear=1"><Plus size={16} aria-hidden /> Crear cuenta</Link>
-        <Link className="button button-outline" href="/panel/admin/pagos?registrar=1"><BadgeDollarSign size={16} aria-hidden /> Registrar pago</Link>
       </div>
+    </div>
+
+    {p && <div className="adm-today"><b>Hoy:</b> {total ? [
+      p.review.count && `${p.review.count} propiedad${p.review.count === 1 ? '' : 'es'} por revisar`,
+      p.payDue.length && `${p.payDue.length} pago${p.payDue.length === 1 ? '' : 's'} por cobrar`,
+      p.reservations.count && `${p.reservations.count} reserva${p.reservations.count === 1 ? '' : 's'} por aceptar`,
+      p.accounts.count && `${p.accounts.count} cuenta${p.accounts.count === 1 ? '' : 's'} nueva${p.accounts.count === 1 ? '' : 's'}`,
+      p.leads.count && `${p.leads.count} mensaje${p.leads.count === 1 ? '' : 's'} sin responder`,
+    ].filter(Boolean).join(' · ') : 'todo al día ✓'}</div>}
+
+    <div className="adm-big">
+      <Link href="/panel/admin/propiedades" className={p?.review.count ? 'hot' : ''}><ClipboardCheck size={24} strokeWidth={1.6} aria-hidden /><b>Revisar propiedades{p?.review.count ? <i>{p.review.count}</i> : null}</b><small>Aprueba o pide cambios</small></Link>
+      <Link href="/panel/admin/pagos?registrar=1" className={p?.payDue.length ? 'hot' : ''}><BadgeDollarSign size={24} strokeWidth={1.6} aria-hidden /><b>Registrar pago{p?.payDue.length ? <i>{p.payDue.length}</i> : null}</b><small>Membresías y reservas</small></Link>
+      <Link href="/panel/admin/sitio"><Paintbrush size={24} strokeWidth={1.6} aria-hidden /><b>Editar el sitio</b><small>Textos, fotos y colores</small></Link>
+      <Link href="/panel/admin/personas?crear=1" className={p?.accounts.count ? 'hot' : ''}><UserPlus size={24} strokeWidth={1.6} aria-hidden /><b>Crear cuenta{p?.accounts.count ? <i>{p.accounts.count}</i> : null}</b><small>Agente, agencia o desarrolladora</small></Link>
     </div>
 
     <section className="adm-sec first">
