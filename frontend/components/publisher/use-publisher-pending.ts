@@ -22,12 +22,13 @@ export const refreshPublisherPending = () => window.dispatchEvent(new Event('pub
 let cache: { at: number; data: PublisherPending } | null = null;
 
 /** Pendientes del anunciante (menú, barra inferior e Inicio). */
-export function usePublisherPending() {
-  const [data, setData] = useState<PublisherPending | null>(cache?.data ?? null);
+export function usePublisherPending(enabled = true) {
+  const [data, setData] = useState<PublisherPending | null>(enabled ? cache?.data ?? null : null);
   const load = useCallback(async (force = false) => {
+    if (!enabled) return;
     if (!force && cache && Date.now() - cache.at < 15000) { setData(cache.data); return; }
     try { const d = await authJson<PublisherPending>('/panel/pending'); cache = { at: Date.now(), data: d }; setData(d); } catch { /* sin contadores */ }
-  }, []);
+  }, [enabled]);
   useEffect(() => {
     load();
     const h = () => load(true);

@@ -57,9 +57,14 @@ function Calendar({ busy, from, to, onPick, single, pickingOut, children }: { bu
 }
 
 /** Reserva en línea en la ficha (RF-22 a RF-24): renta por noche (tipo Airbnb), por semana o por mes, y apartado de compra. */
-export default function ReservationWidget({ propertyId, slug, operation, property }: { propertyId: string; slug: string; operation: 'RENT' | 'SALE' | 'BOTH'; property?: ReviewProperty }) {
+/**
+ * demo = vista previa o editor: el calendario funciona para ver cómo queda, pero no envía solicitudes.
+ * fallback = qué mostrar si la propiedad no tiene reservas en línea activadas (en vez de dejar el espacio vacío).
+ */
+export default function ReservationWidget({ propertyId, slug, operation, property, demo = false, fallback = null }: { propertyId: string; slug: string; operation: 'RENT' | 'SALE' | 'BOTH'; property?: ReviewProperty; demo?: boolean; fallback?: React.ReactNode }) {
   const router = useRouter();
   const [data, setData] = useState<{ settings: Settings; busy: Busy[] } | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState<'RENT' | 'SALE'>(operation === 'SALE' ? 'SALE' : 'RENT');
   const [from, setFrom] = useState(''); const [to, setTo] = useState('');
   const [months, setMonths] = useState('1'); const [weeks, setWeeks] = useState('1'); const [guests, setGuests] = useState('1');
@@ -74,7 +79,7 @@ export default function ReservationWidget({ propertyId, slug, operation, propert
   const [logged, setLogged] = useState(false);
   // La sesión puede venir solo de la cookie de renovación: se confirma con el servidor.
   useEffect(() => { if (currentToken()) setLogged(true); else getCurrentUser().then(u => setLogged(!!u)).catch(() => {}); }, []);
-  useEffect(() => { fetch(`/api/v1/reservations/calendar/${propertyId}`).then(r => r.ok ? r.json() : null).then(setData).catch(() => {}); }, [propertyId]);
+  useEffect(() => { fetch(`/api/v1/reservations/calendar/${propertyId}`).then(r => r.ok ? r.json() : null).then(setData).catch(() => {}).finally(() => setLoaded(true)); }, [propertyId]);
   const s = data?.settings;
   const rentOn = !!s?.enabled && (operation === 'RENT' || operation === 'BOTH');
   const saleOn = !!s?.saleRequests && (operation === 'SALE' || operation === 'BOTH') && s?.availability === 'AVAILABLE';
@@ -94,7 +99,12 @@ export default function ReservationWidget({ propertyId, slug, operation, propert
     return () => clearTimeout(t);
   }, [ready, kind, from, to, weeks, months, guests, propertyId, s]);
 
-  if (!data || (!rentOn && !saleOn)) return null;
+  if (!data || (!rentOn && !saleOn)) {
+    if (!loaded) return null;
+    if (demo) return <div className="res-off"><b>{data ? 'Las reservas en línea están apagadas' : 'El calendario sale cuando la propiedad esté publicada'}</b>
+      <span>{data ? <>Para que aquí salga el calendario, ve a <b>Mis propiedades → ⋯ → “Reservas y calendario”</b> y activa la renta por noche, semana o mes{operation !== 'RENT' ? ' (o las solicitudes de apartado)' : ''}.</> : 'Mientras tanto, los visitantes verán un botón para preguntar por fechas.'}</span></div>;
+    return <>{fallback}</>;
+  }
   const pick = (d: string) => {
     setClash('');
     if (kind !== 'NIGHTLY') { setFrom(d); return; }
@@ -106,6 +116,7 @@ export default function ReservationWidget({ propertyId, slug, operation, propert
   };
 
   async function submit() {
+    if (demo) { setError('Vista previa: aquí el visitante envía su solicitud. Desde el editor no se crean reservas reales.'); return; }
     setBusy(true); setError('');
     try {
       const r = await authJson<{ id: string }>('/reservations', { method: 'POST', body: JSON.stringify({ propertyId, kind, checkIn: from || undefined, checkOut: kind === 'NIGHTLY' ? to : undefined, weeks: kind === 'WEEKLY' ? Number(weeks) : undefined, months: kind === 'MONTHLY' ? Number(months) : undefined, guests: kind === 'SALE' ? undefined : Number(guests), paymentType: kind === 'SALE' ? paymentType : undefined, note }) });

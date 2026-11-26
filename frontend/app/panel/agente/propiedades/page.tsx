@@ -30,7 +30,7 @@ function MyProperties({ user }: { user: SessionUser }) {
   const [menu, setMenu] = useState('');
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const { data: pend } = usePublisherPending();
+  const { data: pend } = usePublisherPending(!admin);
   const [wl, setWl] = useState<{ id: string; title: string; count: number; shared: { name: string; email: string; phone: string | null; since: string }[]; anonymous: number } | null>(null);
   const [hideSoon, setHideSoon] = useState<string[]>([]);
   useEffect(() => { try { setHideSoon(JSON.parse(localStorage.getItem('mc-wl-hide') || '[]')); } catch { /* sin almacenamiento */ } }, []);

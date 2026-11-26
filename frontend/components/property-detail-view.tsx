@@ -48,8 +48,7 @@ export default function PropertyDetailView({ raw, preview = false }: { raw: ApiP
           <dl className="facts">{facts.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl></section>
         {custom.length > 0 && <section className="detail-section"><h3>Características</h3>
           <dl className="facts">{custom.map(c => <div key={c.label}><dt>{c.label}</dt><dd>{c.value}</dd></div>)}</dl></section>}
-        {!closed && (preview ? <section className="detail-section" id="reservar"><h3>{raw.operation === 'SALE' ? 'Apartar en línea' : 'Reservar en línea'}</h3><div className="fp-form-placeholder">Aquí aparece el calendario con la cotización y el botón para solicitar la reserva o el apartado.</div></section>
-          : <ReservationWidget propertyId={raw.id} slug={raw.slug} operation={raw.operation} property={reviewProperty(raw)} />)}
+        {!closed && <ReservationWidget propertyId={raw.id} slug={raw.slug} operation={raw.operation} property={reviewProperty(raw)} demo={preview} />}
         {raw.latitude != null && raw.longitude != null && <section className="detail-section"><h3>Ubicación</h3>
           <PropertyMap lat={Number(raw.latitude)} lng={Number(raw.longitude)} title={p.title} exact={!!raw.showExactLocation} /></section>}
         {plans.length > 0 && <section className="detail-section"><h3>Plano de planta</h3>

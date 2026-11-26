@@ -152,12 +152,12 @@ function ReservationDetail({ user }: { user: SessionUser }) {
             </dl>{r.payTo.notes && <small className="muted">{r.payTo.notes}</small>}</>
               : <p className="muted">El anunciante te indicará por el chat cómo pagar (transferencia o efectivo).</p>}
             {r.paid <= 0 && r.advanceRequired != null && <p className="muted">Para apartar paga al menos el anticipo de <b>{mxn(r.advanceRequired)}</b>.</p>}
-            <form className="receipt-form" onSubmit={uploadReceipt}>
+            {r.payDue?.overdue ? <p className="pay-due over">Ya pasó la fecha para pagar. Escribe a {r.owner.fullName.split(' ')[0]} por el chat para ver si aún puedes liquidar o reprogramar.</p> : <form className="receipt-form" onSubmit={uploadReceipt}>
               <b>¿Ya pagaste? Sube tu comprobante</b>
               <div className="receipt-row"><label>Monto pagado<input required type="number" min="1" step="1" max={r.remaining} value={receiptAmount} onChange={e => setReceiptAmount(e.target.value)} placeholder={String(Math.round(r.paid <= 0 && r.advanceRequired != null ? r.advanceRequired : r.remaining))} /></label>
                 <label>Foto o PDF<input ref={receiptRef} required type="file" accept="image/jpeg,image/png,application/pdf" /></label></div>
               <button className="button button-navy" disabled={busy}>{busy ? 'Enviando…' : 'Enviar comprobante'}</button>
-            </form>
+            </form>}
             {r.documents.filter(d => d.kind === 'COMPROBANTE' && d.mine).map(d => <p key={d.id} className="receipt-sent">{d.reviewed ? '✓ Revisado' : '⏳ En revisión'} · comprobante por {mxn(d.amount || 0)} · {fmtWhen(d.createdAt)}</p>)}
           </div>}
           {isManager && r.documents.some(d => d.kind === 'COMPROBANTE' && !d.reviewed) && <div className="receipts-review">
@@ -165,7 +165,8 @@ function ReservationDetail({ user }: { user: SessionUser }) {
             {r.documents.filter(d => d.kind === 'COMPROBANTE' && !d.reviewed).map(d => <div key={d.id} className="receipt-item">
               <span><b>{mxn(d.amount || 0)}</b> · {d.uploadedBy} · {fmtWhen(d.createdAt)} · <button type="button" className="inline-link" onClick={() => download(d.id, d.fileName)}>Ver comprobante</button></span>
               <span className="receipt-acts">
-                {canPay && <button type="button" className="button button-navy" disabled={busy} onClick={() => act('payment', { amount: Math.min(d.amount || 0, r.remaining), method: 'TRANSFER', notes: 'Comprobante del huésped', receiptId: d.id }, 'Pago registrado con el comprobante.')}>Registrar este pago</button>}
+                {canPay && r.payDue?.overdue && user.role !== 'ADMIN' && <small className="muted">Venció el plazo para liquidar: solo el administrador puede registrar este pago.</small>}
+                {canPay && !(r.payDue?.overdue && user.role !== 'ADMIN') && <button type="button" className="button button-navy" disabled={busy} onClick={() => act('payment', { amount: Math.min(d.amount || 0, r.remaining), method: 'TRANSFER', notes: 'Comprobante del huésped', receiptId: d.id }, 'Pago registrado con el comprobante.')}>Registrar este pago</button>}
                 <button type="button" className="button button-outline" disabled={busy} onClick={() => { const reason = prompt('¿Por qué no corresponde? (se le avisa al huésped)', 'El monto o la cuenta no coinciden'); if (reason !== null) act('dismiss_receipt', { receiptId: d.id, reason }, 'Le avisamos al huésped que revise su comprobante.'); }}>No corresponde</button>
               </span>
             </div>)}

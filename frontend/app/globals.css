@@ -1477,3 +1477,6 @@ button.session-chip{font:inherit;cursor:pointer;color:inherit}
 
 .fp-block.lay-h-r>.fp-inner.fp-contact{margin-left:auto;margin-right:0}.fp-block.lay-h-c>.fp-inner.fp-contact{margin:0 auto}
 .fp-block.lay-ta-right:not([class*="lay-h-"])>.fp-inner{margin-left:auto;margin-right:0}.fp-block.lay-ta-left:not([class*="lay-h-"])>.fp-inner{margin-left:0;margin-right:auto}
+
+.res-off{border:2px dashed currentColor;border-radius:12px;padding:18px 20px;display:grid;gap:6px;opacity:.85;font-size:14.5px;line-height:1.5;margin-top:12px}.res-off b{font-size:15px}
+.fp-reserve .reserve-box>h3{display:none}

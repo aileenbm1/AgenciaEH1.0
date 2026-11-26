@@ -107,8 +107,8 @@ export default function FanpageView({ property: p, theme, blocks, preview = fals
       case 'reserve': {
         if (closed) return null;
         return <div className="fp-inner fp-reserve">{b.title && <h2>{fill(b.title, p)}</h2>}{b.text && <p>{fill(b.text, p)}</p>}
-          {preview ? <div className="fp-form-placeholder">Aquí aparece el calendario con la cotización y el botón para solicitar la reserva o el apartado.</div>
-            : <ReservationWidget propertyId={p.id} slug={p.slug} operation={p.operation} property={reviewProperty(p)} />}</div>;
+          <ReservationWidget propertyId={p.id} slug={p.slug} operation={p.operation} property={reviewProperty(p)} demo={preview}
+            fallback={<a className="fp-button" href="#fp-contacto" onClick={() => track('CTA', 'reserve-ask')}>Pregunta por fechas disponibles</a>} /></div>;
       }
       case 'agent': {
         const o = p.owner; if (!o) return null;
