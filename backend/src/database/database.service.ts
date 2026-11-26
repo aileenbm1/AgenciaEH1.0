@@ -57,6 +57,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       ['Reservations', 'PayReminderAt', 'ALTER TABLE Reservations ADD COLUMN PayReminderAt DATETIME NULL, ADD COLUMN PayDueReminderAt DATETIME NULL, ADD COLUMN OverdueNoticeAt DATETIME NULL'],
       ['Reservations', 'Weeks', 'ALTER TABLE Reservations ADD COLUMN Weeks INT NULL'],
       ['Leads', 'Source', 'ALTER TABLE Leads ADD COLUMN Source VARCHAR(40) NULL, ADD COLUMN Campaign VARCHAR(80) NULL'],
+      ['Properties', 'PriceSuffix', 'ALTER TABLE Properties ADD COLUMN PriceSuffix VARCHAR(40) NULL'],
       ['Properties', 'PriceMode', "ALTER TABLE Properties ADD COLUMN PriceMode VARCHAR(6) NOT NULL DEFAULT 'SHOW', ADD COLUMN PauseReason VARCHAR(10) NULL, ADD COLUMN PublishAt DATETIME NULL, ADD COLUMN HideAt DATETIME NULL, ADD COLUMN ConfirmedAt DATETIME NULL, ADD COLUMN RemindedAt DATETIME NULL"],
     ];
     for (const [t, c, sql] of changes) {

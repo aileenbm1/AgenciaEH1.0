@@ -96,7 +96,7 @@ export class FanpagesService implements OnModuleInit {
     return {
       // Datos para la vista previa del editor (aunque la propiedad aún no esté publicada).
       property: {
-        id: p.Id, slug: p.Slug, title: p.Title, status: p.Status, description: x.Description, operation: x.Operation, price: x.Price, rentPrice: x.RentPrice, priceMode: x.PriceMode || 'SHOW',
+        id: p.Id, slug: p.Slug, title: p.Title, status: p.Status, description: x.Description, operation: x.Operation, price: x.Price, rentPrice: x.RentPrice, priceMode: x.PriceMode || 'SHOW', priceSuffix: x.PriceSuffix ?? null,
         category: x.Category, availability: x.Availability, municipality: x.Municipality, neighborhood: x.Neighborhood, propertyType: x.PropertyType,
         bedrooms: x.Bedrooms, bathrooms: x.Bathrooms, builtArea: x.BuiltArea, landArea: x.LandArea,
         latitude: x.Latitude != null ? Number(x.Latitude) : null, longitude: x.Longitude != null ? Number(x.Longitude) : null, showExactLocation: !!x.ShowExactLocation,

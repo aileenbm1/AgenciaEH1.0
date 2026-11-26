@@ -12,7 +12,7 @@ export async function generateMetadata({ params }: Params) {
   const p = await getPublicProperty(slug);
   if (!p) return {};
   const img = p.images?.[0]?.url;
-  const description = `${priceText(Number(p.price), p.priceMode, p.operation === 'RENT' ? ' / mes' : '')} · ${p.neighborhood ? `${p.neighborhood}, ` : ''}${p.municipality}. ${(p.description || '').slice(0, 120)}`;
+  const description = `${priceText(Number(p.price), p.priceMode, p.priceSuffix != null ? (p.priceSuffix ? ' ' + p.priceSuffix : '') : p.operation === 'RENT' ? ' / mes' : '')} · ${p.neighborhood ? `${p.neighborhood}, ` : ''}${p.municipality}. ${(p.description || '').slice(0, 120)}`;
   return { title: `${p.title} · Mi Casa`, description, openGraph: { title: p.title, description, type: 'website', images: img ? [{ url: img }] : [] } };
 }
 

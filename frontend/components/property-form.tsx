@@ -1,4 +1,5 @@
 "use client";
+import { mxn } from '@/lib/data';
 import { FormEvent, useEffect, useState } from 'react';
 import { authJson } from '@/lib/auth';
 import { CATEGORIES, categoryFor, MUNICIPALITIES, PROPERTY_TYPES } from '@/lib/roles';
@@ -7,16 +8,20 @@ import PhotoUploader, { Photo } from './photo-uploader';
 import LocationPicker from './location-picker';
 
 export type EditableProperty = {
-  id: string; title: string; description?: string | null; operation: 'RENT' | 'SALE' | 'BOTH'; price: number | string; rentPrice?: number | string | null; priceMode?: 'SHOW' | 'FROM' | 'HIDE';
+  id: string; title: string; description?: string | null; operation: 'RENT' | 'SALE' | 'BOTH'; price: number | string; rentPrice?: number | string | null; priceMode?: 'SHOW' | 'FROM' | 'HIDE'; priceSuffix?: string | null;
   category?: string | null; municipality: string; neighborhood?: string | null; propertyType: string; bedrooms?: number | null; bathrooms?: number | null;
   landArea?: number | string | null; builtArea?: number | string | null; availableFrom?: string | null; status: string;
   latitude?: number | null; longitude?: number | null; showExactLocation?: boolean; ownerId?: string;
   images: { url: string; label?: string | null }[]; custom?: Record<string, string>;
 };
 
-const blank = { title: '', description: '', operation: 'SALE', priceMode: 'SHOW', price: '', rentPrice: '', category: '', municipality: 'León', neighborhood: '', propertyType: 'Casa', bedrooms: '3', bathrooms: '2', landArea: '', builtArea: '', availableFrom: '' };
+/** Etiquetas listas para elegir después del precio. */
+const SUFFIXES = ['/ mes', '/ mensual', 'MXN', 'moneda nacional', '/ noche', '/ m²', '+ IVA', 'USD'];
+const suffixToForm = (v?: string | null) => v === null || v === undefined ? { suffixPick: 'auto', suffixText: '' } : v === '' ? { suffixPick: 'none', suffixText: '' } : SUFFIXES.includes(v) ? { suffixPick: v, suffixText: '' } : { suffixPick: 'custom', suffixText: v };
+const formToSuffix = (pick: string, text: string): string | null => pick === 'auto' ? null : pick === 'none' ? '' : pick === 'custom' ? text.trim().slice(0, 40) : pick;
+const blank = { title: '', description: '', operation: 'SALE', priceMode: 'SHOW', suffixPick: 'auto', suffixText: '', price: '', rentPrice: '', category: '', municipality: 'León', neighborhood: '', propertyType: 'Casa', bedrooms: '3', bathrooms: '2', landArea: '', builtArea: '', availableFrom: '' };
 const toForm = (p: EditableProperty) => ({
-  title: p.title, description: p.description || '', operation: p.operation, priceMode: p.priceMode || 'SHOW', price: Number(p.price) > 0 ? String(p.price) : '', rentPrice: p.rentPrice ? String(p.rentPrice) : '',
+  title: p.title, description: p.description || '', operation: p.operation, priceMode: p.priceMode || 'SHOW', ...suffixToForm(p.priceSuffix), price: Number(p.price) > 0 ? String(p.price) : '', rentPrice: p.rentPrice ? String(p.rentPrice) : '',
   category: p.category || '', municipality: p.municipality, neighborhood: p.neighborhood || '', propertyType: p.propertyType,
   bedrooms: p.bedrooms != null ? String(p.bedrooms) : '', bathrooms: p.bathrooms != null ? String(p.bathrooms) : '',
   landArea: p.landArea ? String(Number(p.landArea)) : '', builtArea: p.builtArea ? String(Number(p.builtArea)) : '', availableFrom: p.availableFrom || '',
@@ -50,7 +55,7 @@ export default function PropertyForm({ property, onDone, onCancel, admin = false
     setBusy(true);
     const num = (v: string) => v === '' ? undefined : Number(v);
     const payload = {
-      title: form.title, description: form.description, operation: form.operation, priceMode: form.priceMode, price: form.price === '' ? 0 : Number(form.price),
+      title: form.title, description: form.description, operation: form.operation, priceMode: form.priceMode, priceSuffix: formToSuffix(form.suffixPick, form.suffixText), price: form.price === '' ? 0 : Number(form.price),
       rentPrice: both ? num(form.rentPrice) : undefined, category: form.category || categoryFor(form.propertyType),
       municipality: form.municipality, neighborhood: form.neighborhood, propertyType: form.propertyType,
       bedrooms: num(form.bedrooms), bathrooms: num(form.bathrooms), landArea: num(form.landArea), builtArea: num(form.builtArea),
@@ -87,6 +92,10 @@ export default function PropertyForm({ property, onDone, onCancel, admin = false
       <label>Operación<select value={form.operation} onChange={set('operation')}><option value="SALE">Venta</option><option value="RENT">Renta</option><option value="BOTH">Venta y renta</option></select></label>
       <label>Cómo mostrar el precio<select value={form.priceMode} onChange={set('priceMode')}><option value="SHOW">Mostrar el precio</option><option value="FROM">Mostrar “Desde $…”</option><option value="HIDE">Precio a consultar (no se publica)</option></select></label>
       <label>{isRent ? 'Renta mensual (MXN)' : 'Precio de venta (MXN)'}{form.priceMode === 'HIDE' ? ' · opcional' : ''}<input required={form.priceMode !== 'HIDE'} type="number" min="1" value={form.price} onChange={set('price')} placeholder={form.priceMode === 'HIDE' ? 'Solo lo ves tú (opcional)' : ''} /></label>
+      {form.priceMode !== 'HIDE' && <label>Etiqueta después del precio<select value={form.suffixPick} onChange={set('suffixPick')}>
+        <option value="auto">Automática ({isRent ? '/ mes' : 'MXN'})</option>{SUFFIXES.map(x => <option key={x} value={x}>{x}</option>)}<option value="none">Sin etiqueta</option><option value="custom">Otra (escríbela)…</option></select>
+        {form.suffixPick === 'custom' && <input maxLength={40} value={form.suffixText} onChange={set('suffixText')} placeholder="Ej. / m² · + IVA · USD" style={{ marginTop: 6 }} />}
+        <small className="muted">Se verá así: <b>{form.priceMode === 'FROM' ? 'Desde ' : ''}{Number(form.price) > 0 ? mxn(Number(form.price)) : '$0'} {formToSuffix(form.suffixPick, form.suffixText) ?? (isRent ? '/ mes' : 'MXN')}</b></small></label>}
       {both && <label>Renta mensual (MXN){form.priceMode === 'HIDE' ? ' · opcional' : ''}<input required={form.priceMode !== 'HIDE'} type="number" min="1" value={form.rentPrice} onChange={set('rentPrice')} /></label>}
       {form.priceMode === 'HIDE' && <p className="muted small form-span">En la ficha y la fanpage dirá “Precio a consultar” con un botón “Pídeme el precio” que te llega como mensaje. No aparecerá en los filtros por precio.</p>}
       {(isRent || both) && <label>Disponible a partir de<input type="date" value={form.availableFrom} onChange={set('availableFrom')} /></label>}

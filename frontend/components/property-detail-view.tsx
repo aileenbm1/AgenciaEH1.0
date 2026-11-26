@@ -2,7 +2,7 @@ import { reviewProperty } from '@/lib/reservations';
 import Link from 'next/link';
 import { ApiProperty, OPERATION_LABEL, toCard } from '@/lib/properties';
 import { AVAILABILITY } from '@/lib/roles';
-import { mxn } from '@/lib/data';
+import { mxn, suffixOf } from '@/lib/data';
 import PropertyContact from '@/components/property-contact';
 import PropertyTools from '@/components/property-tools';
 import ShareButtons from '@/components/share-buttons';
@@ -58,7 +58,7 @@ export default function PropertyDetailView({ raw, preview = false }: { raw: ApiP
       </div>
       <aside className="detail-aside">
         {raw.priceMode === 'HIDE' || !(p.price > 0) ? <div className="detail-price ask">Precio a consultar{!preview && !closed && <a className="button button-gold" href="#contacto">Pídeme el precio</a>}</div>
-          : <div className="detail-price">{raw.priceMode === 'FROM' && <small className="price-from">Desde </small>}{mxn(p.price)} <small>{isRent ? '/ mes' : 'MXN'}</small></div>}
+          : <div className="detail-price">{raw.priceMode === 'FROM' && <small className="price-from">Desde </small>}{mxn(p.price)} {suffixOf(isRent, raw.priceSuffix) && <small>{suffixOf(isRent, raw.priceSuffix)}</small>}</div>}
         {raw.priceMode !== 'HIDE' && both && p.rentPrice ? <div className="detail-price rent">o renta {mxn(p.rentPrice)} <small>/ mes</small></div> : null}
         {(closed || av === 'RESERVED' || showFrom) && <div className="watch-state"><b>{av === 'RESERVED' ? 'Apartada por ahora' : closed ? `${AVAILABILITY[av].label} por ahora` : 'Disponible más adelante'}</b>
           {raw.availableFrom && raw.availableFrom > new Date().toISOString().slice(0, 10) ? <>Se libera aproximadamente el <b className="inline">{fmtDate(raw.availableFrom)}</b>.</> : av === 'RESERVED' ? 'Aún puedes escribir al asesor por si se libera.' : 'Te avisamos si vuelve a estar disponible.'}</div>}

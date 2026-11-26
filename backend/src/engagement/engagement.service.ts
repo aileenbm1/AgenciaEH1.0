@@ -97,10 +97,10 @@ export class EngagementService {
     return (await this.db.query<any>('SELECT PropertyId FROM Favorites WHERE UserId=?', [userId])).map((r) => r.PropertyId as string);
   }
   async favorites(userId: string) {
-    const rows = await this.db.query<any>(`SELECT p.Id, p.Slug, p.Title, p.Operation, p.Price, p.RentPrice, p.PriceMode, p.Availability, p.Municipality, p.Neighborhood, p.PropertyType, p.Bedrooms, p.Bathrooms, p.BuiltArea, p.LandArea, p.Status,
+    const rows = await this.db.query<any>(`SELECT p.Id, p.Slug, p.Title, p.Operation, p.Price, p.RentPrice, p.PriceMode, p.PriceSuffix, p.Availability, p.Municipality, p.Neighborhood, p.PropertyType, p.Bedrooms, p.Bathrooms, p.BuiltArea, p.LandArea, p.Status,
       (SELECT i.Url FROM PropertyImages i WHERE i.PropertyId=p.Id ORDER BY i.Position LIMIT 1) AS Cover
       FROM Favorites f JOIN Properties p ON p.Id = f.PropertyId WHERE f.UserId=? ORDER BY f.CreatedAt DESC`, [userId]);
-    return rows.map((r: any) => ({ id: r.Id, slug: r.Slug, title: r.Title, operation: r.Operation, price: r.PriceMode === 'HIDE' ? 0 : r.Price, rentPrice: r.PriceMode === 'HIDE' ? null : r.RentPrice, priceMode: r.PriceMode || 'SHOW', availability: r.Availability, municipality: r.Municipality, neighborhood: r.Neighborhood,
+    return rows.map((r: any) => ({ id: r.Id, slug: r.Slug, title: r.Title, operation: r.Operation, price: r.PriceMode === 'HIDE' ? 0 : r.Price, rentPrice: r.PriceMode === 'HIDE' ? null : r.RentPrice, priceMode: r.PriceMode || 'SHOW', priceSuffix: r.PriceSuffix ?? null, availability: r.Availability, municipality: r.Municipality, neighborhood: r.Neighborhood,
       propertyType: r.PropertyType, bedrooms: r.Bedrooms, bathrooms: r.Bathrooms, builtArea: r.BuiltArea, landArea: r.LandArea, available: r.Status === 'PUBLISHED', images: r.Cover ? [{ url: r.Cover, position: 0 }] : [] }));
   }
   async addFavorite(userId: string, propertyId: string) {
@@ -186,7 +186,7 @@ export class EngagementService {
       FROM Properties p WHERE p.Status='PUBLISHED' AND p.Availability IN ('AVAILABLE','RESERVED') AND p.OwnerId IN (${owners.map(() => '?').join(',')}) ORDER BY p.CreatedAt DESC LIMIT 60`, owners);
     return {
       name: a.Name, slug: a.Slug, description: a.Description, phone: a.Phone, kind: a.Role === 'DEVELOPER' ? 'DEVELOPER' : 'AGENCY', agents: agents.map((x: any) => ({ id: x.Id, fullName: x.FullName, slug: x.Slug, photoUrl: x.PhotoUrl })),
-      properties: rows.map((r: any) => ({ id: r.Id, slug: r.Slug, title: r.Title, operation: r.Operation, price: r.PriceMode === 'HIDE' ? 0 : r.Price, rentPrice: r.PriceMode === 'HIDE' ? null : r.RentPrice, priceMode: r.PriceMode || 'SHOW', availability: r.Availability, municipality: r.Municipality, neighborhood: r.Neighborhood,
+      properties: rows.map((r: any) => ({ id: r.Id, slug: r.Slug, title: r.Title, operation: r.Operation, price: r.PriceMode === 'HIDE' ? 0 : r.Price, rentPrice: r.PriceMode === 'HIDE' ? null : r.RentPrice, priceMode: r.PriceMode || 'SHOW', priceSuffix: r.PriceSuffix ?? null, availability: r.Availability, municipality: r.Municipality, neighborhood: r.Neighborhood,
         propertyType: r.PropertyType, bedrooms: r.Bedrooms, bathrooms: r.Bathrooms, builtArea: r.BuiltArea, landArea: r.LandArea, images: r.Cover ? [{ url: r.Cover, position: 0 }] : [] })),
     };
   }

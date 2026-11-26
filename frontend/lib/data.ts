@@ -11,8 +11,12 @@ export type Property = {
   images?: string[];
   /** SHOW = se muestra, FROM = “Desde $…”, HIDE = “Precio a consultar”. */
   priceMode?: PriceMode;
+  /** Etiqueta después del precio. null/undefined = automática (“/ mes” o “MXN”); "" = sin etiqueta. */
+  priceSuffix?: string | null;
 };
 export type PriceMode = 'SHOW' | 'FROM' | 'HIDE';
 export const mxn = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n);
+/** Etiqueta que va después del precio: la que eligió el anunciante o la automática según la operación. */
+export const suffixOf = (rent: boolean, suffix?: string | null) => suffix === null || suffix === undefined ? (rent ? '/ mes' : 'MXN') : suffix;
 /** Texto del precio según cómo lo quiere mostrar el anunciante. */
 export const priceText = (price: number | string, mode?: string | null, per = '') => mode === 'HIDE' || !(Number(price) > 0) ? 'Precio a consultar' : `${mode === 'FROM' ? 'Desde ' : ''}${mxn(Number(price))}${per}`;

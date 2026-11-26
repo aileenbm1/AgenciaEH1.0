@@ -16,6 +16,8 @@ export class CreatePropertyDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) price?: number;
   /** SHOW = se muestra, FROM = "Desde $…", HIDE = "Precio a consultar" (el precio es opcional y no se publica). */
   @IsOptional() @IsIn(['SHOW', 'FROM', 'HIDE']) priceMode?: 'SHOW' | 'FROM' | 'HIDE';
+  /** Etiqueta después del precio ("/ mensual", "moneda nacional"…). null = automática ("/ mes" o "MXN"); "" = sin etiqueta. */
+  @IsOptional() @IsString() @MaxLength(40) priceSuffix?: string | null;
   /** Renta mensual cuando la operación es BOTH. */
   @IsOptional() @Type(() => Number) @IsNumber() @Min(1) rentPrice?: number;
   @IsOptional() @IsIn(CATEGORIES) category?: string;

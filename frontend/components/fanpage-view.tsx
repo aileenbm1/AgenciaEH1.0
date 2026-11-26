@@ -3,7 +3,7 @@ import React, { CSSProperties, useEffect, useState } from 'react';
 import { Briefcase, Bus, Church, Dumbbell, GraduationCap, Landmark, MapPin, ShoppingBag, ShoppingCart, Stethoscope, Trees, UtensilsCrossed } from 'lucide-react';
 import Link from 'next/link';
 import { ApiProperty, OPERATION_LABEL } from '@/lib/properties';
-import { mxn } from '@/lib/data';
+import { mxn, suffixOf } from '@/lib/data';
 import { Block, fill, FONTS, monthlyPayment, Theme, tourEmbed, videoEmbed } from '@/lib/fanpage';
 import PropertyContact from './property-contact';
 import ShareButtons from './share-buttons';
@@ -101,7 +101,7 @@ export default function FanpageView({ property: p, theme, blocks, preview = fals
       }
       case 'price': return <div className="fp-inner fp-price">{b.title && <h2>{fill(b.title, p)}</h2>}
         {p.priceMode === 'HIDE' || !(Number(p.price) > 0) ? <><div className="fp-amount small">Precio a consultar</div>{!closed && <a className="fp-button" href={preview ? undefined : '#fp-contacto'} onClick={() => track('CTA', 'ask-price')}>Pídeme el precio</a>}</>
-          : <div className="fp-amount">{p.priceMode === 'FROM' && <small>Desde </small>}{mxn(Number(p.price))}<small>{isRent ? ' / mes' : ' MXN'}</small></div>}
+          : <div className="fp-amount">{p.priceMode === 'FROM' && <small>Desde </small>}{mxn(Number(p.price))}{suffixOf(isRent, p.priceSuffix) && <small> {suffixOf(isRent, p.priceSuffix)}</small>}</div>}
         {p.priceMode !== 'HIDE' && both && b.showRent && p.rentPrice ? <div className="fp-amount small">o renta {mxn(Number(p.rentPrice))}<small> / mes</small></div> : null}
         {b.note && <p>{fill(b.note, p)}</p>}</div>;
       case 'video': {

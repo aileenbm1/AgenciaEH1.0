@@ -10,7 +10,7 @@ export type ApiProperty = {
   municipality: string; neighborhood?: string | null; propertyType: string; bedrooms?: number | null; bathrooms?: number | null;
   landArea?: string | number | null; builtArea?: string | number | null; images?: ApiImage[];
   latitude?: number | null; longitude?: number | null; showExactLocation?: boolean;
-  priceMode?: 'SHOW' | 'FROM' | 'HIDE'; status?: string; pauseReason?: string | null; publishAt?: string | null; hideAt?: string | null;
+  priceMode?: 'SHOW' | 'FROM' | 'HIDE'; priceSuffix?: string | null; status?: string; pauseReason?: string | null; publishAt?: string | null; hideAt?: string | null;
   expiry?: { pauseIn: number; reminded: boolean } | null;
   custom?: Record<string, string>; customFields?: { key: string; label: string; type: string }[];
   owner?: { fullName: string; role: string; phone?: string | null; agency?: { name: string; slug: string } | null; agent?: { slug: string; photoUrl?: string | null } | null } | null;
@@ -24,7 +24,7 @@ export function toCard(p: ApiProperty): Property {
   return {
     id: p.id, slug: p.slug, title: p.title, city: p.municipality, neighborhood: p.neighborhood || p.municipality,
     price: Number(p.price), rentPrice: p.rentPrice ? Number(p.rentPrice) : null, operation: OPERATION_LABEL[p.operation] || 'Venta',
-    priceMode: p.priceMode || 'SHOW', beds: p.bedrooms || 0, baths: p.bathrooms || 0, area: Number(p.builtArea || p.landArea || 0), tag,
+    priceMode: p.priceMode || 'SHOW', priceSuffix: p.priceSuffix ?? null, beds: p.bedrooms || 0, baths: p.bathrooms || 0, area: Number(p.builtArea || p.landArea || 0), tag,
     image: p.images?.[0]?.url || '/placeholder-property.svg',
     images: (p.images || []).slice().sort((a, b) => a.position - b.position).map(i => i.url).slice(0, 8),
   };

@@ -62,6 +62,12 @@ export class PropertiesService implements OnModuleInit {
     if (mode !== 'HIDE' && !(Number(price) > 0)) throw new BadRequestException('Indica el precio, o elige “Precio a consultar”.');
   }
 
+  /** Etiqueta del precio: texto plano corto. null = automática, "" = sin etiqueta. */
+  private cleanSuffix(v: unknown): string | null {
+    if (v === null || v === undefined) return null;
+    return String(v).replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 40);
+  }
+
   private async logEvent(propertyId: string, userId: string | null, kind: string, note?: string | null) {
     await this.db.execute('INSERT INTO PropertyEvents (Id, PropertyId, UserId, Kind, Note) VALUES (?,?,?,?,?)', [randomUUID(), propertyId, userId, kind, note ? String(note).slice(0, 300) : null]).catch(() => {});
   }
@@ -77,7 +83,7 @@ export class PropertiesService implements OnModuleInit {
           availability: row.Availability || 'AVAILABLE', availableFrom: dateOnly(row.AvailableFrom),
           municipality: row.Municipality, neighborhood: row.Neighborhood, propertyType: row.PropertyType, bedrooms: row.Bedrooms, bathrooms: row.Bathrooms,
           landArea: row.LandArea, builtArea: row.BuiltArea, ownerId: row.OwnerId, createdAt: row.CreatedAt, updatedAt: row.UpdatedAt, images: [],
-          priceMode: row.PriceMode || 'SHOW', pauseReason: row.PauseReason || null, publishAt: row.PublishAt || null, hideAt: row.HideAt || null, confirmedAt: row.ConfirmedAt || null,
+          priceMode: row.PriceMode || 'SHOW', priceSuffix: row.PriceSuffix ?? null, pauseReason: row.PauseReason || null, publishAt: row.PublishAt || null, hideAt: row.HideAt || null, confirmedAt: row.ConfirmedAt || null,
           latitude: row.Latitude != null ? Number(row.Latitude) : null, longitude: row.Longitude != null ? Number(row.Longitude) : null, showExactLocation: !!row.ShowExactLocation, reviewNote: row.Status === 'REJECTED' ? row.ReviewNote ?? null : null,
         };
         map.set(row.Id, p);
@@ -103,9 +109,9 @@ export class PropertiesService implements OnModuleInit {
     const custom = await this.fields.clean(d.custom);
     const id = randomUUID();
     await this.db.transaction(async (tx) => {
-      await this.db.execute(`INSERT INTO Properties(Id,Slug,Title,Description,Operation,Status,Price,PriceMode,RentPrice,Currency,Category,Availability,AvailableFrom,Municipality,Neighborhood,PropertyType,Bedrooms,Bathrooms,LandArea,BuiltArea,Latitude,Longitude,ShowExactLocation,OwnerId)
-        VALUES(?,?,?,?,?,'DRAFT',?,?,?,'MXN',?,'AVAILABLE',?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [id, this.slug(d.title), d.title, d.description, d.operation, Number(d.price) > 0 ? d.price : 0, mode, d.operation === 'BOTH' ? d.rentPrice ?? null : null, d.category || categoryFor(d.propertyType),
+      await this.db.execute(`INSERT INTO Properties(Id,Slug,Title,Description,Operation,Status,Price,PriceMode,PriceSuffix,RentPrice,Currency,Category,Availability,AvailableFrom,Municipality,Neighborhood,PropertyType,Bedrooms,Bathrooms,LandArea,BuiltArea,Latitude,Longitude,ShowExactLocation,OwnerId)
+        VALUES(?,?,?,?,?,'DRAFT',?,?,?,?,'MXN',?,'AVAILABLE',?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [id, this.slug(d.title), d.title, d.description, d.operation, Number(d.price) > 0 ? d.price : 0, mode, this.cleanSuffix(d.priceSuffix), d.operation === 'BOTH' ? d.rentPrice ?? null : null, d.category || categoryFor(d.propertyType),
           d.availableFrom ? d.availableFrom.slice(0, 10) : null, d.municipality, d.neighborhood ?? null, d.propertyType, d.bedrooms ?? null, d.bathrooms ?? null,
           d.landArea ?? null, d.builtArea ?? null, d.latitude ?? null, d.latitude != null ? d.longitude ?? null : null, d.showExactLocation ? 1 : 0, ownerId], tx);
       await this.insertImages(tx, id, d.images || [], d.imageLabels);
@@ -235,6 +241,7 @@ export class PropertiesService implements OnModuleInit {
     const sets: string[] = [], params: any[] = [];
     for (const [key, col] of Object.entries(cols)) if ((d as any)[key] !== undefined) { sets.push(`${col}=?`); params.push(key === 'price' ? (Number(d.price) > 0 ? d.price : 0) : (d as any)[key] ?? null); }
     if (d.priceMode !== undefined) { sets.push('PriceMode=?'); params.push(mode); }
+    if (d.priceSuffix !== undefined) { sets.push('PriceSuffix=?'); params.push(this.cleanSuffix(d.priceSuffix)); }
     if (d.rentPrice !== undefined || d.operation !== undefined) { sets.push('RentPrice=?'); params.push(operation === 'BOTH' ? (d.rentPrice ?? p.RentPrice) : null); }
     if (d.availableFrom !== undefined) { sets.push('AvailableFrom=?'); params.push(d.availableFrom ? d.availableFrom.slice(0, 10) : null); }
     if (d.latitude !== undefined || d.longitude !== undefined) { const has = d.latitude != null && d.longitude != null; sets.push('Latitude=?', 'Longitude=?'); params.push(has ? d.latitude : null, has ? d.longitude : null); }

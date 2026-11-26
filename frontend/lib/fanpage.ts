@@ -48,7 +48,7 @@ export const newId = () => Math.random().toString(36).slice(2, 10);
 /** Sustituye {titulo}, {precio}, etc. por los datos de la propiedad (texto plano). */
 export function fill(text: string, p: ApiProperty) {
   const vals: Record<string, string> = {
-    titulo: p.title, precio: p.priceMode === 'HIDE' || !(Number(p.price) > 0) ? 'Precio a consultar' : `${p.priceMode === 'FROM' ? 'desde ' : ''}${mxn(Number(p.price))}`, renta: p.priceMode !== 'HIDE' && p.rentPrice ? mxn(Number(p.rentPrice)) : '', colonia: p.neighborhood || p.municipality, ciudad: p.municipality,
+    titulo: p.title, precio: p.priceMode === 'HIDE' || !(Number(p.price) > 0) ? 'Precio a consultar' : `${p.priceMode === 'FROM' ? 'desde ' : ''}${mxn(Number(p.price))}${p.priceSuffix ? ' ' + p.priceSuffix : ''}`, renta: p.priceMode !== 'HIDE' && p.rentPrice ? mxn(Number(p.rentPrice)) : '', colonia: p.neighborhood || p.municipality, ciudad: p.municipality,
     descripcion: p.description || '', recamaras: String(p.bedrooms ?? ''), banos: String(p.bathrooms ?? ''), m2: String(Number(p.builtArea || p.landArea || 0) || ''), tipo: p.propertyType,
   };
   return String(text || '').replace(/\{(\w+)\}/g, (m, k) => (k in vals ? vals[k] : m));
