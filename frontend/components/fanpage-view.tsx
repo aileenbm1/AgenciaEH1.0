@@ -134,7 +134,7 @@ export default function FanpageView({ property: p, theme, blocks, preview = fals
       if (!el) return null;
       // Acomodo exacto (en la portada se aplica dentro de la foto).
       const lay = b.type === 'hero' ? { className: '', style: {} } : layoutOf(b as SiteBlock);
-      const cls = `fp-block fp-${b.type} bg-${b.bg || 'light'}${lay.className ? ' ' + lay.className : ''}`;
+      const cls = `fp-block fp-sec-${b.type} bg-${b.bg || 'light'}${lay.className ? ' ' + lay.className : ''}`;
       if (!editor) return <section key={b.id} className={cls} style={lay.style as CSSProperties}>{el}</section>;
       // Posición donde caería el bloque arrastrado: antes o después, según la mitad en la que esté el cursor.
       const at = (e: React.DragEvent) => { const r = e.currentTarget.getBoundingClientRect(); return e.clientY < r.top + r.height / 2 ? i : i + 1; };

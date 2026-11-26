@@ -21,13 +21,14 @@ export const DEFAULT_POS: Partial<Record<SiteBlockType, LayPos>> = { hero: 'ml',
 export function LayoutFields({ b, set, vertical: vProp, focus: fProp, photo, defaultPos }: { b: Record<string, any>; set: (p: Record<string, unknown>) => void; vertical?: boolean; focus?: boolean; photo?: string; defaultPos?: LayPos }) {
   const [dev, setDev] = useState<'desk' | 'phone'>('desk');
   const key = dev === 'desk' ? 'pos' : 'posM';
-  const cur = (b[key] || (dev === 'phone' ? b.pos : '') || defaultPos || DEFAULT_POS[b.type as SiteBlockType] || 'tl') as LayPos;
+  const fallback = defaultPos || DEFAULT_POS[b.type as SiteBlockType];
+  const cur = (b[key] || (dev === 'phone' ? b.pos : '') || fallback || '') as LayPos | '';
   const vertical = vProp ?? LAY_VERTICAL.includes(b.type);
   const h = Number(b.height) || 0;
   return <div className="se-lay">
-    <div className="se-field"><div className="se-fh"><b>Posición del contenido</b><em>{LAY_POS_LABEL[cur]}</em></div>
+    <div className="se-field"><div className="se-fh"><b>Posición del contenido</b><em>{cur ? LAY_POS_LABEL[cur] : 'Automática (sigue la alineación)'}</em></div>
       <div className="se-dev" role="group" aria-label="Para qué pantalla"><button type="button" className={dev === 'desk' ? 'on' : ''} aria-pressed={dev === 'desk'} onClick={() => setDev('desk')}>🖥 Computadora</button><button type="button" className={dev === 'phone' ? 'on' : ''} aria-pressed={dev === 'phone'} onClick={() => setDev('phone')}>📱 Celular</button></div>
-      <div className="se-row-pos"><PosGrid label="Posición del contenido" value={b[key] || (dev === 'phone' && !b.posM ? undefined : cur)} onChange={v => set({ [key]: v })} />
+      <div className="se-row-pos"><PosGrid label="Posición del contenido" value={b[key] || (dev === 'phone' && !b.posM ? undefined : cur || undefined)} onChange={v => set({ [key]: v })} />
         <p className="muted small">{dev === 'phone' ? (b.posM ? 'En celular se usa esta posición.' : 'Igual que en computadora. Toca un cuadro para poner otra solo en celular.') : 'Toca uno de los 9 lugares.'}{!vertical && !h ? ' Arriba/abajo se nota cuando le das más alto a la sección.' : ''}</p></div>
       {b[key] && <button type="button" className="inline-link" onClick={() => set({ [key]: undefined })}>{dev === 'phone' ? 'Usar la misma que en computadora' : 'Volver a la posición original'}</button>}
     </div>
