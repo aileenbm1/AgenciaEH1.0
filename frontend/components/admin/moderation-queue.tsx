@@ -8,7 +8,7 @@ import { mxn } from '@/lib/data';
 import Modal from './modal';
 import { refreshPending } from './use-pending';
 
-type ReviewItem = {
+type ReviewItem = { priceMode?: string;
   id: string; title: string; description: string; municipality: string; neighborhood?: string | null;
   price: number | string; operation: 'SALE' | 'RENT' | 'BOTH'; propertyType: string; bedrooms?: number | null; bathrooms?: number | null;
   builtArea?: number | string | null; updatedAt: string; images: { url: string }[];
@@ -60,7 +60,7 @@ export default function ModerationQueue({ limit, title = 'Propiedades por revisa
         <div className="adm-rev-info">
           <b className="adm-rev-title">{p.title}</b>
           <small>{p.propertyType} · {p.operation === 'SALE' ? 'Venta' : p.operation === 'RENT' ? 'Renta' : 'Venta y renta'} · {p.neighborhood ? `${p.neighborhood}, ` : ''}{p.municipality}</small>
-          <span className="adm-rev-price">{mxn(Number(p.price))}{p.operation === 'RENT' ? ' / mes' : ''}</span>
+          <span className="adm-rev-price">{Number(p.price) > 0 ? `${p.priceMode === 'FROM' ? 'Desde ' : ''}${mxn(Number(p.price))}${p.operation === 'RENT' ? ' / mes' : ''}` : ''}{p.priceMode === 'HIDE' ? ' · Precio a consultar (no se publica)' : ''}</span>
           {p.owner && <small>Enviada por <b>{p.owner.fullName}</b> ({ROLES[p.owner.role]?.label || p.owner.role})</small>}
           {open === p.id && <div className="adm-rev-more">
             <small>{p.bedrooms ?? 0} rec · {p.bathrooms ?? 0} baños{p.builtArea ? ` · ${Number(p.builtArea)} m²` : ''} · {p.images.length} foto(s){p.owner ? ` · ${p.owner.email}` : ''}</small>

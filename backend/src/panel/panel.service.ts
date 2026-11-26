@@ -128,9 +128,9 @@ export class PanelService implements OnModuleInit {
       JOIN Properties p ON p.Id=r.PropertyId JOIN Users g ON g.Id=r.GuestId WHERE r.Status='PENDING' AND r.OwnerId IN ${sc.sql} ORDER BY r.CreatedAt LIMIT 5`, sc.params);
     const leads = await this.db.query<any>(`SELECT l.Id, l.Kind, l.Name, l.VisitAt, p.Title FROM Leads l LEFT JOIN Properties p ON p.Id=l.PropertyId
       WHERE l.Status='NEW' AND l.AssignedToId IN ${sc.sql} ORDER BY l.CreatedAt DESC LIMIT 20`, sc.params);
-    const props = await this.db.query<any>(`SELECT p.Id, p.Title, p.Status, p.Description, p.Price, p.ReviewNote, p.OwnerId,
+    const props = await this.db.query<any>(`SELECT p.Id, p.Title, p.Status, p.Description, p.Price, p.PriceMode, p.ReviewNote, p.OwnerId,
         (SELECT COUNT(*) FROM PropertyImages i WHERE i.PropertyId=p.Id) AS Photos FROM Properties p WHERE p.OwnerId IN ${sc.sql} AND p.Status IN ('DRAFT','REJECTED') ORDER BY p.UpdatedAt DESC LIMIT 10`, sc.params);
-    const missing = (p: any) => [n(p.Photos) < 3 ? `${3 - n(p.Photos)} foto${3 - n(p.Photos) === 1 ? '' : 's'} más` : '', String(p.Description || '').trim().length < 40 ? 'descripción' : '', !(n(p.Price) > 0) ? 'precio' : ''].filter(Boolean);
+    const missing = (p: any) => [n(p.Photos) < 3 ? `${3 - n(p.Photos)} foto${3 - n(p.Photos) === 1 ? '' : 's'} más` : '', String(p.Description || '').trim().length < 40 ? 'descripción' : '', p.PriceMode !== 'HIDE' && !(n(p.Price) > 0) ? 'precio' : ''].filter(Boolean);
     const membership = await this.membership(userId);
     // Primeros pasos (cuenta nueva): perfil, primera publicación, reservas en línea, datos de pago y compartir.
     const isOrg = role === 'AGENCY' || role === 'DEVELOPER';
@@ -150,6 +150,9 @@ export class PanelService implements OnModuleInit {
     const wait = await this.db.query<any>(`SELECT p.Id, p.Title, p.Availability, p.AvailableFrom, COUNT(w.UserId) AS n, SUM(w.ShareContact) AS shared
       FROM Properties p JOIN PropertyWatches w ON w.PropertyId=p.Id WHERE p.OwnerId IN ${sc.sql} AND p.Status='PUBLISHED'
       GROUP BY p.Id, p.Title, p.Availability, p.AvailableFrom ORDER BY (p.AvailableFrom IS NULL), p.AvailableFrom`, sc.params);
+    // Vigencia: anuncios a los que ya se les preguntó "¿sigue disponible?" y los pausados por inactividad o por fecha.
+    const stale = await this.db.query<any>(`SELECT p.Id, p.Title, p.Status, p.PauseReason FROM Properties p WHERE p.OwnerId IN ${sc.sql}
+      AND ((p.Status='PUBLISHED' AND p.RemindedAt IS NOT NULL) OR (p.Status='PAUSED' AND p.PauseReason IN ('inactive','schedule'))) ORDER BY p.UpdatedAt LIMIT 10`, sc.params);
     const steps = [
       { key: 'perfil', done: !!(prof?.Phone && (isOrg ? String(prof?.Bio || '').length > 10 : prof?.PhotoUrl)), label: isOrg ? 'Completa el perfil: descripción y WhatsApp' : 'Sube tu foto y tu WhatsApp', href: '/panel/perfil-publico' },
       { key: 'publica', done: n(counts?.pub) > 0, label: 'Publica tu primera propiedad', href: '/panel/agente/propiedades#nueva' },
@@ -166,6 +169,7 @@ export class PanelService implements OnModuleInit {
       visits: leads.filter((l: any) => l.Kind === 'VISIT').map((l: any) => ({ id: l.Id, name: l.Name, title: l.Title, visitAt: l.VisitAt })),
       drafts: props.filter((p: any) => p.Status === 'DRAFT').map((p: any) => ({ id: p.Id, title: p.Title, missing: missing(p) })),
       rejected: props.filter((p: any) => p.Status === 'REJECTED').map((p: any) => ({ id: p.Id, title: p.Title, note: p.ReviewNote || null })),
+      stale: stale.map((r: any) => ({ id: r.Id, title: r.Title, paused: r.Status === 'PAUSED', reason: r.PauseReason || null })),
       waitlist: wait.map((w: any) => { const from = dateOnly(w.AvailableFrom); const days = from ? Math.round((Date.parse(from) - Date.parse(today)) / 86400000) : null;
         return { id: w.Id, title: w.Title, availability: w.Availability, availableFrom: from, daysLeft: days, watchers: n(w.n), shared: n(w.shared),
           soon: w.Availability !== 'AVAILABLE' && days !== null && days >= 0 && days <= 14 }; }),

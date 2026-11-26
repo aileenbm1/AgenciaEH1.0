@@ -57,7 +57,7 @@ export class WatchesService implements OnModuleInit {
 
   async mine(userId: string) {
     const rows = await this.db.query<any>(`SELECT w.PropertyId, w.ShareContact, w.Source, w.NoticeKind, w.NoticeAt, w.SeenAt, w.PrevPrice, w.CreatedAt,
-        p.Title, p.Slug, p.Price, p.RentPrice, p.Operation, p.Availability, p.AvailableFrom, p.Municipality,
+        p.Title, p.Slug, IF(p.PriceMode='HIDE', 0, p.Price) AS Price, p.RentPrice, p.Operation, p.PriceMode, p.Availability, p.AvailableFrom, p.Municipality,
         (SELECT Url FROM PropertyImages i WHERE i.PropertyId=p.Id ORDER BY i.Position LIMIT 1) AS Cover
       FROM PropertyWatches w JOIN Properties p ON p.Id=w.PropertyId WHERE w.UserId=? AND p.Status='PUBLISHED' ORDER BY COALESCE(w.NoticeAt, w.CreatedAt) DESC`, [userId]);
     return rows.map((r) => ({
@@ -120,7 +120,7 @@ export class WatchesService implements OnModuleInit {
       await this.notify(w, 'soon');
     }
     // 5) Bajó de precio (si subió, solo se actualiza la referencia).
-    for (const w of await this.db.query<any>(`${base} AND w.LastPrice IS NOT NULL AND p.Price < w.LastPrice`, args)) await this.notify(w, 'price');
+    for (const w of await this.db.query<any>(`${base} AND p.PriceMode<>'HIDE' AND w.LastPrice IS NOT NULL AND p.Price < w.LastPrice AND p.Price > 0`, args)) await this.notify(w, 'price');
     await this.db.execute(`UPDATE PropertyWatches w JOIN Properties p ON p.Id=w.PropertyId SET w.LastPrice=p.Price WHERE (w.LastPrice IS NULL OR p.Price > w.LastPrice)${only}`, args);
     // 6) Aviso al dueño: se libera en 14 días o menos y hay gente esperando.
     const owners = await this.db.query<any>(`SELECT p.Id, p.Title, p.AvailableFrom, u.Email, COUNT(w.UserId) AS n, SUM(w.ShareContact) AS shared

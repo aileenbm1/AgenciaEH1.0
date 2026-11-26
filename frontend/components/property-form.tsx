@@ -7,16 +7,16 @@ import PhotoUploader, { Photo } from './photo-uploader';
 import LocationPicker from './location-picker';
 
 export type EditableProperty = {
-  id: string; title: string; description?: string | null; operation: 'RENT' | 'SALE' | 'BOTH'; price: number | string; rentPrice?: number | string | null;
+  id: string; title: string; description?: string | null; operation: 'RENT' | 'SALE' | 'BOTH'; price: number | string; rentPrice?: number | string | null; priceMode?: 'SHOW' | 'FROM' | 'HIDE';
   category?: string | null; municipality: string; neighborhood?: string | null; propertyType: string; bedrooms?: number | null; bathrooms?: number | null;
   landArea?: number | string | null; builtArea?: number | string | null; availableFrom?: string | null; status: string;
   latitude?: number | null; longitude?: number | null; showExactLocation?: boolean; ownerId?: string;
   images: { url: string; label?: string | null }[]; custom?: Record<string, string>;
 };
 
-const blank = { title: '', description: '', operation: 'SALE', price: '', rentPrice: '', category: '', municipality: 'León', neighborhood: '', propertyType: 'Casa', bedrooms: '3', bathrooms: '2', landArea: '', builtArea: '', availableFrom: '' };
+const blank = { title: '', description: '', operation: 'SALE', priceMode: 'SHOW', price: '', rentPrice: '', category: '', municipality: 'León', neighborhood: '', propertyType: 'Casa', bedrooms: '3', bathrooms: '2', landArea: '', builtArea: '', availableFrom: '' };
 const toForm = (p: EditableProperty) => ({
-  title: p.title, description: p.description || '', operation: p.operation, price: String(p.price ?? ''), rentPrice: p.rentPrice ? String(p.rentPrice) : '',
+  title: p.title, description: p.description || '', operation: p.operation, priceMode: p.priceMode || 'SHOW', price: Number(p.price) > 0 ? String(p.price) : '', rentPrice: p.rentPrice ? String(p.rentPrice) : '',
   category: p.category || '', municipality: p.municipality, neighborhood: p.neighborhood || '', propertyType: p.propertyType,
   bedrooms: p.bedrooms != null ? String(p.bedrooms) : '', bathrooms: p.bathrooms != null ? String(p.bathrooms) : '',
   landArea: p.landArea ? String(Number(p.landArea)) : '', builtArea: p.builtArea ? String(Number(p.builtArea)) : '', availableFrom: p.availableFrom || '',
@@ -50,7 +50,7 @@ export default function PropertyForm({ property, onDone, onCancel, admin = false
     setBusy(true);
     const num = (v: string) => v === '' ? undefined : Number(v);
     const payload = {
-      title: form.title, description: form.description, operation: form.operation, price: Number(form.price),
+      title: form.title, description: form.description, operation: form.operation, priceMode: form.priceMode, price: form.price === '' ? 0 : Number(form.price),
       rentPrice: both ? num(form.rentPrice) : undefined, category: form.category || categoryFor(form.propertyType),
       municipality: form.municipality, neighborhood: form.neighborhood, propertyType: form.propertyType,
       bedrooms: num(form.bedrooms), bathrooms: num(form.bathrooms), landArea: num(form.landArea), builtArea: num(form.builtArea),
@@ -85,8 +85,10 @@ export default function PropertyForm({ property, onDone, onCancel, admin = false
     <label>Descripción<textarea required minLength={30} rows={4} value={form.description} onChange={set('description')} placeholder="Describe el inmueble, su estado y principales ventajas (mínimo 30 caracteres)." /></label>
     <div className="form-grid">
       <label>Operación<select value={form.operation} onChange={set('operation')}><option value="SALE">Venta</option><option value="RENT">Renta</option><option value="BOTH">Venta y renta</option></select></label>
-      <label>{isRent ? 'Renta mensual (MXN)' : 'Precio de venta (MXN)'}<input required type="number" min="1" value={form.price} onChange={set('price')} /></label>
-      {both && <label>Renta mensual (MXN)<input required type="number" min="1" value={form.rentPrice} onChange={set('rentPrice')} /></label>}
+      <label>Cómo mostrar el precio<select value={form.priceMode} onChange={set('priceMode')}><option value="SHOW">Mostrar el precio</option><option value="FROM">Mostrar “Desde $…”</option><option value="HIDE">Precio a consultar (no se publica)</option></select></label>
+      <label>{isRent ? 'Renta mensual (MXN)' : 'Precio de venta (MXN)'}{form.priceMode === 'HIDE' ? ' · opcional' : ''}<input required={form.priceMode !== 'HIDE'} type="number" min="1" value={form.price} onChange={set('price')} placeholder={form.priceMode === 'HIDE' ? 'Solo lo ves tú (opcional)' : ''} /></label>
+      {both && <label>Renta mensual (MXN){form.priceMode === 'HIDE' ? ' · opcional' : ''}<input required={form.priceMode !== 'HIDE'} type="number" min="1" value={form.rentPrice} onChange={set('rentPrice')} /></label>}
+      {form.priceMode === 'HIDE' && <p className="muted small form-span">En la ficha y la fanpage dirá “Precio a consultar” con un botón “Pídeme el precio” que te llega como mensaje. No aparecerá en los filtros por precio.</p>}
       {(isRent || both) && <label>Disponible a partir de<input type="date" value={form.availableFrom} onChange={set('availableFrom')} /></label>}
       {(isRent || both) && <label>Precio por noche (opcional)<input type="number" min="1" value={stay.night} onChange={e => setStay({ ...stay, night: e.target.value })} placeholder="Tipo Airbnb" /></label>}
       {(isRent || both) && <label>Precio por semana (opcional)<input type="number" min="1" value={stay.week} onChange={e => setStay({ ...stay, week: e.target.value })} placeholder="Estancias de 7 noches" /></label>}

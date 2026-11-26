@@ -144,7 +144,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       maxGuests: r?.MaxGuests ?? defaultGuests(p), maxGuestsIsDefault: r?.MaxGuests == null, deposit: Number(r?.Deposit || 0), taxRate: Number(r?.TaxRate || 0),
       cancellationPolicy: r?.CancellationPolicy || null, rules: r?.Rules || null, nearby: r?.Nearby || null, seasons, saleRequests: r ? !!r.SaleRequests : true,
       monthlyRent: rent,
-      salePrice: p && (p.Operation === 'SALE' || p.Operation === 'BOTH') ? Number(p.Price) : null,
+      salePrice: p && p.PriceMode !== 'HIDE' && (p.Operation === 'SALE' || p.Operation === 'BOTH') ? Number(p.Price) : null,
       operation: p?.Operation, availability: p?.Availability || 'AVAILABLE',
     };
   }
@@ -246,7 +246,8 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     const kind = String(d.kind) as Kind;
     if (kind === 'SALE') {
       if (!(p.Operation === 'SALE' || p.Operation === 'BOTH') || !s.saleRequests) throw new BadRequestException('Esta propiedad no acepta apartados de compra en línea.');
-      return { kind, subtotal: Number(p.Price), taxes: 0, deposit: 0, total: Number(p.Price), lines: [{ label: 'Precio de venta', amount: Number(p.Price) }] };
+      if (p.PriceMode === 'HIDE') return { kind, subtotal: 0, taxes: 0, deposit: 0, total: 0, lines: [{ label: 'Precio a consultar con el asesor', amount: 0 }] };
+      return { kind, subtotal: Number(p.Price), taxes: 0, deposit: 0, total: Number(p.Price), lines: [{ label: p.PriceMode === 'FROM' ? 'Precio de venta (desde)' : 'Precio de venta', amount: Number(p.Price) }] };
     }
     if (!s.enabled || !(p.Operation === 'RENT' || p.Operation === 'BOTH')) throw new BadRequestException('Esta propiedad no tiene reservas en línea activas.');
     const MODE_LABEL: Record<RentKind, string> = { NIGHTLY: 'por noche', WEEKLY: 'por semana', MONTHLY: 'por mes' };

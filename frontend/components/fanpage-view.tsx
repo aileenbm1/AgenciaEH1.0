@@ -1,9 +1,10 @@
 "use client";
-import React, { CSSProperties, useEffect } from 'react';
+import React, { CSSProperties, useEffect, useState } from 'react';
+import { Briefcase, Bus, Church, Dumbbell, GraduationCap, Landmark, MapPin, ShoppingBag, ShoppingCart, Stethoscope, Trees, UtensilsCrossed } from 'lucide-react';
 import Link from 'next/link';
 import { ApiProperty, OPERATION_LABEL } from '@/lib/properties';
 import { mxn } from '@/lib/data';
-import { Block, fill, FONTS, Theme, videoEmbed } from '@/lib/fanpage';
+import { Block, fill, FONTS, monthlyPayment, Theme, tourEmbed, videoEmbed } from '@/lib/fanpage';
 import PropertyContact from './property-contact';
 import ShareButtons from './share-buttons';
 import PropertyMap from './property-map';
@@ -13,6 +14,19 @@ import { focusXY, layoutOf, SiteBlock } from '@/lib/site';
 import SiteGallery, { GalleryOptions } from './site-gallery';
 
 type Track = (kind: 'VIEW' | 'SHARE' | 'CTA', channel?: string) => void;
+const NEAR_IC: Record<string, typeof MapPin> = { escuela: GraduationCap, super: ShoppingCart, hospital: Stethoscope, parque: Trees, plaza: ShoppingBag, transporte: Bus, restaurante: UtensilsCrossed, gimnasio: Dumbbell, banco: Landmark, iglesia: Church, trabajo: Briefcase, otro: MapPin };
+
+/** Calculadora de crédito: el visitante mueve el enganche y el plazo; la tasa la pone el asesor. */
+function Mortgage({ price, downPct, years, rate, note }: { price: number; downPct: number; years: number; rate: number; note?: string }) {
+  const [down, setDown] = useState(downPct), [yrs, setYrs] = useState(years);
+  const loan = price * (1 - down / 100), pay = monthlyPayment(loan, rate, yrs);
+  return <div className="fp-calc">
+    <label>Enganche: <b>{down}%</b> ({mxn(price * down / 100)})<input type="range" min={5} max={90} step={5} value={down} onChange={e => setDown(Number(e.target.value))} /></label>
+    <label>Plazo: <b>{yrs} años</b><input type="range" min={5} max={30} step={1} value={yrs} onChange={e => setYrs(Number(e.target.value))} /></label>
+    <div className="fp-calc-out"><span>Mensualidad aproximada</span><b>{mxn(pay)}</b><small>Crédito de {mxn(loan)} · tasa de referencia {rate}% anual</small></div>
+    {note && <p className="fp-note">{note}</p>}
+  </div>;
+}
 const waNumber = (phone: string) => { const d = phone.replace(/\D/g, ''); return d.length === 10 ? `52${d}` : d; };
 
 /**
@@ -86,8 +100,9 @@ export default function FanpageView({ property: p, theme, blocks, preview = fals
         return <div className="fp-inner">{b.title && <h2>{fill(b.title, p)}</h2>}<ul className="fp-features">{items.map((x, i) => <li key={i}>{x}</li>)}</ul></div>;
       }
       case 'price': return <div className="fp-inner fp-price">{b.title && <h2>{fill(b.title, p)}</h2>}
-        <div className="fp-amount">{mxn(Number(p.price))}<small>{isRent ? ' / mes' : ' MXN'}</small></div>
-        {both && b.showRent && p.rentPrice ? <div className="fp-amount small">o renta {mxn(Number(p.rentPrice))}<small> / mes</small></div> : null}
+        {p.priceMode === 'HIDE' || !(Number(p.price) > 0) ? <><div className="fp-amount small">Precio a consultar</div>{!closed && <a className="fp-button" href={preview ? undefined : '#fp-contacto'} onClick={() => track('CTA', 'ask-price')}>Pídeme el precio</a>}</>
+          : <div className="fp-amount">{p.priceMode === 'FROM' && <small>Desde </small>}{mxn(Number(p.price))}<small>{isRent ? ' / mes' : ' MXN'}</small></div>}
+        {p.priceMode !== 'HIDE' && both && b.showRent && p.rentPrice ? <div className="fp-amount small">o renta {mxn(Number(p.rentPrice))}<small> / mes</small></div> : null}
         {b.note && <p>{fill(b.note, p)}</p>}</div>;
       case 'video': {
         const src = videoEmbed(b);
@@ -109,6 +124,26 @@ export default function FanpageView({ property: p, theme, blocks, preview = fals
         return <div className="fp-inner fp-reserve">{b.title && <h2>{fill(b.title, p)}</h2>}{b.text && <p>{fill(b.text, p)}</p>}
           <ReservationWidget propertyId={p.id} slug={p.slug} operation={p.operation} property={reviewProperty(p)} demo={preview}
             fallback={<a className="fp-button" href="#fp-contacto" onClick={() => track('CTA', 'reserve-ask')}>Pregunta por fechas disponibles</a>} /></div>;
+      }
+      case 'nearby': {
+        const items: { icon: string; name: string; time: string }[] = b.items || [];
+        if (!items.length) return preview ? <div className="fp-inner"><p className="muted">Agrega los lugares cercanos.</p></div> : null;
+        return <div className="fp-inner">{b.title && <h2>{fill(b.title, p)}</h2>}<ul className="fp-near">{items.map((x, i) => { const Ic = NEAR_IC[x.icon] || MapPin; return <li key={i}><span className="fp-near-ic"><Ic size={22} strokeWidth={1.6} aria-hidden /></span><b>{x.name}</b>{x.time && <small>{x.time}</small>}</li>; })}</ul></div>;
+      }
+      case 'faq': {
+        const items: { q: string; a: string }[] = b.items || [];
+        if (!items.length) return preview ? <div className="fp-inner"><p className="muted">Agrega preguntas y respuestas.</p></div> : null;
+        return <div className="fp-inner fp-faq">{b.title && <h2>{fill(b.title, p)}</h2>}{items.map((x, i) => <details key={i} open={preview && i === 0}><summary>{fill(x.q, p)}</summary><p>{fill(x.a, p)}</p></details>)}</div>;
+      }
+      case 'tour': {
+        const src = tourEmbed(b);
+        if (!src) return preview ? <div className="fp-inner"><p className="muted">Pega el enlace de tu recorrido de Matterport o Kuula.</p></div> : null;
+        return <div className="fp-inner">{b.title && <h2>{fill(b.title, p)}</h2>}<div className="fp-video fp-tour"><iframe src={src} title={b.title || 'Recorrido virtual'} loading="lazy" allow="fullscreen; xr-spatial-tracking; gyroscope; accelerometer" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" /></div></div>;
+      }
+      case 'mortgage': {
+        const price = Number(p.price);
+        if (p.operation === 'RENT' || p.priceMode === 'HIDE' || !(price > 0)) return preview ? <div className="fp-inner"><p className="muted">La calculadora aparece solo en propiedades en venta con precio visible.</p></div> : null;
+        return <div className="fp-inner">{b.title && <h2>{fill(b.title, p)}</h2>}<Mortgage price={price} downPct={Number(b.downPct) || 20} years={Number(b.years) || 20} rate={Number(b.rate) || 11} note={b.text} /></div>;
       }
       case 'agent': {
         const o = p.owner; if (!o) return null;

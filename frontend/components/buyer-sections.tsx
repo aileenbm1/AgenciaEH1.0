@@ -2,9 +2,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { authJson } from '@/lib/auth';
-import { mxn } from '@/lib/data';
+import { mxn, priceText } from '@/lib/data';
 
-type Fav = { id: string; slug: string; title: string; operation: 'RENT' | 'SALE'; price: number | string; municipality: string; neighborhood?: string | null; available: boolean; images: { url: string }[] };
+type Fav = { id: string; slug: string; title: string; operation: 'RENT' | 'SALE'; price: number | string; priceMode?: string; municipality: string; neighborhood?: string | null; available: boolean; images: { url: string }[] };
 type Search = { id: string; name: string; query: Record<string, string>; alerts: boolean; lastNotifiedAt?: string | null };
 type Sent = { id: string; kind: 'MESSAGE' | 'VISIT'; status: string; visitAt?: string | null; createdAt: string; property: { title: string; slug: string } | null; assignedTo: { fullName: string } | null };
 const STATUS: Record<string, string> = { NEW: 'Enviada', CONTACTED: 'El asesor te contactó', VISIT_SCHEDULED: 'Visita confirmada', CLOSED: 'Cerrada', LOST: 'Cerrada' };
@@ -35,7 +35,7 @@ export default function BuyerSections() {
         : <div className="fav-grid">{favs.map(p => <article key={p.id} className="dashboard-card fav-card">
           <Link href={`/propiedades/${p.slug}`} className="fav-img" style={{ backgroundImage: `url(${p.images[0]?.url || '/placeholder-property.svg'})` }} aria-label={p.title} />
           <div><h3><Link href={`/propiedades/${p.slug}`}>{p.title}</Link></h3><p className="meta">{p.neighborhood ? `${p.neighborhood}, ` : ''}{p.municipality}</p>
-            <strong>{mxn(Number(p.price))}{p.operation === 'RENT' ? ' / mes' : ''}</strong>{!p.available && <p className="meta">Ya no está disponible</p>}
+            <strong>{priceText(Number(p.price), p.priceMode, p.operation === 'RENT' ? ' / mes' : '')}</strong>{!p.available && <p className="meta">Ya no está disponible</p>}
             <button type="button" className="inline-link danger-link" onClick={() => unfav(p.id)}>Quitar</button></div>
         </article>)}</div>}
     </section>

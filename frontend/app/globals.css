@@ -1480,3 +1480,24 @@ button.session-chip{font:inherit;cursor:pointer;color:inherit}
 
 .res-off{border:2px dashed currentColor;border-radius:12px;padding:18px 20px;display:grid;gap:6px;opacity:.85;font-size:14.5px;line-height:1.5;margin-top:12px}.res-off b{font-size:15px}
 .fp-reserve .reserve-box>h3{display:none}
+
+/* Precio a consultar / Desde, programar e historial */
+.price-ask{font-size:.8em;font-weight:600;color:var(--navy)}.price-from{font-size:.55em;font-weight:500;color:var(--muted);margin-right:2px}
+.detail-price.ask{display:flex;flex-direction:column;gap:10px;font-size:24px}.detail-price.ask .button{font-size:14px}
+.sched-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0}.sched-grid label{display:grid;gap:6px;font-weight:600;font-size:14px}.sched-grid small{font-weight:400}
+.hist-list{list-style:none;margin:0;padding:0;display:grid;gap:2px;max-height:55vh;overflow:auto}.hist-list li{padding:10px 0;border-top:1px solid var(--line);font-size:14px}.hist-list small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.exp-card p{margin:6px 0 12px}.exp-row{display:flex;gap:18px;flex-wrap:wrap;margin:10px 0}.exp-row label{display:flex;align-items:center;gap:8px;font-size:14px}.exp-row input{width:80px}
+.exp-acts{display:flex;gap:12px;align-items:center;margin-top:8px}.ok-text{color:#1f7a45;font-weight:600}.bad-text{color:#b42318}
+@media(max-width:640px){.sched-grid{grid-template-columns:1fr}}
+
+/* Bloques nuevos de la fanpage */
+.fp-near{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.fp-near li{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:12px;align-items:center;background:rgba(255,255,255,.65);border-radius:12px;padding:12px 14px}
+.fp-near-ic{grid-row:span 2;width:42px;height:42px;border-radius:50%;background:var(--fp-accent);color:var(--fp-primary);display:grid;place-items:center}
+.fp-near b{font-size:15px}.fp-near small{opacity:.7;font-size:13px}
+.fp-faq details{border-bottom:1px solid rgba(0,0,0,.12);padding:14px 0}.fp-faq summary{font-weight:700;cursor:pointer;font-size:16px}.fp-faq details p{margin:8px 0 0;line-height:1.6;white-space:pre-line}
+.fp-calc{display:grid;gap:16px;max-width:620px;background:rgba(255,255,255,.75);border-radius:14px;padding:20px}
+.fp-calc label{display:grid;gap:6px;font-size:15px}.fp-calc input[type=range]{width:100%;accent-color:var(--fp-primary)}
+.fp-calc-out{display:grid;gap:2px;background:var(--fp-primary);color:#fff;border-radius:12px;padding:16px}.fp-calc-out span{font-size:13px;opacity:.85}.fp-calc-out b{font:600 32px/1.1 var(--fp-title)}.fp-calc-out small{opacity:.8}
+.fp-list-edit{display:grid;gap:8px}.fp-list-row{display:flex;gap:6px;align-items:center}.fp-list-row input,.fp-list-row select{flex:1;min-width:0}.fp-list-row .fp-short{flex:0 0 80px}.fp-list-row button{border:0;background:none;cursor:pointer;color:var(--muted)}
+.fp-faq-row{display:grid;gap:6px;padding:8px;border:1px solid var(--line);border-radius:8px}

@@ -14,7 +14,7 @@ function state(w: W): { label: string; tone: 'ok' | 'soon' | 'wait'; text: strin
   const per = w.operation === 'RENT' ? ' / mes' : '';
   if (w.notice === 'price' && w.prevPrice) return { label: 'Bajó de precio', tone: 'ok', text: `Antes ${mxn(w.prevPrice)}, ahora ${mxn(w.price)}${per}` };
   const free = w.availability === 'AVAILABLE' && (!w.availableFrom || w.availableFrom <= today());
-  if (free) return { label: '¡Disponible!', tone: 'ok', text: `${mxn(w.price)}${per} · ${w.municipality}` };
+  if (free) return { label: '¡Disponible!', tone: 'ok', text: `${w.price > 0 ? mxn(w.price) + per : 'Precio a consultar'} · ${w.municipality}` };
   if (w.availableFrom && w.availableFrom > today()) {
     const d = Math.round((Date.parse(w.availableFrom) - Date.parse(today())) / 86400000);
     return { label: d <= 7 ? 'Pronto' : 'Esperando', tone: d <= 7 ? 'soon' : 'wait', text: `Se libera en ${d} día${d === 1 ? '' : 's'} (${day(w.availableFrom)})` };

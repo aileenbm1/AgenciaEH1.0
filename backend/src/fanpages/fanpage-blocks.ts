@@ -8,7 +8,8 @@ import { cleanGalleryOptions, cleanLayout } from '../site/site-config';
  * formato #RRGGBB, fuentes de una lista fija, fotos del propio sitio y videos de
  * YouTube/Vimeo (se guarda solo el ID). Todo lo demás se descarta al guardar.
  */
-export const BLOCK_TYPES = ['hero', 'text', 'gallery', 'features', 'price', 'video', 'cta', 'contact', 'share', 'map', 'reserve', 'agent'] as const;
+export const BLOCK_TYPES = ['hero', 'text', 'gallery', 'features', 'price', 'video', 'cta', 'contact', 'share', 'map', 'reserve', 'agent', 'nearby', 'faq', 'tour', 'mortgage'] as const;
+export const NEARBY_ICONS = ['escuela', 'super', 'hospital', 'parque', 'plaza', 'transporte', 'restaurante', 'gimnasio', 'banco', 'iglesia', 'trabajo', 'otro'] as const;
 export type BlockType = typeof BLOCK_TYPES[number];
 export const FONTS = ['clasica', 'moderna', 'elegante', 'redonda'] as const;
 export const TARGETS = ['contact', 'whatsapp', 'reserve', 'property'] as const;
@@ -25,6 +26,16 @@ const ID = /^[a-z0-9-]{1,40}$/i;
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').trim().slice(0, max) : '');
 const pick = <T extends readonly string[]>(v: unknown, list: T, def: T[number]): T[number] => (list.includes(v as string) ? (v as T[number]) : def);
 export const imageOk = (u: string) => MEDIA_PATH_RE.test(u) || DEMO_PATH_RE.test(u);
+
+/** Recorrido virtual 360°: solo Matterport o Kuula (se guarda únicamente el ID). */
+export function tourId(url: string): { provider: 'matterport' | 'kuula'; id: string } | null {
+  const u = url.trim();
+  let m = u.match(/^https:\/\/my\.matterport\.com\/show\/?\?(?:.*&)?m=([A-Za-z0-9]{6,20})/i);
+  if (m) return { provider: 'matterport', id: m[1] };
+  m = u.match(/^https:\/\/(?:www\.)?kuula\.co\/share\/(?:collection\/)?([A-Za-z0-9]{4,20})/i);
+  if (m) return { provider: 'kuula', id: m[1] };
+  return null;
+}
 
 /** Extrae solo el ID de un video de YouTube o Vimeo (nunca se guarda una URL arbitraria). */
 export function videoId(url: string): { provider: 'youtube' | 'vimeo'; id: string } | null {
@@ -84,6 +95,23 @@ export function cleanBlocks(list: any): Block[] {
       case 'map': return { ...base, title: str(b.title, 140), note: str(b.note, 200) };
       case 'reserve': return { ...base, title: str(b.title, 140), text: str(b.text, 400) };
       case 'agent': return { ...base, title: str(b.title, 140), text: str(b.text, 400), showWhatsapp: b.showWhatsapp !== false };
+      case 'nearby': {
+        const items = Array.isArray(b.items) ? b.items.slice(0, 12).map((x: any) => ({ icon: pick(x?.icon, NEARBY_ICONS, 'otro'), name: str(x?.name, 60), time: str(x?.time, 30) })).filter((x: any) => x.name) : [];
+        return { ...base, title: str(b.title, 140), items };
+      }
+      case 'faq': {
+        const items = Array.isArray(b.items) ? b.items.slice(0, 15).map((x: any) => ({ q: str(x?.q, 200), a: str(x?.a, 1000) })).filter((x: any) => x.q) : [];
+        return { ...base, title: str(b.title, 140), items };
+      }
+      case 'tour': {
+        const raw = str(b.url, 300), t = raw ? tourId(raw) : null;
+        if (raw && !t) throw new BadRequestException('El recorrido 360° debe ser un enlace de Matterport (my.matterport.com/show/?m=…) o Kuula (kuula.co/share/…).');
+        return { ...base, title: str(b.title, 140), provider: t?.provider || (b.provider === 'matterport' || b.provider === 'kuula' ? b.provider : null), tourId: t?.id || (typeof b.tourId === 'string' && /^[A-Za-z0-9]{4,20}$/.test(b.tourId) ? b.tourId : null) };
+      }
+      case 'mortgage': {
+        const num = (v: unknown, min: number, max: number, def: number) => { const x = Number(v); return Number.isFinite(x) && x >= min && x <= max ? Math.round(x * 100) / 100 : def; };
+        return { ...base, title: str(b.title, 140), text: str(b.text, 300), downPct: num(b.downPct, 5, 90, 20), years: num(b.years, 5, 30, 20), rate: num(b.rate, 1, 30, 11) };
+      }
     }
   });
 }

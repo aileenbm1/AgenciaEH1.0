@@ -20,6 +20,11 @@ export class PropertiesController {
   @Patch(':id/availability') @UseGuards(JwtAuthGuard) availability(@Req() r: any, @Param('id') id: string, @Body() b: { availability: string; availableFrom?: string | null }) {
     return this.service.setAvailability(id, r.user.sub, r.user.role, String(b?.availability || ''), b?.availableFrom);
   }
+  @Post(':id/pause') @UseGuards(JwtAuthGuard) pause(@Req() r: any, @Param('id', ParseUUIDPipe) id: string) { return this.service.pause(id, r.user.sub, r.user.role); }
+  @Post(':id/resume') @UseGuards(JwtAuthGuard) resume(@Req() r: any, @Param('id', ParseUUIDPipe) id: string) { return this.service.resume(id, r.user.sub, r.user.role); }
+  @Post(':id/confirm') @UseGuards(JwtAuthGuard) confirm(@Req() r: any, @Param('id', ParseUUIDPipe) id: string) { return this.service.confirm(id, r.user.sub, r.user.role); }
+  @Patch(':id/schedule') @UseGuards(JwtAuthGuard) schedule(@Req() r: any, @Param('id', ParseUUIDPipe) id: string, @Body() b: { publishAt?: string | null; hideAt?: string | null }) { return this.service.schedule(id, r.user.sub, r.user.role, b?.publishAt, b?.hideAt); }
+  @Get(':id/events') @UseGuards(JwtAuthGuard) events(@Req() r: any, @Param('id', ParseUUIDPipe) id: string) { return this.service.events(id, r.user.sub, r.user.role); }
   @Post(':id/submit') @UseGuards(JwtAuthGuard) submit(@Req() r: any, @Param('id') id: string) { return this.service.submit(id, r.user.sub, r.user.role); }
   @Patch(':id/moderate') @UseGuards(JwtAuthGuard, RolesGuard) @Roles('ADMIN') moderate(@Param('id') id: string, @Body('status') status: string, @Body('note') note?: string) { return this.service.moderate(id, status, note); }
   @Delete(':id') @UseGuards(JwtAuthGuard) remove(@Req() r: any, @Param('id') id: string) { return this.service.remove(id, r.user.sub, r.user.role); }
@@ -28,8 +33,10 @@ export class PropertiesController {
 /** RF-03: campos personalizados. Lectura pública; alta y edición solo para administradores. */
 @Controller()
 export class CustomFieldsController {
-  constructor(private fields: CustomFieldsService) {}
+  constructor(private fields: CustomFieldsService, private props: PropertiesService) {}
   @Get('custom-fields') list() { return this.fields.list(); }
+  @Get('admin/listing-expiry') @UseGuards(JwtAuthGuard, RolesGuard) @Roles('ADMIN') expiry() { return this.props.expirySettings(); }
+  @Patch('admin/listing-expiry') @UseGuards(JwtAuthGuard, RolesGuard) @Roles('ADMIN') saveExpiry(@Body() d: any) { return this.props.saveExpirySettings(d); }
   @Get('admin/custom-fields') @UseGuards(JwtAuthGuard, RolesGuard) @Roles('ADMIN') all() { return this.fields.list(true); }
   @Post('admin/custom-fields') @UseGuards(JwtAuthGuard, RolesGuard) @Roles('ADMIN') create(@Body() d: CustomFieldInput) { return this.fields.create(d); }
   @Patch('admin/custom-fields/:id') @UseGuards(JwtAuthGuard, RolesGuard) @Roles('ADMIN') update(@Param('id', ParseUUIDPipe) id: string, @Body() d: CustomFieldInput) { return this.fields.update(id, d); }

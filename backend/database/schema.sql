@@ -75,6 +75,12 @@ CREATE TABLE IF NOT EXISTS Properties (
   Category VARCHAR(30) NULL,
   Availability VARCHAR(12) NOT NULL DEFAULT 'AVAILABLE',
   AvailableFrom DATE NULL,
+  PriceMode VARCHAR(6) NOT NULL DEFAULT 'SHOW',
+  PauseReason VARCHAR(10) NULL,
+  PublishAt DATETIME NULL,
+  HideAt DATETIME NULL,
+  ConfirmedAt DATETIME NULL,
+  RemindedAt DATETIME NULL,
   Latitude DECIMAL(9,6) NULL,
   Longitude DECIMAL(9,6) NULL,
   ShowExactLocation TINYINT(1) NOT NULL DEFAULT 0,
@@ -90,8 +96,7 @@ CREATE TABLE IF NOT EXISTS Properties (
   CONSTRAINT FK_Properties_Users FOREIGN KEY (OwnerId) REFERENCES Users(Id),
   CONSTRAINT CK_Properties_Operation CHECK (Operation IN ('RENT','SALE','BOTH')),
   ReviewNote VARCHAR(500) NULL,
-  CONSTRAINT CK_Properties_Status CHECK (Status IN ('DRAFT','REVIEW','PUBLISHED','RENTED','SOLD','REJECTED')),
-  CONSTRAINT CK_Properties_Price CHECK (Price > 0),
+  CONSTRAINT CK_Properties_Status2 CHECK (Status IN ('DRAFT','REVIEW','PUBLISHED','SCHEDULED','PAUSED','RENTED','SOLD','REJECTED')),
   INDEX IX_Properties_PublicSearch (Status, Operation, Municipality, Price),
   INDEX IX_Properties_Owner (OwnerId, UpdatedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -476,4 +481,16 @@ CREATE TABLE IF NOT EXISTS WaitlistOwnerNotices (
   ForDate DATE NOT NULL,
   SentAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT PK_WaitlistOwnerNotices PRIMARY KEY (PropertyId, ForDate)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Historial de cada propiedad: quién la publicó, pausó, programó o reactivó (y lo automático).
+CREATE TABLE IF NOT EXISTS PropertyEvents (
+  Id CHAR(36) NOT NULL PRIMARY KEY,
+  PropertyId CHAR(36) NOT NULL,
+  UserId CHAR(36) NULL,
+  Kind VARCHAR(20) NOT NULL,
+  Note VARCHAR(300) NULL,
+  CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX IX_PropertyEvents_Property (PropertyId, CreatedAt),
+  CONSTRAINT FK_PropertyEvents_Property FOREIGN KEY (PropertyId) REFERENCES Properties(Id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

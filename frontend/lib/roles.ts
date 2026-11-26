@@ -76,6 +76,8 @@ export const PROPERTY_STATUS: Record<string, { label: string; help: string; tone
   DRAFT:     { label: 'Borrador',    help: 'Solo tú la ves. Complétala y envíala a revisión.', tone: 'neutral' },
   REVIEW:    { label: 'En revisión', help: 'Un administrador la está revisando. No es pública todavía.', tone: 'warn' },
   PUBLISHED: { label: 'Publicada',   help: 'Visible para todos en el catálogo.', tone: 'ok' },
+  SCHEDULED: { label: 'Programada',  help: 'Aprobada; se publica sola en la fecha que elegiste.', tone: 'warn' },
+  PAUSED:    { label: 'Pausada',     help: 'No se muestra al público. Reanúdala cuando quieras, sin volver a revisión.', tone: 'neutral' },
   REJECTED:  { label: 'Rechazada',   help: 'Corrige la información y vuelve a enviarla a revisión.', tone: 'bad' },
   SOLD:      { label: 'Vendida',     help: 'Operación cerrada.', tone: 'neutral' },
   RENTED:    { label: 'Rentada',     help: 'Operación cerrada.', tone: 'neutral' },

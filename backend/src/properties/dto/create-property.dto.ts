@@ -13,7 +13,9 @@ export class CreatePropertyDto {
   /** RENT = renta, SALE = venta, BOTH = venta y renta. */
   @IsIn(OPERATIONS) operation!: 'RENT' | 'SALE' | 'BOTH';
   /** Precio de venta (SALE/BOTH) o renta mensual (RENT). */
-  @Type(() => Number) @IsNumber() @Min(1) price!: number;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) price?: number;
+  /** SHOW = se muestra, FROM = "Desde $…", HIDE = "Precio a consultar" (el precio es opcional y no se publica). */
+  @IsOptional() @IsIn(['SHOW', 'FROM', 'HIDE']) priceMode?: 'SHOW' | 'FROM' | 'HIDE';
   /** Renta mensual cuando la operación es BOTH. */
   @IsOptional() @Type(() => Number) @IsNumber() @Min(1) rentPrice?: number;
   @IsOptional() @IsIn(CATEGORIES) category?: string;

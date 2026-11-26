@@ -1,7 +1,7 @@
 import { getJson } from '@/lib/api-transport';
 import { getPublicProperty } from '@/lib/properties';
 import { FanpageData } from '@/lib/fanpage';
-import { mxn } from '@/lib/data';
+import { priceText } from '@/lib/data';
 import FanpageView from '@/components/fanpage-view';
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,7 @@ export async function generateMetadata({ params }: Params) {
   const p = await getPublicProperty(slug);
   if (!p) return {};
   const img = p.images?.[0]?.url;
-  const description = `${mxn(Number(p.price))}${p.operation === 'RENT' ? ' / mes' : ''} · ${p.neighborhood ? `${p.neighborhood}, ` : ''}${p.municipality}. ${(p.description || '').slice(0, 120)}`;
+  const description = `${priceText(Number(p.price), p.priceMode, p.operation === 'RENT' ? ' / mes' : '')} · ${p.neighborhood ? `${p.neighborhood}, ` : ''}${p.municipality}. ${(p.description || '').slice(0, 120)}`;
   return { title: `${p.title} · Mi Casa`, description, openGraph: { title: p.title, description, type: 'website', images: img ? [{ url: img }] : [] } };
 }
 

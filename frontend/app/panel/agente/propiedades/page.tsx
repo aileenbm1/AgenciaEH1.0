@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { BellRing, CalendarDays, Ellipsis, UsersRound, Eye, ImagePlus, LayoutTemplate, Pencil, Plus, Send, Share2, ToggleLeft, Trash2 } from 'lucide-react';
+import { BellRing, CalendarClock, CalendarDays, CircleCheck, Ellipsis, History, Pause, Play, UsersRound, Eye, ImagePlus, LayoutTemplate, Pencil, Plus, Send, Share2, ToggleLeft, Trash2 } from 'lucide-react';
 import AdminShell from '@/components/admin/admin-shell';
 import Modal from '@/components/admin/modal';
 import PublisherShell from '@/components/publisher/publisher-shell';
@@ -15,9 +15,13 @@ import PropertyForm, { EditableProperty } from '@/components/property-form';
 import RentalSettings from '@/components/rental-settings';
 import { missingFor } from '@/lib/publisher';
 
-type Property = EditableProperty & { reviewNote?: string | null; slug: string; availability: keyof typeof AVAILABILITY; owner?: { fullName: string; role: string } | null };
-type Confirm = { kind: 'delete'; p: Property } | { kind: 'availability'; p: Property; value: keyof typeof AVAILABILITY; from?: string };
-const STATUS_TABS: [string, string][] = [['', 'Todas'], ['PUBLISHED', 'Publicadas'], ['DRAFT', 'Borradores'], ['REJECTED', 'Requieren cambios'], ['REVIEW', 'En revisión']];
+type Property = EditableProperty & { reviewNote?: string | null; slug: string; pauseReason?: string | null; publishAt?: string | null; hideAt?: string | null; expiry?: { pauseIn: number; reminded: boolean } | null; availability: keyof typeof AVAILABILITY; owner?: { fullName: string; role: string } | null };
+type Confirm = { kind: 'schedule'; p: Property; publishAt: string; hideAt: string } | { kind: 'history'; p: Property; events: { kind: string; note: string | null; createdAt: string; who: string | null }[] | null } | { kind: 'delete'; p: Property } | { kind: 'availability'; p: Property; value: keyof typeof AVAILABILITY; from?: string };
+const STATUS_TABS: [string, string][] = [['', 'Todas'], ['PUBLISHED', 'Publicadas'], ['SCHEDULED', 'Programadas'], ['PAUSED', 'Pausadas'], ['DRAFT', 'Borradores'], ['REJECTED', 'Requieren cambios'], ['REVIEW', 'En revisión']];
+const PAUSE_LABEL: Record<string, string> = { owner: 'Pausada por ti', inactive: 'Pausada por inactividad', schedule: 'Oculta por fecha programada' };
+const EVENT_LABEL: Record<string, string> = { created: 'Creada', published: 'Publicada (aprobada)', scheduled: 'Aprobada · programada', rejected: 'Pidieron cambios', draft: 'Regresó a borrador', paused: 'Pausada', resumed: 'Reanudada', confirmed: 'Confirmó que sigue disponible', schedule: 'Cambió fechas', 'auto-published': 'Se publicó sola (fecha programada)', 'auto-hidden': 'Se ocultó sola (fecha programada)', reminded: 'Se preguntó si sigue disponible', 'auto-paused': 'Se pausó sola por inactividad' };
+const when = (d: string) => new Date(d.includes('T') ? d : d.replace(' ', 'T') + 'Z').toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
+const toLocalInput = (d?: string | null) => { if (!d) return ''; const x = new Date(d.includes('T') ? d : d.replace(' ', 'T') + 'Z'); const z = new Date(x.getTime() - x.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 16); };
 
 function MyProperties({ user }: { user: SessionUser }) {
   const admin = user.role === 'ADMIN';
@@ -60,6 +64,22 @@ function MyProperties({ user }: { user: SessionUser }) {
   const open = (p: Property | 'new') => { setMenu(''); setOk(''); setError(''); setEditing(p); setTimeout(() => document.getElementById('formulario')?.scrollIntoView({ behavior: 'smooth' }), 50); };
   const done = async (msg: string) => { setOk(msg); await load(); refreshPublisherPending(); };
 
+  async function visibility(p: Property, action: 'pause' | 'resume' | 'confirm', msg: string) {
+    setMenu(''); setBusy(p.id); setError(''); setOk('');
+    try { await authJson(`/properties/${p.id}/${action}`, { method: 'POST' }); await done(msg); }
+    catch (e) { setError(e instanceof Error ? e.message : 'No se pudo completar la acción.'); } finally { setBusy(''); }
+  }
+  async function saveSchedule(c: { p: Property; publishAt: string; hideAt: string }) {
+    setBusy(c.p.id); setError('');
+    try {
+      await authJson(`/properties/${c.p.id}/schedule`, { method: 'PATCH', body: JSON.stringify({ publishAt: c.publishAt ? new Date(c.publishAt).toISOString() : null, hideAt: c.hideAt ? new Date(c.hideAt).toISOString() : null }) });
+      setConfirm(null); await done('Fechas guardadas.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'No se pudieron guardar las fechas.'); } finally { setBusy(''); }
+  }
+  async function history(p: Property) {
+    setMenu(''); setConfirm({ kind: 'history', p, events: null });
+    try { const ev = await authJson<{ kind: string; note: string | null; createdAt: string; who: string | null }[]>(`/properties/${p.id}/events`); setConfirm({ kind: 'history', p, events: ev }); } catch { setConfirm({ kind: 'history', p, events: [] }); }
+  }
   async function submit(p: Property) {
     setMenu(''); setBusy(p.id); setError(''); setOk('');
     try { await authJson(`/properties/${p.id}/submit`, { method: 'POST' }); await done(admin ? `“${p.title}” ya está publicada en el catálogo.` : `“${p.title}” se envió a revisión. Te avisaremos cuando sea aprobada.`); }
@@ -71,7 +91,7 @@ function MyProperties({ user }: { user: SessionUser }) {
     setBusy(p.id); setError(''); setOk('');
     try {
       if (confirm.kind === 'delete') { await authJson(`/properties/${p.id}`, { method: 'DELETE' }); await done(`“${p.title}” se eliminó.`); }
-      else {
+      else if (confirm.kind === 'availability') {
         const from = confirm.value === 'RENTED' || confirm.value === 'RESERVED' ? (confirm.from || null) : undefined;
         await authJson(`/properties/${p.id}/availability`, { method: 'PATCH', body: JSON.stringify({ availability: confirm.value, ...(from !== undefined ? { availableFrom: from } : confirm.value === 'AVAILABLE' ? { availableFrom: null } : {}) }) });
         await done(`“${p.title}” ahora está: ${AVAILABILITY[confirm.value].label}.${confirm.value === 'AVAILABLE' && waitOf(p.id) ? ' Avisamos a quienes la esperaban.' : ''}`);
@@ -125,20 +145,27 @@ function MyProperties({ user }: { user: SessionUser }) {
           ? <button className="button button-navy" disabled={busy === p.id} onClick={() => submit(p)}><Send size={15} aria-hidden /> Publicar</button>
           : p.status === 'DRAFT' ? (missing.length ? <button className="button button-navy" onClick={() => open(p)}><ImagePlus size={15} aria-hidden /> Completar</button> : <button className="button button-navy" disabled={busy === p.id} onClick={() => submit(p)}><Send size={15} aria-hidden /> Enviar a revisión</button>)
           : p.status === 'REJECTED' ? <button className="button button-navy" onClick={() => open(p)}><Pencil size={15} aria-hidden /> Corregir</button>
+          : p.status === 'PUBLISHED' && p.expiry?.reminded ? <button className="button button-navy" disabled={busy === p.id} onClick={() => visibility(p, 'confirm', `Listo: “${p.title}” sigue publicada.`)}><CircleCheck size={15} aria-hidden /> Sí, sigue disponible</button>
           : p.status === 'PUBLISHED' ? <Link className="button button-outline" href={`/propiedades/${p.slug}`}><Eye size={15} aria-hidden /> Ver publicación</Link>
+          : p.status === 'PAUSED' ? <button className="button button-navy" disabled={busy === p.id} onClick={() => p.pauseReason === 'inactive' ? visibility(p, 'confirm', `Listo: “${p.title}” vuelve a mostrarse.`) : visibility(p, 'resume', `Listo: “${p.title}” vuelve a mostrarse.`)}><Play size={15} aria-hidden /> Reanudar</button>
+          : p.status === 'SCHEDULED' ? <button className="button button-outline" onClick={() => setConfirm({ kind: 'schedule', p, publishAt: toLocalInput(p.publishAt), hideAt: toLocalInput(p.hideAt) })}><CalendarClock size={15} aria-hidden /> Cambiar fecha</button>
           : <span className="adm-pill warn">Esperando revisión</span>;
         return <article key={p.id} className="pub-row">
           <div className="pub-row-main">
             {p.images[0]?.url ? <img src={p.images[0].url} alt="" /> : <div className="img-missing">Sin fotos</div>}
             <div className="pub-row-info">
-              <div className="pub-row-pills"><i className={`status-pill ${st.tone}`}>{p.status === 'REJECTED' ? 'Requiere cambios' : st.label}</i>{p.status === 'PUBLISHED' && <i className={`status-pill ${av.tone}`}>{av.label}</i>}
+              <div className="pub-row-pills"><i className={`status-pill ${st.tone}`}>{p.status === 'REJECTED' ? 'Requiere cambios' : p.status === 'PAUSED' ? PAUSE_LABEL[p.pauseReason || 'owner'] || 'Pausada' : p.status === 'SCHEDULED' && p.publishAt ? `Programada · ${when(p.publishAt)}` : st.label}</i>{p.status === 'PUBLISHED' && <i className={`status-pill ${av.tone}`}>{av.label}</i>}
+                {p.status === 'PUBLISHED' && p.hideAt && <i className="status-pill neutral">Se oculta el {when(p.hideAt)}</i>}
+                {p.status === 'PUBLISHED' && p.expiry && p.expiry.pauseIn <= 30 && <i className={`status-pill ${p.expiry.reminded ? 'warn' : 'neutral'}`} title="Si no hay movimiento, se pausa sola para que el catálogo esté al día">{p.expiry.pauseIn === 0 ? 'Se pausa hoy' : `Se pausa en ${p.expiry.pauseIn} día${p.expiry.pauseIn === 1 ? '' : 's'}`}</i>}
                 {waitOf(p.id) && <button type="button" className="wl-pill" onClick={() => openWait(p.id, p.title)} title="Ver lista de espera"><UsersRound size={13} aria-hidden /> {waitOf(p.id)!.watchers} en lista de espera</button>}</div>
               <b className="pub-row-title">{p.title}</b>
-              <small>{p.neighborhood ? `${p.neighborhood}, ` : ''}{p.municipality} · {OPERATION_LABEL[p.operation]} · {mxn(Number(p.price))}{p.operation === 'RENT' ? ' / mes' : ''}{p.operation === 'BOTH' && p.rentPrice ? ` · renta ${mxn(Number(p.rentPrice))} / mes` : ''}</small>
+              <small>{p.neighborhood ? `${p.neighborhood}, ` : ''}{p.municipality} · {OPERATION_LABEL[p.operation]} · {p.priceMode === 'HIDE' ? `Precio a consultar${Number(p.price) > 0 ? ` (${mxn(Number(p.price))}, solo tú lo ves)` : ''}` : `${p.priceMode === 'FROM' ? 'Desde ' : ''}${mxn(Number(p.price))}${p.operation === 'RENT' ? ' / mes' : ''}`}{p.operation === 'BOTH' && p.rentPrice ? ` · renta ${mxn(Number(p.rentPrice))} / mes` : ''}</small>
               {admin && <small>Anunciante: <b>{p.owner?.fullName || '—'}</b></small>}
               {p.status === 'DRAFT' && missing.length > 0 && <div className="pub-miss">Para enviarla a revisión falta: {missing.map(m => <span key={m}>{m}</span>)}</div>}
               {p.status === 'REJECTED' && <div className="pub-fix"><b>Qué corregir:</b> {p.reviewNote || 'Revisa los datos y las fotos, y vuelve a enviarla.'}</div>}
               {p.status === 'REVIEW' && !admin && <small className="pub-note">El administrador la está revisando. Te avisaremos por correo.</small>}
+              {p.status === 'PUBLISHED' && p.expiry?.reminded && <div className="pub-fix"><b>¿Sigue disponible?</b> Confírmalo; si no, se pausará sola en {p.expiry.pauseIn} día{p.expiry.pauseIn === 1 ? '' : 's'}. <button type="button" className="inline-link" onClick={() => setConfirm({ kind: 'availability', p, value: p.operation === 'SALE' ? 'SOLD' : 'RENTED' })}>Ya se {p.operation === 'SALE' ? 'vendió' : 'rentó'}</button></div>}
+              {p.status === 'PAUSED' && <small className="pub-note">{p.pauseReason === 'inactive' ? 'Llevaba mucho tiempo sin movimiento. Si sigue disponible, reanúdala y vuelve a salir al instante.' : p.pauseReason === 'schedule' ? 'Se ocultó en la fecha que programaste.' : 'No se muestra al público. Reanúdala cuando quieras, sin volver a revisión.'}</small>}
             </div>
             <div className="pub-row-acts">
               {primary}
@@ -150,6 +177,11 @@ function MyProperties({ user }: { user: SessionUser }) {
                   <button type="button" role="menuitem" onClick={() => { setMenu(''); setReserving(reserving === p.id ? '' : p.id); }}><CalendarDays size={16} aria-hidden />Reservas y calendario</button>
                   <Link role="menuitem" href={`/panel/fanpage/${p.id}`}><LayoutTemplate size={16} aria-hidden />Fanpage para redes</Link>
                   {p.status === 'REJECTED' && !admin && <button type="button" role="menuitem" onClick={() => submit(p)}><Send size={16} aria-hidden />Reenviar sin cambios</button>}
+                  {(p.status === 'PUBLISHED' || p.status === 'SCHEDULED') && <button type="button" role="menuitem" onClick={() => visibility(p, 'pause', `“${p.title}” quedó pausada: ya no se muestra al público.`)}><Pause size={16} aria-hidden />Pausar (ocultar)</button>}
+                  {p.status === 'PAUSED' && <button type="button" role="menuitem" onClick={() => visibility(p, p.pauseReason === 'inactive' ? 'confirm' : 'resume', `Listo: “${p.title}” vuelve a mostrarse.`)}><Play size={16} aria-hidden />Reanudar</button>}
+                  {p.status === 'PUBLISHED' && <button type="button" role="menuitem" onClick={() => visibility(p, 'confirm', `Listo: renovamos la vigencia de “${p.title}”.`)}><CircleCheck size={16} aria-hidden />Confirmar que sigue disponible</button>}
+                  {p.status !== 'REJECTED' && <button type="button" role="menuitem" onClick={() => { setMenu(''); setConfirm({ kind: 'schedule', p, publishAt: toLocalInput(p.publishAt), hideAt: toLocalInput(p.hideAt) }); }}><CalendarClock size={16} aria-hidden />Programar publicar / ocultar…</button>}
+                  <button type="button" role="menuitem" onClick={() => history(p)}><History size={16} aria-hidden />Historial</button>
                   {p.status === 'PUBLISHED' && <><button type="button" role="menuitem" onClick={() => { setMenu(''); setConfirm({ kind: 'availability', p, value: p.availability }); }}><ToggleLeft size={16} aria-hidden />Cambiar disponibilidad…</button>
                     <button type="button" role="menuitem" onClick={() => share(p)}><Share2 size={16} aria-hidden />Compartir</button></>}
                   <hr /><button type="button" role="menuitem" className="red" onClick={() => { setMenu(''); setConfirm({ kind: 'delete', p }); }}><Trash2 size={16} aria-hidden />Eliminar…</button>
@@ -167,6 +199,20 @@ function MyProperties({ user }: { user: SessionUser }) {
         <span className="wl-acts-i">{x.phone && <a className="inline-link" href={`https://wa.me/${x.phone.replace(/\D/g, '').length === 10 ? '52' + x.phone.replace(/\D/g, '') : x.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>}<a className="inline-link" href={`mailto:${x.email}`}>Correo</a></span></li>)}</ul>}
       {wl.anonymous > 0 && <p className="wl-anon">+ {wl.anonymous} persona{wl.anonymous === 1 ? '' : 's'} más esperando (no compartieron sus datos). Recibirán el aviso automáticamente.</p>}
       <div className="adm-modal-acts"><button type="button" className="button button-outline" onClick={() => setWl(null)}>Cerrar</button></div>
+    </Modal>}
+    {confirm?.kind === 'schedule' && <Modal title={`Programar · ${confirm.p.title}`} onClose={() => setConfirm(null)}>
+      <p className="muted">Elige cuándo se publica y/o cuándo deja de mostrarse. {confirm.p.status === 'DRAFT' || confirm.p.status === 'REVIEW' ? 'Si el administrador la aprueba antes, quedará “Programada” y saldrá sola ese día.' : ''}</p>
+      <div className="sched-grid">
+        <label>Publicar el día<input type="datetime-local" value={confirm.publishAt} onChange={e => setConfirm({ ...confirm, publishAt: e.target.value })} /><small className="muted">Vacío = en cuanto esté aprobada.</small></label>
+        <label>Ocultar el día<input type="datetime-local" value={confirm.hideAt} onChange={e => setConfirm({ ...confirm, hideAt: e.target.value })} /><small className="muted">Vacío = sin fecha de fin (útil para promociones o preventas).</small></label>
+      </div>
+      <div className="adm-modal-acts"><button type="button" className="button button-outline" onClick={() => setConfirm(null)}>Cancelar</button>
+        <button type="button" className="button button-navy" disabled={busy === confirm.p.id} onClick={() => saveSchedule(confirm)}>Guardar fechas</button></div>
+    </Modal>}
+    {confirm?.kind === 'history' && <Modal title={`Historial · ${confirm.p.title}`} onClose={() => setConfirm(null)}>
+      {confirm.events === null ? <p className="muted">Cargando…</p> : confirm.events.length === 0 ? <p className="muted">Aún no hay movimientos registrados.</p>
+        : <ul className="hist-list">{confirm.events.map((e, i) => <li key={i}><b>{EVENT_LABEL[e.kind] || e.kind}</b>{e.note ? <span> · {e.note}</span> : null}<small>{when(String(e.createdAt))}{e.who ? ` · ${e.who}` : e.kind.startsWith('auto') || e.kind === 'reminded' ? ' · automático' : ''}</small></li>)}</ul>}
+      <div className="adm-modal-acts"><button type="button" className="button button-outline" onClick={() => setConfirm(null)}>Cerrar</button></div>
     </Modal>}
     {confirm?.kind === 'delete' && <Modal title={`Eliminar “${confirm.p.title}”`} onClose={() => setConfirm(null)}>
       <p className="muted">Se borran la propiedad, sus fotos y su fanpage. <b>No se puede deshacer.</b> Si solo ya no está disponible, mejor usa “Cambiar disponibilidad”.</p>

@@ -57,10 +57,20 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       ['Reservations', 'PayReminderAt', 'ALTER TABLE Reservations ADD COLUMN PayReminderAt DATETIME NULL, ADD COLUMN PayDueReminderAt DATETIME NULL, ADD COLUMN OverdueNoticeAt DATETIME NULL'],
       ['Reservations', 'Weeks', 'ALTER TABLE Reservations ADD COLUMN Weeks INT NULL'],
       ['Leads', 'Source', 'ALTER TABLE Leads ADD COLUMN Source VARCHAR(40) NULL, ADD COLUMN Campaign VARCHAR(80) NULL'],
+      ['Properties', 'PriceMode', "ALTER TABLE Properties ADD COLUMN PriceMode VARCHAR(6) NOT NULL DEFAULT 'SHOW', ADD COLUMN PauseReason VARCHAR(10) NULL, ADD COLUMN PublishAt DATETIME NULL, ADD COLUMN HideAt DATETIME NULL, ADD COLUMN ConfirmedAt DATETIME NULL, ADD COLUMN RemindedAt DATETIME NULL"],
     ];
     for (const [t, c, sql] of changes) {
       if (tables.has(t) && !has(t, c)) { await this.getPool().query(sql); console.error(`[Mi Casa] Migración: columna ${t}.${c} agregada`); }
     }
+    // Estados nuevos (Programada, Pausada) y precio "a consultar": se quitan las reglas viejas de la tabla
+    // (solo aceptaban los estados anteriores y precio mayor que cero). La aplicación valida ambos.
+    if (tables.has('Properties')) try {
+      const checks = await this.query<any>("SELECT CONSTRAINT_NAME AS n FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME='Properties' AND CONSTRAINT_TYPE='CHECK' AND CONSTRAINT_NAME IN ('CK_Properties_Status','CK_Properties_Price')");
+      for (const c of checks) {
+        await this.getPool().query(`ALTER TABLE Properties DROP CHECK ${c.n}`).catch(() => this.getPool().query(`ALTER TABLE Properties DROP CONSTRAINT ${c.n}`));
+        console.error(`[Mi Casa] Migración: regla ${c.n} actualizada`);
+      }
+    } catch (e: any) { console.error('[Mi Casa] No se pudieron actualizar las reglas de Properties:', e?.message); }
     // Diseño del sitio: el valor puede pasar de 64 KB (TEXT) → MEDIUMTEXT.
     try {
       const [t] = await this.query<any>("SELECT DATA_TYPE AS d FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME='SiteSettings' AND COLUMN_NAME='V'");
@@ -139,7 +149,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
    * Así no hace falta importar el esquema a mano en phpMyAdmin.
    */
   private async ensureSchema() {
-    const required = ['Users', 'AgencyProfiles', 'AgentProfiles', 'Properties', 'PropertyImages', 'Leads', 'Favorites', 'Payments', 'SavedSearches', 'CustomFields', 'PropertyCustomValues', 'RentalSettings', 'Reservations', 'ReservationMessages', 'ReservationDocuments', 'BlockedDates', 'Fanpages', 'FanpageVersions', 'FanpageTemplates', 'FanpageEvents', 'SiteSettings', 'ReservationPayments', 'SiteVersions', 'PayoutAccounts', 'MembershipNotices', 'PropertyWatches', 'WaitlistOwnerNotices'];
+    const required = ['Users', 'AgencyProfiles', 'AgentProfiles', 'Properties', 'PropertyImages', 'Leads', 'Favorites', 'Payments', 'SavedSearches', 'CustomFields', 'PropertyCustomValues', 'RentalSettings', 'Reservations', 'ReservationMessages', 'ReservationDocuments', 'BlockedDates', 'Fanpages', 'FanpageVersions', 'FanpageTemplates', 'FanpageEvents', 'SiteSettings', 'ReservationPayments', 'SiteVersions', 'PayoutAccounts', 'MembershipNotices', 'PropertyWatches', 'WaitlistOwnerNotices', 'PropertyEvents'];
     try {
       const before = await this.tableNames();
       const missingBefore = required.filter((t) => !before.includes(t));

@@ -63,6 +63,7 @@ async function build(user: SessionUser): Promise<Summary> {
     { n: p.payDue.length, label: pl(p.payDue.length, 'pago por cobrar', 'pagos por cobrar'), href: '/panel/reservas' },
     { n: msgs, label: pl(msgs, 'mensaje nuevo', 'mensajes nuevos'), href: '/panel/prospectos' },
     { n: p.rejected.length, label: pl(p.rejected.length, 'propiedad por corregir', 'propiedades por corregir'), href: '/panel/agente/propiedades', warn: true },
+    ...((p.stale || []).length ? [{ n: p.stale.length, label: p.stale.length === 1 ? 'anuncio por confirmar o reanudar' : 'anuncios por confirmar o reanudar', href: '/panel/agente/propiedades', warn: true }] : []),
     ...(p.waitlist || []).filter((w: any) => w.soon).slice(0, 2).map((w: any) => ({ n: w.watchers, label: `esperan “${w.title.length > 26 ? w.title.slice(0, 25) + '…' : w.title}” (se libera en ${w.daysLeft} día${w.daysLeft === 1 ? '' : 's'})`, href: '/panel/agente/propiedades', warn: true })),
     { n: memb ? 1 : 0, label: p.membership.status === 'expired' ? 'membresía vencida' : p.membership.status === 'none' ? 'membresía por activar' : `membresía vence en ${p.membership.daysLeft} días`, href: '/panel/membresia' },
   ].filter(x => x.n > 0);

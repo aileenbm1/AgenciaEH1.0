@@ -9,7 +9,7 @@ import { GalleryStyleFields, LayoutFields } from '@/components/block-design-fiel
 import { authJson, SessionUser } from '@/lib/auth';
 import { ApiProperty } from '@/lib/properties';
 import { mxn } from '@/lib/data';
-import { Block, BLOCKS, BlockType, fill, FONTS, newId, PALETTES, TARGETS, Theme, TOKENS_HELP, videoUrl } from '@/lib/fanpage';
+import { Block, BLOCKS, BlockType, fill, FONTS, NEARBY_ICONS, newId, PALETTES, TARGETS, Theme, TOKENS_HELP, tourUrl, videoUrl } from '@/lib/fanpage';
 
 type Editor = {
   property: ApiProperty & { status: string }; images: { url: string; label?: string | null }[];
@@ -59,6 +59,36 @@ function BlockFields({ b, set, images, loc, onLoc, hint }: { b: Block; set: (pat
     case 'agent': return <>{text('title', 'Título', 140)}{text('text', 'Texto de presentación (opcional)', 400)}
       <label className="check"><input type="checkbox" checked={b.showWhatsapp !== false} onChange={e => set({ showWhatsapp: e.target.checked })} /> Mostrar botón de WhatsApp</label>
       <p className="muted small">La foto y el nombre salen del perfil del asesor.</p></>;
+    case 'nearby': {
+      const items: { icon: string; name: string; time: string }[] = b.items || [];
+      const upd = (i: number, patch: Partial<{ icon: string; name: string; time: string }>) => set({ items: items.map((x, j) => j === i ? { ...x, ...patch } : x) });
+      return <>{text('title', 'Título', 140)}
+        <div className="fp-list-edit">{items.map((x, i) => <div key={i} className="fp-list-row">
+          <select value={x.icon} onChange={e => upd(i, { icon: e.target.value })} aria-label="Tipo de lugar">{Object.entries(NEARBY_ICONS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+          <input maxLength={60} value={x.name} onChange={e => upd(i, { name: e.target.value })} placeholder="Nombre (ej. Colegio Montessori)" aria-label="Nombre del lugar" />
+          <input maxLength={30} value={x.time} onChange={e => upd(i, { time: e.target.value })} placeholder="5 min" aria-label="Distancia" className="fp-short" />
+          <button type="button" onClick={() => set({ items: items.filter((_, j) => j !== i) })} aria-label="Quitar">✕</button></div>)}
+          {items.length < 12 && <button type="button" className="inline-link" onClick={() => set({ items: [...items, { icon: 'otro', name: '', time: '' }] })}>+ Agregar lugar</button>}</div></>;
+    }
+    case 'faq': {
+      const items: { q: string; a: string }[] = b.items || [];
+      const upd = (i: number, patch: Partial<{ q: string; a: string }>) => set({ items: items.map((x, j) => j === i ? { ...x, ...patch } : x) });
+      return <>{text('title', 'Título', 140)}
+        <div className="fp-list-edit">{items.map((x, i) => <div key={i} className="fp-faq-row">
+          <div className="fp-list-row"><input maxLength={200} value={x.q} onChange={e => upd(i, { q: e.target.value })} placeholder="¿Pregunta?" aria-label="Pregunta" /><button type="button" onClick={() => set({ items: items.filter((_, j) => j !== i) })} aria-label="Quitar">✕</button></div>
+          <textarea rows={2} maxLength={1000} value={x.a} onChange={e => upd(i, { a: e.target.value })} placeholder="Respuesta" aria-label="Respuesta" /></div>)}
+          {items.length < 15 && <button type="button" className="inline-link" onClick={() => set({ items: [...items, { q: '', a: '' }] })}>+ Agregar pregunta</button>}</div></>;
+    }
+    case 'tour': return <>{text('title', 'Título', 140)}
+      <label>Enlace del recorrido (Matterport o Kuula)<input maxLength={300} value={tourUrl(b)} onChange={e => set({ url: e.target.value })} placeholder="https://my.matterport.com/show/?m=… o https://kuula.co/share/…" /></label>
+      <p className="muted small">Copia el enlace para compartir de tu recorrido. Por seguridad solo se aceptan Matterport y Kuula.</p></>;
+    case 'mortgage': return <>{text('title', 'Título', 140)}{text('text', 'Nota (opcional)', 300)}
+      <div className="fp-two">
+        <label>Enganche sugerido (%)<input type="number" min={5} max={90} value={b.downPct ?? 20} onChange={e => set({ downPct: Number(e.target.value) })} /></label>
+        <label>Plazo sugerido (años)<input type="number" min={5} max={30} value={b.years ?? 20} onChange={e => set({ years: Number(e.target.value) })} /></label>
+        <label>Tasa anual de referencia (%)<input type="number" min={1} max={30} step={0.1} value={b.rate ?? 11} onChange={e => set({ rate: Number(e.target.value) })} /></label>
+      </div>
+      <p className="muted small">El visitante puede mover el enganche y el plazo. Solo aparece en propiedades en venta con precio visible.</p></>;
   }
   return null;
 }

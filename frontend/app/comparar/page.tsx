@@ -13,7 +13,7 @@ type P = {
   id: string; slug: string; title: string; operation: 'RENT' | 'SALE' | 'BOTH'; price: number | string; rentPrice?: number | string | null; category?: string | null; availability?: string;
   municipality: string; neighborhood?: string | null; propertyType: string; bedrooms?: number | null; bathrooms?: number | null; builtArea?: number | string | null; landArea?: number | string | null;
   images?: { url: string }[]; latitude?: number | string | null; longitude?: number | string | null; showExactLocation?: boolean;
-  custom?: Record<string, string>; customFields?: { key: string; label: string; type: string }[];
+  custom?: Record<string, string>; customFields?: { key: string; label: string; type: string }[]; priceMode?: string;
 };
 type Cell = { v: number | null; text: string; yes?: boolean | null };
 type Row = { group: string; label: string; best?: 'min' | 'max'; bar?: boolean; cells: Cell[] };
@@ -22,8 +22,8 @@ const AV: Record<string, string> = { AVAILABLE: 'Disponible', RESERVED: 'Apartad
 const OP: Record<string, string> = { RENT: 'Renta', SALE: 'Venta', BOTH: 'Venta y renta' };
 const n = (x: unknown) => { const v = Number(x); return Number.isFinite(v) && v > 0 ? v : null; };
 const short = (v: number) => v >= 1e6 ? `$${(v / 1e6).toFixed(v >= 1e7 ? 1 : 2).replace(/\.?0+$/, '')}M` : mxn(v);
-const salePrice = (p: P) => p.operation === 'RENT' ? null : n(p.price);
-const rentPrice = (p: P) => p.operation === 'RENT' ? n(p.price) : p.operation === 'BOTH' ? n(p.rentPrice) : null;
+const salePrice = (p: P) => p.operation === 'RENT' || p.priceMode === 'HIDE' ? null : n(p.price);
+const rentPrice = (p: P) => p.priceMode === 'HIDE' ? null : p.operation === 'RENT' ? n(p.price) : p.operation === 'BOTH' ? n(p.rentPrice) : null;
 const area = (p: P) => n(p.builtArea) || n(p.landArea);
 
 /** Índices de la(s) mejor(es) de un renglón (solo si hay al menos 2 valores y no todos son iguales). */
@@ -46,8 +46,8 @@ function buildRows(items: P[]): Row[] {
     if (cells.every(c => c.text === '—')) return;
     rows.push({ group, label, cells, ...extra });
   };
-  add('PRECIO', 'Precio de venta', p => { const v = salePrice(p); return { v, text: v ? mxn(v) : '—' }; }, { best: 'min' });
-  add('PRECIO', 'Renta mensual', p => { const v = rentPrice(p); return { v, text: v ? `${mxn(v)} / mes` : '—' }; }, { best: 'min' });
+  add('PRECIO', 'Precio de venta', p => { const v = salePrice(p); return { v, text: p.priceMode === 'HIDE' && p.operation !== 'RENT' ? 'A consultar' : v ? `${p.priceMode === 'FROM' ? 'Desde ' : ''}${mxn(v)}` : '—' }; }, { best: 'min' });
+  add('PRECIO', 'Renta mensual', p => { const v = rentPrice(p); return { v, text: p.priceMode === 'HIDE' && p.operation !== 'SALE' ? 'A consultar' : v ? `${mxn(v)} / mes` : '—' }; }, { best: 'min' });
   add('PRECIO', 'Precio por m²', p => { const s = salePrice(p), a = area(p); const v = s && a ? Math.round(s / a) : null; return { v, text: v ? mxn(v) : '—' }; }, { best: 'min', bar: true });
   add('PRECIO', 'Operación', p => ({ v: null, text: OP[p.operation] }));
   add('PRECIO', 'Disponibilidad', p => ({ v: null, text: AV[p.availability || 'AVAILABLE'] || 'Disponible' }));
@@ -155,7 +155,7 @@ export default function Compare() {
         <button type="button" className="cmp-x" onClick={() => remove(p.slug)} aria-label={`Quitar ${p.title}`} title="Quitar"><X size={14} /></button>
         <Link href={`/propiedades/${p.slug}`} className="cmp-title">{p.title}</Link>
         <small className="muted">{p.neighborhood ? `${p.neighborhood}, ` : ''}{p.municipality}</small>
-        <div className="cmp-price">{salePrice(p) ? mxn(salePrice(p)!) : `${mxn(rentPrice(p) || 0)} / mes`}</div>
+        <div className="cmp-price">{p.priceMode === 'HIDE' ? 'Precio a consultar' : salePrice(p) ? `${p.priceMode === 'FROM' ? 'Desde ' : ''}${mxn(salePrice(p)!)}` : `${mxn(rentPrice(p) || 0)} / mes`}</div>
         <div className="cmp-acts"><Link className="button button-outline" href={`/propiedades/${p.slug}`}>Ver ficha</Link><Link className="button button-navy" href={`/propiedades/${p.slug}#contacto`}>Me interesa</Link></div>
       </div>)}
       {items.length < MAX_COMPARE && <div className="cmp-hc"><div className="cmp-add"><span aria-hidden>＋</span><b>Agrega otra</b>
