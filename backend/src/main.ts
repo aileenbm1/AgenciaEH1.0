@@ -8,6 +8,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './module';
 import { MEDIA_PREFIX, mediaRoot } from './uploads/media';
+import { rateLimit, securityHeaders } from './security';
 
 /**
  * Crea la API y la pone a escuchar.
@@ -23,6 +24,9 @@ export async function startApi(): Promise<NestExpressApplication> {
   // Detrás del proxy de Hostinger / Nginx: respeta X-Forwarded-* (IP real y HTTPS).
   app.set('trust proxy', 1);
   app.setGlobalPrefix('api/v1');
+  app.disable('x-powered-by');
+  app.use(securityHeaders);
+  app.use(rateLimit);
   app.use(cookieParser());
   // WEB_ORIGIN admite varios orígenes separados por comas.
   app.enableCors({ origin: (process.env.WEB_ORIGIN || 'http://localhost:3000').split(',').map((o) => o.trim()).filter(Boolean), credentials: true });

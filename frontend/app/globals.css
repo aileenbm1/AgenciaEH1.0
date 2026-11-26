@@ -1501,3 +1501,8 @@ button.session-chip{font:inherit;cursor:pointer;color:inherit}
 .fp-calc-out{display:grid;gap:2px;background:var(--fp-primary);color:#fff;border-radius:12px;padding:16px}.fp-calc-out span{font-size:13px;opacity:.85}.fp-calc-out b{font:600 32px/1.1 var(--fp-title)}.fp-calc-out small{opacity:.8}
 .fp-list-edit{display:grid;gap:8px}.fp-list-row{display:flex;gap:6px;align-items:center}.fp-list-row input,.fp-list-row select{flex:1;min-width:0}.fp-list-row .fp-short{flex:0 0 80px}.fp-list-row button{border:0;background:none;cursor:pointer;color:var(--muted)}
 .fp-faq-row{display:grid;gap:6px;padding:8px;border:1px solid var(--line);border-radius:8px}
+
+.er{position:relative;display:inline-block}
+.er-menu{position:absolute;left:0;top:calc(100% + 6px);z-index:40;min-width:250px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px rgba(15,23,42,.16);padding:6px;display:grid}
+.er-menu a,.er-menu button{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;font:500 14px var(--font-body);color:var(--navy);text-decoration:none;border:0;background:none;cursor:pointer;text-align:left;overflow-wrap:anywhere}
+.er-menu a:hover,.er-menu button:hover{background:var(--surface,#f3f1ec)}

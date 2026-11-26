@@ -19,7 +19,7 @@ export class CreatePropertyDto {
   /** Etiqueta después del precio ("/ mensual", "moneda nacional"…). null = automática ("/ mes" o "MXN"); "" = sin etiqueta. */
   @IsOptional() @IsString() @MaxLength(40) priceSuffix?: string | null;
   /** Renta mensual cuando la operación es BOTH. */
-  @IsOptional() @Type(() => Number) @IsNumber() @Min(1) rentPrice?: number;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) rentPrice?: number | null;
   @IsOptional() @IsIn(CATEGORIES) category?: string;
   @IsString() @MinLength(2) municipality!: string;
   @IsOptional() @IsString() neighborhood?: string;

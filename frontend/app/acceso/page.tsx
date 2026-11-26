@@ -27,7 +27,7 @@ export default function Access() {
     const q = new URLSearchParams(window.location.search);
     const r = q.get('rol');
     if (r && r !== 'BUYER') { router.replace('/anunciar'); return; }
-    const n = q.get('next'); if (n && n.startsWith('/')) setNext(n);
+    const n = q.get('next'); if (n && /^\/(?![\/\\])/.test(n)) setNext(n); // solo rutas del sitio (no //otro-sitio.com)
     // Si ya hay sesión, no tiene sentido mostrar este formulario.
     fetch('/api/v1/auth/config').then(r => r.json()).then(c => {
       const open = !!c.publicSignup; setSignupOpen(open);

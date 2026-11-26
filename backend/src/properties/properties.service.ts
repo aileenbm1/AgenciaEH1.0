@@ -59,7 +59,8 @@ export class PropertiesService implements OnModuleInit {
 
   /** Precio: obligatorio salvo "a consultar". */
   private checkPriceMode(mode: string, price: unknown) {
-    if (mode !== 'HIDE' && !(Number(price) > 0)) throw new BadRequestException('Indica el precio, o elige “Precio a consultar”.');
+    // El precio es opcional: vacío o 0 se publica como “Precio a consultar”.
+    void mode; void price;
   }
 
   /** Etiqueta del precio: texto plano corto. null = automática, "" = sin etiqueta. */
@@ -105,13 +106,12 @@ export class PropertiesService implements OnModuleInit {
     if (role !== 'ADMIN') await this.assertApproved(userId);
     const mode = d.priceMode || 'SHOW';
     this.checkPriceMode(mode, d.price);
-    if (mode !== 'HIDE') this.checkPrices(d.operation, d.rentPrice);
     const custom = await this.fields.clean(d.custom);
     const id = randomUUID();
     await this.db.transaction(async (tx) => {
       await this.db.execute(`INSERT INTO Properties(Id,Slug,Title,Description,Operation,Status,Price,PriceMode,PriceSuffix,RentPrice,Currency,Category,Availability,AvailableFrom,Municipality,Neighborhood,PropertyType,Bedrooms,Bathrooms,LandArea,BuiltArea,Latitude,Longitude,ShowExactLocation,OwnerId)
         VALUES(?,?,?,?,?,'DRAFT',?,?,?,?,'MXN',?,'AVAILABLE',?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [id, this.slug(d.title), d.title, d.description, d.operation, Number(d.price) > 0 ? d.price : 0, mode, this.cleanSuffix(d.priceSuffix), d.operation === 'BOTH' ? d.rentPrice ?? null : null, d.category || categoryFor(d.propertyType),
+        [id, this.slug(d.title), d.title, d.description, d.operation, Number(d.price) > 0 ? d.price : 0, mode, this.cleanSuffix(d.priceSuffix), d.operation === 'BOTH' && Number(d.rentPrice) > 0 ? d.rentPrice : null, d.category || categoryFor(d.propertyType),
           d.availableFrom ? d.availableFrom.slice(0, 10) : null, d.municipality, d.neighborhood ?? null, d.propertyType, d.bedrooms ?? null, d.bathrooms ?? null,
           d.landArea ?? null, d.builtArea ?? null, d.latitude ?? null, d.latitude != null ? d.longitude ?? null : null, d.showExactLocation ? 1 : 0, ownerId], tx);
       await this.insertImages(tx, id, d.images || [], d.imageLabels);
@@ -165,7 +165,7 @@ export class PropertiesService implements OnModuleInit {
     if (q.minPrice !== undefined || q.maxPrice !== undefined) {
       const min = Number(q.minPrice), max = Number(q.maxPrice);
       if ((q.minPrice !== undefined && (!Number.isFinite(min) || min < 0)) || (q.maxPrice !== undefined && (!Number.isFinite(max) || max < 0)) || (q.minPrice !== undefined && q.maxPrice !== undefined && min > max)) throw new BadRequestException('Rango de precios no válido.');
-      where.push("p.PriceMode<>'HIDE'");
+      where.push("p.PriceMode<>'HIDE' AND p.Price>0");
       if (q.minPrice !== undefined) { where.push(`${priceCol}>=?`); params.push(min); }
       if (q.maxPrice !== undefined) { where.push(`${priceCol}<=?`); params.push(max); }
     }
@@ -173,7 +173,7 @@ export class PropertiesService implements OnModuleInit {
     if (q.bathrooms !== undefined && q.bathrooms !== '') { const b = Number(q.bathrooms); if (!Number.isInteger(b) || b < 0 || b > 30) throw new BadRequestException('Número de baños no válido.'); where.push('p.Bathrooms>=?'); params.push(b); }
     if (q.search) { const term = String(q.search).slice(0, 100); where.push(`(p.Title LIKE CONCAT('%',?,'%') OR p.Description LIKE CONCAT('%',?,'%') OR p.Municipality LIKE CONCAT('%',?,'%') OR p.Neighborhood LIKE CONCAT('%',?,'%'))`); params.push(term, term, term, term); }
     await this.fields.filters(q, where, params);
-    const clause = where.join(' AND '), sort = q.sort === 'price_asc' ? `(p.PriceMode='HIDE'),${priceCol} ASC` : q.sort === 'price_desc' ? `(p.PriceMode='HIDE'),${priceCol} DESC` : 'p.CreatedAt DESC';
+    const clause = where.join(' AND '), sort = q.sort === 'price_asc' ? `(p.PriceMode='HIDE' OR p.Price<=0),${priceCol} ASC` : q.sort === 'price_desc' ? `(p.PriceMode='HIDE' OR p.Price<=0),${priceCol} DESC` : 'p.CreatedAt DESC';
     const [count] = await this.db.query(`SELECT COUNT(*) AS Total FROM Properties p WHERE ${clause}`, params);
     // Se pagina sobre propiedades (subconsulta) y después se unen las imágenes.
     const rows = await this.db.query(`${WITH_IMAGES} FROM (SELECT p.* FROM Properties p WHERE ${clause} ORDER BY ${sort},p.Id LIMIT ? OFFSET ?) p LEFT JOIN PropertyImages i ON i.PropertyId=p.Id ORDER BY ${sort},p.Id,i.Position`, [...params, take, (page - 1) * take]);
@@ -235,14 +235,13 @@ export class PropertiesService implements OnModuleInit {
     const operation = d.operation ?? p.Operation;
     const mode = d.priceMode ?? p.PriceMode ?? 'SHOW';
     this.checkPriceMode(mode, d.price !== undefined ? d.price : p.Price);
-    if (mode !== 'HIDE') this.checkPrices(operation, d.rentPrice !== undefined ? d.rentPrice : p.RentPrice);
     const custom = await this.fields.clean(d.custom);
     const cols: Record<string, string> = { title: 'Title', description: 'Description', operation: 'Operation', price: 'Price', category: 'Category', municipality: 'Municipality', neighborhood: 'Neighborhood', propertyType: 'PropertyType', bedrooms: 'Bedrooms', bathrooms: 'Bathrooms', landArea: 'LandArea', builtArea: 'BuiltArea' };
     const sets: string[] = [], params: any[] = [];
     for (const [key, col] of Object.entries(cols)) if ((d as any)[key] !== undefined) { sets.push(`${col}=?`); params.push(key === 'price' ? (Number(d.price) > 0 ? d.price : 0) : (d as any)[key] ?? null); }
     if (d.priceMode !== undefined) { sets.push('PriceMode=?'); params.push(mode); }
     if (d.priceSuffix !== undefined) { sets.push('PriceSuffix=?'); params.push(this.cleanSuffix(d.priceSuffix)); }
-    if (d.rentPrice !== undefined || d.operation !== undefined) { sets.push('RentPrice=?'); params.push(operation === 'BOTH' ? (d.rentPrice ?? p.RentPrice) : null); }
+    if (d.rentPrice !== undefined || d.operation !== undefined) { const rp = d.rentPrice !== undefined ? d.rentPrice : p.RentPrice; sets.push('RentPrice=?'); params.push(operation === 'BOTH' && Number(rp) > 0 ? rp : null); }
     if (d.availableFrom !== undefined) { sets.push('AvailableFrom=?'); params.push(d.availableFrom ? d.availableFrom.slice(0, 10) : null); }
     if (d.latitude !== undefined || d.longitude !== undefined) { const has = d.latitude != null && d.longitude != null; sets.push('Latitude=?', 'Longitude=?'); params.push(has ? d.latitude : null, has ? d.longitude : null); }
     if (d.showExactLocation !== undefined) { sets.push('ShowExactLocation=?'); params.push(d.showExactLocation ? 1 : 0); }
@@ -287,8 +286,6 @@ export class PropertiesService implements OnModuleInit {
     if (!p.Title) missing.push('título');
     if (!p.Description) missing.push('descripción');
     if (!p.Municipality) missing.push('ubicación');
-    if (p.PriceMode !== 'HIDE' && !(Number(p.Price) > 0)) missing.push('precio');
-    if (p.PriceMode !== 'HIDE' && p.Operation === 'BOTH' && !(Number(p.RentPrice) > 0)) missing.push('precio de renta');
     if (!(Number(p.BuiltArea) > 0 || Number(p.LandArea) > 0)) missing.push('superficie (construcción o terreno)');
     const [img] = await this.db.query<any>('SELECT COUNT(*) AS n FROM PropertyImages WHERE PropertyId=?', [id]);
     if (!Number(img.n)) missing.push('al menos una foto');

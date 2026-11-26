@@ -162,7 +162,7 @@ export class EngagementService {
           && (!q.get('municipality') || has(p.Municipality, q.get('municipality')!))
           && (!q.get('neighborhood') || has(p.Neighborhood, q.get('neighborhood')!))
           && (!q.get('propertyType') || has(p.PropertyType, q.get('propertyType')!))
-          && (p.PriceMode !== 'HIDE' || (!q.get('minPrice') && !q.get('maxPrice')))
+          && ((p.PriceMode !== 'HIDE' && Number(p.Price) > 0) || (!q.get('minPrice') && !q.get('maxPrice')))
           && (!q.get('minPrice') || price >= Number(q.get('minPrice')))
           && (!q.get('maxPrice') || price <= Number(q.get('maxPrice')))
           && (!q.get('bedrooms') || Number(p.Bedrooms || 0) >= Number(q.get('bedrooms')))

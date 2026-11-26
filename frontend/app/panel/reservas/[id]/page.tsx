@@ -1,6 +1,7 @@
 "use client";
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import EmailReply from '@/components/email-reply';
 import { useParams } from 'next/navigation';
 import ProtectedPanel from '@/components/protected-panel';
 import { authFetch, authJson, SessionUser } from '@/lib/auth';
@@ -203,7 +204,7 @@ function ReservationDetail({ user }: { user: SessionUser }) {
         </section>
 
         <section className="dashboard-card"><h3>{isGuest ? 'Anunciante' : 'Interesado'}</h3>
-          <p><b>{other.fullName}</b>{other.phone && <><br />Tel. <a className="inline-link" href={`tel:${other.phone}`}>{other.phone}</a> · <a className="inline-link" target="_blank" rel="noreferrer" href={`https://wa.me/${other.phone.replace(/\D/g, '').replace(/^(\d{10})$/, '52$1')}`}>WhatsApp</a></>}{other.email && <><br /><a className="inline-link" href={`mailto:${other.email}`}>{other.email}</a></>}</p>
+          <p><b>{other.fullName}</b>{other.phone && <><br />Tel. <a className="inline-link" href={`tel:${other.phone}`}>{other.phone}</a> · <a className="inline-link" target="_blank" rel="noreferrer" href={`https://wa.me/${other.phone.replace(/\D/g, '').replace(/^(\d{10})$/, '52$1')}`}>WhatsApp</a></>}{other.email && <><br /><span className="muted small">{other.email}</span><br /><EmailReply to={other.email} subject={`Reserva · ${r.property.title}`} label="Escribir por correo" /></>}</p>
           {isGuest && !other.phone && <p className="muted">Los datos de contacto aparecen cuando el anunciante aprueba tu solicitud. Mientras, usa el chat.</p>}
         </section>
 

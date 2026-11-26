@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import EmailReply from '@/components/email-reply';
 import { BellRing, CalendarClock, CalendarDays, CircleCheck, Ellipsis, History, Pause, Play, UsersRound, Eye, ImagePlus, LayoutTemplate, Pencil, Plus, Send, Share2, ToggleLeft, Trash2 } from 'lucide-react';
 import AdminShell from '@/components/admin/admin-shell';
 import Modal from '@/components/admin/modal';
@@ -159,7 +160,7 @@ function MyProperties({ user }: { user: SessionUser }) {
                 {p.status === 'PUBLISHED' && p.expiry && p.expiry.pauseIn <= 30 && <i className={`status-pill ${p.expiry.reminded ? 'warn' : 'neutral'}`} title="Si no hay movimiento, se pausa sola para que el catálogo esté al día">{p.expiry.pauseIn === 0 ? 'Se pausa hoy' : `Se pausa en ${p.expiry.pauseIn} día${p.expiry.pauseIn === 1 ? '' : 's'}`}</i>}
                 {waitOf(p.id) && <button type="button" className="wl-pill" onClick={() => openWait(p.id, p.title)} title="Ver lista de espera"><UsersRound size={13} aria-hidden /> {waitOf(p.id)!.watchers} en lista de espera</button>}</div>
               <b className="pub-row-title">{p.title}</b>
-              <small>{p.neighborhood ? `${p.neighborhood}, ` : ''}{p.municipality} · {OPERATION_LABEL[p.operation]} · {p.priceMode === 'HIDE' ? `Precio a consultar${Number(p.price) > 0 ? ` (${mxn(Number(p.price))}, solo tú lo ves)` : ''}` : `${p.priceMode === 'FROM' ? 'Desde ' : ''}${mxn(Number(p.price))} ${p.priceSuffix ?? (p.operation === 'RENT' ? '/ mes' : 'MXN')}`}{p.operation === 'BOTH' && p.rentPrice ? ` · renta ${mxn(Number(p.rentPrice))} / mes` : ''}</small>
+              <small>{p.neighborhood ? `${p.neighborhood}, ` : ''}{p.municipality} · {OPERATION_LABEL[p.operation]} · {p.priceMode === 'HIDE' || !(Number(p.price) > 0) ? `Precio a consultar${Number(p.price) > 0 ? ` (${mxn(Number(p.price))}, solo tú lo ves)` : ''}` : `${p.priceMode === 'FROM' ? 'Desde ' : ''}${mxn(Number(p.price))} ${p.priceSuffix ?? (p.operation === 'RENT' ? '/ mes' : 'MXN')}`}{p.operation === 'BOTH' && p.rentPrice ? ` · renta ${mxn(Number(p.rentPrice))} / mes` : ''}</small>
               {admin && <small>Anunciante: <b>{p.owner?.fullName || '—'}</b></small>}
               {p.status === 'DRAFT' && missing.length > 0 && <div className="pub-miss">Para enviarla a revisión falta: {missing.map(m => <span key={m}>{m}</span>)}</div>}
               {p.status === 'REJECTED' && <div className="pub-fix"><b>Qué corregir:</b> {p.reviewNote || 'Revisa los datos y las fotos, y vuelve a enviarla.'}</div>}
@@ -196,7 +197,7 @@ function MyProperties({ user }: { user: SessionUser }) {
     {wl && <Modal title={`Lista de espera · ${wl.title}`} onClose={() => setWl(null)}>
       <p className="muted">{wl.count} persona{wl.count === 1 ? '' : 's'} pidieron que les avisemos cuando esté disponible. Solo ves los datos de quien aceptó compartirlos.</p>
       {wl.shared.length > 0 && <ul className="wl-list">{wl.shared.map((x, i) => <li key={i}><span className="wl-av">{x.name.split(' ').map(w => w[0]).slice(0, 2).join('')}</span><div><b>{x.name}</b><small>{[x.email, x.phone].filter(Boolean).join(' · ')}</small></div>
-        <span className="wl-acts-i">{x.phone && <a className="inline-link" href={`https://wa.me/${x.phone.replace(/\D/g, '').length === 10 ? '52' + x.phone.replace(/\D/g, '') : x.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>}<a className="inline-link" href={`mailto:${x.email}`}>Correo</a></span></li>)}</ul>}
+        <span className="wl-acts-i">{x.phone && <a className="inline-link" href={`https://wa.me/${x.phone.replace(/\D/g, '').length === 10 ? '52' + x.phone.replace(/\D/g, '') : x.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>}<EmailReply to={x.email} subject={`${wl.title} · ya puedes rentarla o comprarla`} body={`Hola ${x.name.split(' ')[0]},\n\n`} label="Correo" /></span></li>)}</ul>}
       {wl.anonymous > 0 && <p className="wl-anon">+ {wl.anonymous} persona{wl.anonymous === 1 ? '' : 's'} más esperando (no compartieron sus datos). Recibirán el aviso automáticamente.</p>}
       <div className="adm-modal-acts"><button type="button" className="button button-outline" onClick={() => setWl(null)}>Cerrar</button></div>
     </Modal>}

@@ -130,7 +130,7 @@ export class PanelService implements OnModuleInit {
       WHERE l.Status='NEW' AND l.AssignedToId IN ${sc.sql} ORDER BY l.CreatedAt DESC LIMIT 20`, sc.params);
     const props = await this.db.query<any>(`SELECT p.Id, p.Title, p.Status, p.Description, p.Price, p.PriceMode, p.ReviewNote, p.OwnerId,
         (SELECT COUNT(*) FROM PropertyImages i WHERE i.PropertyId=p.Id) AS Photos FROM Properties p WHERE p.OwnerId IN ${sc.sql} AND p.Status IN ('DRAFT','REJECTED') ORDER BY p.UpdatedAt DESC LIMIT 10`, sc.params);
-    const missing = (p: any) => [n(p.Photos) < 3 ? `${3 - n(p.Photos)} foto${3 - n(p.Photos) === 1 ? '' : 's'} más` : '', String(p.Description || '').trim().length < 40 ? 'descripción' : '', p.PriceMode !== 'HIDE' && !(n(p.Price) > 0) ? 'precio' : ''].filter(Boolean);
+    const missing = (p: any) => [n(p.Photos) < 3 ? `${3 - n(p.Photos)} foto${3 - n(p.Photos) === 1 ? '' : 's'} más` : '', String(p.Description || '').trim().length < 40 ? 'descripción' : '', ''].filter(Boolean);
     const membership = await this.membership(userId);
     // Primeros pasos (cuenta nueva): perfil, primera publicación, reservas en línea, datos de pago y compartir.
     const isOrg = role === 'AGENCY' || role === 'DEVELOPER';

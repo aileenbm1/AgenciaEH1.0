@@ -46,8 +46,8 @@ function buildRows(items: P[]): Row[] {
     if (cells.every(c => c.text === '—')) return;
     rows.push({ group, label, cells, ...extra });
   };
-  add('PRECIO', 'Precio de venta', p => { const v = salePrice(p); return { v, text: p.priceMode === 'HIDE' && p.operation !== 'RENT' ? 'A consultar' : v ? `${p.priceMode === 'FROM' ? 'Desde ' : ''}${mxn(v)}${p.priceSuffix ? ' ' + p.priceSuffix : ''}` : '—' }; }, { best: 'min' });
-  add('PRECIO', 'Renta mensual', p => { const v = rentPrice(p); return { v, text: p.priceMode === 'HIDE' && p.operation !== 'SALE' ? 'A consultar' : v ? `${mxn(v)} / mes` : '—' }; }, { best: 'min' });
+  add('PRECIO', 'Precio de venta', p => { const v = salePrice(p); return { v, text: (p.priceMode === 'HIDE' || !(Number(p.price) > 0)) && p.operation !== 'RENT' ? 'A consultar' : v ? `${p.priceMode === 'FROM' ? 'Desde ' : ''}${mxn(v)}${p.priceSuffix ? ' ' + p.priceSuffix : ''}` : '—' }; }, { best: 'min' });
+  add('PRECIO', 'Renta mensual', p => { const v = rentPrice(p); return { v, text: (p.priceMode === 'HIDE' || !(Number(p.price) > 0)) && p.operation !== 'SALE' ? 'A consultar' : v ? `${mxn(v)} / mes` : '—' }; }, { best: 'min' });
   add('PRECIO', 'Precio por m²', p => { const s = salePrice(p), a = area(p); const v = s && a ? Math.round(s / a) : null; return { v, text: v ? mxn(v) : '—' }; }, { best: 'min', bar: true });
   add('PRECIO', 'Operación', p => ({ v: null, text: OP[p.operation] }));
   add('PRECIO', 'Disponibilidad', p => ({ v: null, text: AV[p.availability || 'AVAILABLE'] || 'Disponible' }));
@@ -155,7 +155,7 @@ export default function Compare() {
         <button type="button" className="cmp-x" onClick={() => remove(p.slug)} aria-label={`Quitar ${p.title}`} title="Quitar"><X size={14} /></button>
         <Link href={`/propiedades/${p.slug}`} className="cmp-title">{p.title}</Link>
         <small className="muted">{p.neighborhood ? `${p.neighborhood}, ` : ''}{p.municipality}</small>
-        <div className="cmp-price">{p.priceMode === 'HIDE' ? 'Precio a consultar' : salePrice(p) ? `${p.priceMode === 'FROM' ? 'Desde ' : ''}${mxn(salePrice(p)!)}${p.priceSuffix ? ' ' + p.priceSuffix : ''}` : `${mxn(rentPrice(p) || 0)} / mes`}</div>
+        <div className="cmp-price">{p.priceMode === 'HIDE' || !(Number(p.price) > 0) ? 'Precio a consultar' : salePrice(p) ? `${p.priceMode === 'FROM' ? 'Desde ' : ''}${mxn(salePrice(p)!)}${p.priceSuffix ? ' ' + p.priceSuffix : ''}` : `${mxn(rentPrice(p) || 0)} / mes`}</div>
         <div className="cmp-acts"><Link className="button button-outline" href={`/propiedades/${p.slug}`}>Ver ficha</Link><Link className="button button-navy" href={`/propiedades/${p.slug}#contacto`}>Me interesa</Link></div>
       </div>)}
       {items.length < MAX_COMPARE && <div className="cmp-hc"><div className="cmp-add"><span aria-hidden>＋</span><b>Agrega otra</b>

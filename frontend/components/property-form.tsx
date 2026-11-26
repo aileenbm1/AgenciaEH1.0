@@ -56,7 +56,7 @@ export default function PropertyForm({ property, onDone, onCancel, admin = false
     const num = (v: string) => v === '' ? undefined : Number(v);
     const payload = {
       title: form.title, description: form.description, operation: form.operation, priceMode: form.priceMode, priceSuffix: formToSuffix(form.suffixPick, form.suffixText), price: form.price === '' ? 0 : Number(form.price),
-      rentPrice: both ? num(form.rentPrice) : undefined, category: form.category || categoryFor(form.propertyType),
+      rentPrice: both ? (Number(form.rentPrice) > 0 ? Number(form.rentPrice) : null) : undefined, category: form.category || categoryFor(form.propertyType),
       municipality: form.municipality, neighborhood: form.neighborhood, propertyType: form.propertyType,
       bedrooms: num(form.bedrooms), bathrooms: num(form.bathrooms), landArea: num(form.landArea), builtArea: num(form.builtArea),
       availableFrom: (isRent || both) && form.availableFrom ? form.availableFrom : undefined,
@@ -91,12 +91,12 @@ export default function PropertyForm({ property, onDone, onCancel, admin = false
     <div className="form-grid">
       <label>Operación<select value={form.operation} onChange={set('operation')}><option value="SALE">Venta</option><option value="RENT">Renta</option><option value="BOTH">Venta y renta</option></select></label>
       <label>Cómo mostrar el precio<select value={form.priceMode} onChange={set('priceMode')}><option value="SHOW">Mostrar el precio</option><option value="FROM">Mostrar “Desde $…”</option><option value="HIDE">Precio a consultar (no se publica)</option></select></label>
-      <label>{isRent ? 'Renta mensual (MXN)' : 'Precio de venta (MXN)'}{form.priceMode === 'HIDE' ? ' · opcional' : ''}<input required={form.priceMode !== 'HIDE'} type="number" min="1" value={form.price} onChange={set('price')} placeholder={form.priceMode === 'HIDE' ? 'Solo lo ves tú (opcional)' : ''} /></label>
+      <label>{isRent ? 'Renta mensual (MXN)' : 'Precio de venta (MXN)'} · opcional<input type="number" min="0" step="any" value={form.price} onChange={set('price')} placeholder={form.priceMode === 'HIDE' ? 'Solo lo ves tú (opcional)' : 'Vacío o 0 = “Precio a consultar”'} /></label>
       {form.priceMode !== 'HIDE' && <label>Etiqueta después del precio<select value={form.suffixPick} onChange={set('suffixPick')}>
         <option value="auto">Automática ({isRent ? '/ mes' : 'MXN'})</option>{SUFFIXES.map(x => <option key={x} value={x}>{x}</option>)}<option value="none">Sin etiqueta</option><option value="custom">Otra (escríbela)…</option></select>
         {form.suffixPick === 'custom' && <input maxLength={40} value={form.suffixText} onChange={set('suffixText')} placeholder="Ej. / m² · + IVA · USD" style={{ marginTop: 6 }} />}
         <small className="muted">Se verá así: <b>{form.priceMode === 'FROM' ? 'Desde ' : ''}{Number(form.price) > 0 ? mxn(Number(form.price)) : '$0'} {formToSuffix(form.suffixPick, form.suffixText) ?? (isRent ? '/ mes' : 'MXN')}</b></small></label>}
-      {both && <label>Renta mensual (MXN){form.priceMode === 'HIDE' ? ' · opcional' : ''}<input required={form.priceMode !== 'HIDE'} type="number" min="1" value={form.rentPrice} onChange={set('rentPrice')} /></label>}
+      {both && <label>Renta mensual (MXN) · opcional<input type="number" min="0" step="any" value={form.rentPrice} onChange={set('rentPrice')} placeholder="Vacío = no se muestra" /></label>}
       {form.priceMode === 'HIDE' && <p className="muted small form-span">En la ficha y la fanpage dirá “Precio a consultar” con un botón “Pídeme el precio” que te llega como mensaje. No aparecerá en los filtros por precio.</p>}
       {(isRent || both) && <label>Disponible a partir de<input type="date" value={form.availableFrom} onChange={set('availableFrom')} /></label>}
       {(isRent || both) && <label>Precio por noche (opcional)<input type="number" min="1" value={stay.night} onChange={e => setStay({ ...stay, night: e.target.value })} placeholder="Tipo Airbnb" /></label>}

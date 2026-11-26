@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import EmailReply from '@/components/email-reply';
 import AdminShell from '@/components/admin/admin-shell';
 import PublisherShell from '@/components/publisher/publisher-shell';
 import ProtectedPanel from '@/components/protected-panel';
@@ -36,7 +37,7 @@ function LeadCard({ lead, me, onSaved }: { lead: Lead; me: SessionUser; onSaved:
     {lead.kind === 'VISIT' && lead.visitAt && <p className="lead-visit">📅 Quiere visitar: <b>{fmt(lead.visitAt)}</b></p>}
     {lead.message && <p className="lead-message">“{lead.message}”</p>}
     <div className="property-actions">
-      <a className="button button-outline" href={`mailto:${lead.email}?subject=${encodeURIComponent(lead.property ? 'Re: ' + lead.property.title : 'Mi Casa')}`}>Responder por correo</a>
+      <EmailReply to={lead.email} subject={lead.property ? `Re: ${lead.property.title}` : 'Mi Casa'} body={`Hola ${lead.name.split(' ')[0]},\n\nGracias por tu interés${lead.property ? ` en “${lead.property.title}”` : ''}. `} />
       {lead.phone && <a className="button button-outline" href={`https://wa.me/${waNumber(lead.phone)}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>}
       <select value={lead.status} disabled={busy} onChange={e => save({ status: e.target.value })} aria-label="Estado del prospecto">
         {Object.entries(LEAD_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
